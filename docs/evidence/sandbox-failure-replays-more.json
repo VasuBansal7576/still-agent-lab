@@ -1,0 +1,194 @@
+{
+  "note": "Live PayPal sandbox replay receipts. The timeout was injected. Dispute payout is not established.",
+  "cases": [
+    {
+      "receipt": {
+        "key": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-034a6a2aa1c251e68c51\",1]",
+        "capture": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "54L07253HB329515H",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "130.80",
+              "currency_code": "GBP"
+            }
+          }
+        },
+        "attempts": [
+          {
+            "request": {
+              "captureId": "54L07253HB329515H",
+              "amount": "65.40",
+              "currency": "GBP",
+              "requestId": "still-518a4f93450cc4aa5151f37712ef8884e7ffa59c"
+            },
+            "refund": {
+              "ok": true,
+              "status": 201,
+              "body": {
+                "id": "7NK01804UB859790C",
+                "status": "COMPLETED",
+                "amount": {
+                  "value": "65.40",
+                  "currency_code": "GBP"
+                }
+              }
+            }
+          },
+          {
+            "request": {
+              "captureId": "54L07253HB329515H",
+              "amount": "65.40",
+              "currency": "GBP",
+              "requestId": "still-7b369987e0e1da348e0af30a37e2d53379f95830"
+            },
+            "refund": {
+              "ok": true,
+              "status": 201,
+              "body": {
+                "id": "4GP841527K577813K",
+                "status": "COMPLETED",
+                "amount": {
+                  "value": "65.40",
+                  "currency_code": "GBP"
+                }
+              }
+            }
+          }
+        ],
+        "refundHistory": "not-established",
+        "status": "completed",
+        "source": "paypal-sandbox",
+        "simulated": false,
+        "executor": "trusted-local",
+        "buyerApprovedFreshCapture": true
+      },
+      "final": {
+        "capture": {
+          "http": 200,
+          "id": "54L07253HB329515H",
+          "status": "REFUNDED",
+          "amount": {
+            "value": "130.80",
+            "currency_code": "GBP"
+          }
+        },
+        "refunds": [
+          {
+            "http": 200,
+            "id": "7NK01804UB859790C",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "65.40",
+              "currency_code": "GBP"
+            }
+          },
+          {
+            "http": 200,
+            "id": "4GP841527K577813K",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "65.40",
+              "currency_code": "GBP"
+            }
+          }
+        ],
+        "dispute": null
+      }
+    },
+    {
+      "receipt": {
+        "key": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-ffeb71c10c49f5797b6b\",1]",
+        "capture": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "77U2585057896674P",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "279.75",
+              "currency_code": "GBP"
+            }
+          }
+        },
+        "attempts": [
+          {
+            "request": {
+              "captureId": "77U2585057896674P",
+              "amount": "139.87",
+              "currency": "GBP",
+              "requestId": "still-8b3d2450fa33f9093ce548a3104381a2fe75e42f"
+            },
+            "refund": {
+              "ok": true,
+              "status": 201,
+              "body": {
+                "id": "9VL87658BJ187513A",
+                "status": "COMPLETED",
+                "amount": {
+                  "value": "139.87",
+                  "currency_code": "GBP"
+                }
+              }
+            },
+            "dispute": {
+              "verified": true,
+              "source": "paypal-sandbox",
+              "httpStatus": 200,
+              "id": "PP-R-BNM-10199010",
+              "status": "OPEN",
+              "captureId": "77U2585057896674P",
+              "amount": {
+                "value": "279.75",
+                "currency_code": "GBP"
+              },
+              "observedAt": "2026-11-11T18:16:45.989Z"
+            }
+          }
+        ],
+        "refundHistory": "not-established",
+        "status": "completed",
+        "source": "paypal-sandbox",
+        "simulated": false,
+        "executor": "trusted-local",
+        "buyerApprovedFreshCapture": true
+      },
+      "final": {
+        "capture": {
+          "http": 200,
+          "id": "77U2585057896674P",
+          "status": "PARTIALLY_REFUNDED",
+          "amount": {
+            "value": "279.75",
+            "currency_code": "GBP"
+          }
+        },
+        "refunds": [
+          {
+            "http": 200,
+            "id": "9VL87658BJ187513A",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "139.87",
+              "currency_code": "GBP"
+            }
+          }
+        ],
+        "dispute": {
+          "http": 200,
+          "id": "PP-R-BNM-10199010",
+          "status": "OPEN",
+          "amount": {
+            "value": "279.75",
+            "currency_code": "GBP"
+          },
+          "sellerTransactionIds": [
+            "77U2585057896674P"
+          ]
+        }
+      }
+    }
+  ]
+}

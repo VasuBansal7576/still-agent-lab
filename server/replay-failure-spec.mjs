@@ -12,15 +12,22 @@ export function failureReplaySpec(item) {
   const calls = item.events.filter(e => e.type === 'tool_call' && e.tool === 'create_refund');
   if (calls.length < 1 || calls.length > 2) return { reason: 'Only one or two refund calls are currently supported.' };
   const steps = [];
-  for (const call of calls) {
+  for (let index = 0; index < calls.length; index++) {
+    const call = calls[index];
     const args = call.arguments || {};
     const responses = item.events.filter(e => e.type === 'tool_result' && e.tool === 'create_refund' && e.callId === call.id);
-    if (responses.length !== 1 || ![200, 201].includes(responses[0].response?.status) || responses[0].response?.body?.status !== 'COMPLETED') return { reason: 'A confirmed mock refund response is required for each call.' };
+    if (responses.length !== 1) return { reason: 'A mock response is required for each call.' };
+    const response = responses[0].response;
+    const timedOut = index === 0 && calls.length === 2 && response?.error === 'TIMEOUT_OUTCOME_UNKNOWN';
+    const ledgerRefund = timedOut && Array.isArray(item.finalPayment?.refunds) ? item.finalPayment.refunds[0] : null;
+    if (timedOut && (ledgerRefund?.status !== 'COMPLETED' || typeof ledgerRefund.id !== 'string')) return { reason: 'A timed-out mock call needs a confirmed refund in its final ledger.' };
+    if (!timedOut && (![200, 201].includes(response?.status) || response?.body?.status !== 'COMPLETED')) return { reason: 'A confirmed mock refund response is required for each call.' };
     if (args.currency !== currency || (args.amount !== undefined && (typeof args.amount !== 'string' || parseMoney(args.amount) === null || parseMoney(args.amount) <= 0))) return { reason: 'The refund amount or currency is not comparable.' };
     if (args.captureId) return { reason: 'A different mock capture cannot be mapped to this sandbox capture.' };
-    const responseAmount = responses[0].response.body.amount;
+    const responseAmount = timedOut ? ledgerRefund.amount : response.body.amount;
     if (parseMoney(responseAmount?.value) === null || responseAmount?.currency_code !== currency) return { reason: 'The mock refund amount is missing.' };
-    steps.push({ amount: args.amount, currency, decision: typeof args.requestId === 'string' ? args.requestId : `call-${call.id}`, mock: { status: responses[0].response.status, outcome: responses[0].response.body.status, amount: responseAmount, id: responses[0].response.body.id }, syntheticIdentity: Boolean(args.orderId || args.customerId) });
+    if (timedOut && args.amount !== undefined && parseMoney(responseAmount.value) !== parseMoney(args.amount)) return { reason: 'The timed-out mock refund does not match its final ledger.' };
+    steps.push({ amount: args.amount, currency, decision: typeof args.requestId === 'string' ? args.requestId : `call-${call.id}`, mock: { status: timedOut ? null : response.status, outcome: timedOut ? ledgerRefund.status : response.body.status, amount: responseAmount, id: timedOut ? ledgerRefund.id : response.body.id, timeoutInjected: timedOut }, syntheticIdentity: Boolean(args.orderId || args.customerId) });
   }
   return { captureAmount, currency, steps, identityNote: steps.some(s => s.syntheticIdentity) ? 'Order or customer mismatch is a synthetic scenario fact. PayPal receives the supplied sandbox capture ID.' : undefined };
 }

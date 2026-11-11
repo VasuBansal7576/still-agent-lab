@@ -7,6 +7,7 @@ import { saveSandboxCredentials, loadSandboxCredentials } from './sandbox-creden
 import { runScenario, normalizeRuleSettings } from './runner.mjs';
 import { runRetryDemo } from './retry-demo.mjs';
 import { runDisputeDemo } from './dispute-demo.mjs';
+import { verifyReplayDispute } from './replay-dispute.mjs';
 import { runExtraLeakDemo } from './extra-leak-demo.mjs';
 import { generatePersonas } from './personas.mjs';
 import { runTrials } from './trials.mjs';
@@ -15,7 +16,7 @@ import { importSandboxAccountPersonas } from './account-personas.mjs';
 import { importVerifiedAccountPersonas } from './verified-account-personas.mjs';
 import { derivePermission, createGateway } from './gateway.mjs';
 import { createPayPalMock } from './paypal-mock.mjs';
-import { planSandboxReplays, reconcileSandboxReplays, executePlannedSandboxReplay } from './sandbox-replay.mjs';
+import { planSandboxReplays, reconcileSandboxReplays, executePlannedSandboxReplay, sandboxReplayPage } from './sandbox-replay.mjs';
 import { createReplayLedger } from './replay-ledger.mjs';
 import { createShadowSessions } from './shadow-sessions.mjs';
 import { createReplayCheckout } from './replay-checkout.mjs';
@@ -253,6 +254,16 @@ http.createServer(async (request, response) => {
         return send(response, 200, { clusterReplays, failureCount: plan.failureCount, sampledPassCount: plan.sampledPassCount, queueCount: plan.queueCount, readyCount: plan.readyCount, deferredCount: plan.deferredCount, agreement: comparison.agreement, compared: comparison.compared, agreed: comparison.agreed, disagreed: comparison.disagreed, status: comparison.unverified || !comparison.compared ? 'unverified' : 'compared', reason: comparison.unverified || !comparison.compared ? 'Remaining replays need fresh approved sandbox captures or support for their scenario. External and pending refunds cannot be excluded.' : undefined });
       } catch { return send(response, 400, { error: 'Replay plan could not be prepared.' }); }
     }
+    if (url.pathname === '/api/upgrade/replay-page') {
+      const input = await body(request);
+      if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || !Number.isSafeInteger(input.offset) || input.offset < 0) return send(response, 400, { error: 'Choose a valid batch and page offset.' });
+      try {
+        const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        const plan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 10, offset: input.offset, samplePasses: 10 });
+        const ledger = await createReplayLedger({ directory: fileURLToPath(new URL('../.data/replay-ledger/', import.meta.url)) });
+        return send(response, 200, sandboxReplayPage({ plan, evidence: await ledger.evidence(), verifyReceipt: ledger.verifyReceipt, offset: input.offset, limit: 10 }));
+      } catch { return send(response, 400, { error: 'Replay page could not be loaded.' }); }
+    }
     if (url.pathname === '/api/upgrade/replay-prepare') {
       const input = await body(request);
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || !Number.isInteger(input.index) || input.index < 0 || input.index > 100000) return send(response, 400, { error: 'Choose a replay from a valid batch.' });
@@ -265,6 +276,12 @@ http.createServer(async (request, response) => {
         const status = result.status === 'approval_required' ? 200 : result.status === 'unavailable' ? 503 : result.status === 'create_unknown' ? 502 : 409;
         return send(response, status, { status: result.status, error: result.error, checkout: publicCheckout(result.checkout) });
       } catch { return send(response, 503, { error: 'Replay checkout could not be prepared. Check the current checkout before trying again.' }); }
+    }
+    if (url.pathname === '/api/upgrade/replay-dispute') {
+      const input = await body(request);
+      const result = await verifyReplayDispute({ adapter: session.paypal, disputeId: input.disputeId, checkout: session.checkout });
+      if (result.verified) session.checkout.replayDisputeId = result.id;
+      return send(response, result.verified ? 200 : 400, result.verified ? result : { ...result, error: result.reason });
     }
     if (url.pathname === '/api/upgrade/replay-execute') {
       const input = await body(request);

@@ -1,4 +1,4 @@
-import { failureReplaySpec } from './replay-failure-spec.mjs';
+import { replayFailureSpec } from './replay-dispute.mjs';
 import { createHash } from 'node:crypto';
 import { parseMoney } from './paypal-mock.mjs';
 
@@ -28,7 +28,7 @@ export function planSandboxReplays({ batchId, batch, maxRuns, offset = 0, sample
 }
 
 function comparable(item) {
-  if (item.status === 'fail') return failureReplaySpec(item);
+  if (item.status === 'fail') return replayFailureSpec(item);
   const calls = item.events.filter(event => event.type === 'tool_call' && event.tool === 'create_refund');
   if (calls.length !== 1) return { reason: 'Only a single explicit refund on a fresh capture is comparable; retries and no-call traces need a separate executor.' };
   const disputes = item.events.filter(event => event.type === 'tool_result' && event.tool === 'get_dispute');
@@ -61,11 +61,12 @@ export async function executePlannedSandboxReplay({ plan, key, sessionId, checko
   // A sandbox-only checkout belongs to this replay and is reserved once.
   // PayPal does not supply a complete real-time refund ledger; external activity remains possible.
   if (checkout.replayKey !== key) return blocked('The sandbox checkout belongs to another replay.');
+  if (expected.disputeRequired && !checkout.replayDisputeId) return blocked('Attach a verified open sandbox dispute to this capture before replay.');
   checkout.state = 'replaying';
   // Treat the capture as spent even when a reservation or provider outcome is uncertain.
   checkout.state = 'spent';
   try {
-    const receipt = await ledger.execute({ item, sessionId, adapter, approval: { sessionId, captureId: checkout.captureId, buyerApprovedFreshCapture: true } });
+    const receipt = await ledger.execute({ item, sessionId, adapter, approval: { sessionId, captureId: checkout.captureId, buyerApprovedFreshCapture: true, disputeId: checkout.replayDisputeId } });
     return { status: receipt.source === 'paypal-sandbox' ? 'executed' : 'unverified', receipt };
   } catch {
     return blocked('The replay outcome could not be recorded. Do not retry this capture automatically.');
@@ -84,10 +85,10 @@ export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } =
     if (captureId) captureKeys.set(captureId, (captureKeys.get(captureId) || 0) + 1);
   }
   const results = plan.queue.map(item => {
-    if (item.queueState !== 'ready') return unverified(item, 'Deferred by the execution limit.');
+    const receipt = byKey.get(item.key);
+    if (!receipt && item.queueState !== 'ready') return unverified(item, 'Deferred by the execution limit.');
     const expected = comparable(item);
     if (expected.reason) return unverified(item, expected.reason);
-    const receipt = byKey.get(item.key);
     if (!receipt) return unverified(item, 'No executor receipt was supplied.');
     const simulated = receipt.source === 'simulated-provider-fixture' && receipt.simulated === true;
     if (!simulated && (receipt.source !== 'paypal-sandbox' || receipt.executor !== 'trusted-local' || receipt.simulated !== false || receipt.buyerApprovedFreshCapture !== true && receipt.humanApprovedFreshCapture !== true)) return unverified(item, 'A trusted local executor must attest to a real sandbox response and a buyer-approved fresh capture.');
@@ -103,9 +104,11 @@ export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } =
       const comparisons = [];
       for (let i = 0; i < expected.steps.length; i++) {
         const step = expected.steps[i], attempt = receipt.attempts[i], refund = attempt?.refund, request = attempt?.request;
+        if (expected.disputeRequired && (attempt?.dispute?.verified !== true || attempt.dispute.source !== 'paypal-sandbox' || attempt.dispute.httpStatus !== 200 || attempt.dispute.captureId !== captureId || !['OPEN','UNDER_REVIEW','WAITING_FOR_SELLER_RESPONSE','WAITING_FOR_BUYER_RESPONSE'].includes(attempt.dispute.status))) return unverified(item, 'A PayPal-confirmed open dispute linked to this capture is required before every refund.');
         if (request?.captureId !== captureId || request?.amount !== step.amount || request?.currency !== step.currency || !request?.requestId || !refund || typeof refund.ok !== 'boolean' || !Number.isInteger(refund.status)) return unverified(item, 'A provider refund request or response is incomplete.');
-        const match = refund.status === step.mock.status && refund.body?.status === step.mock.outcome && parseMoney(refund.body?.amount?.value) === parseMoney(step.mock.amount.value) && refund.body?.amount?.currency_code === step.mock.amount.currency_code;
-        comparisons.push({ mock: step.mock, provider: refund, match });
+        const statusMatch = step.mock.timeoutInjected ? refund.ok === true && [200, 201].includes(refund.status) : refund.status === step.mock.status;
+        const match = statusMatch && refund.body?.status === step.mock.outcome && parseMoney(refund.body?.amount?.value) === parseMoney(step.mock.amount.value) && refund.body?.amount?.currency_code === step.mock.amount.currency_code;
+        comparisons.push({ mock: step.mock, provider: refund, ...(expected.disputeRequired ? { dispute: attempt.dispute } : {}), match });
       }
       if (expected.steps.length === 2) {
         const mockSame = expected.steps[0].mock.id === expected.steps[1].mock.id;
@@ -113,7 +116,7 @@ export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } =
         comparisons[1].match = comparisons[1].match && mockSame === providerSame;
       }
       const agreement = comparisons.every(x => x.match);
-      return { key: item.key, personaId: item.personaId, trial: item.trial, status: simulated ? (agreement ? 'simulated-agreed' : 'simulated-disagreed') : (agreement ? 'agreed' : 'disagreed'), source: simulated ? 'simulated-provider-fixture' : 'paypal-sandbox', comparison: 'Refund HTTP status, outcome, amount, currency and retry identity', limitation: 'Sandbox-only. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.', identityNote: expected.identityNote, comparisons };
+      return { key: item.key, personaId: item.personaId, trial: item.trial, status: simulated ? (agreement ? 'simulated-agreed' : 'simulated-disagreed') : (agreement ? 'agreed' : 'disagreed'), source: simulated ? 'simulated-provider-fixture' : 'paypal-sandbox', comparison: 'Refund outcome, amount, currency, retry identity and observable HTTP status', limitation: 'Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.', identityNote: expected.identityNote, comparisons };
     }
     const capture = receipt.capture, refund = receipt.refund, request = receipt.request;
     const captureId = capture?.body?.id;
@@ -129,4 +132,22 @@ export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } =
   const disagreed = results.filter(result => result.status === 'disagreed').length;
   const compared = agreed + disagreed;
   return { source: 'replay-reconciliation', agreed, disagreed, compared, simulated: results.filter(result => result.status.startsWith('simulated-')).length, unverified: results.filter(result => result.status === 'unverified').length, agreement: compared ? agreed / compared : null, results };
+}
+
+/** Describe one page of a server-owned plan without returning full trial traces. */
+export function sandboxReplayPage({ plan, evidence = [], verifyReceipt, offset = 0, limit = 25 } = {}) {
+  if (!plan || !Array.isArray(plan.queue)) throw new TypeError('A replay plan is required.');
+  if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new RangeError('Offset must be nonnegative and limit must be between 1 and 100.');
+  const selected = plan.queue.slice(offset, offset + limit);
+  const comparison = reconcileSandboxReplays({ plan: { ...plan, queue: selected }, evidence, verifyReceipt });
+  return {
+    total: plan.queueCount,
+    offset,
+    limit,
+    nextOffset: offset + selected.length < plan.queueCount ? offset + selected.length : null,
+    items: selected.map((item, index) => {
+      const spec = comparable(item);
+      return { index: offset + index, personaId: item.personaId, trial: item.trial, selection: item.reason, execution: spec.reason ? 'unsupported' : spec.disputeRequired ? 'requires-sandbox-dispute' : 'supported', reason: spec.reason || (spec.disputeRequired ? 'A real open dispute must be linked to this replay capture.' : null), comparison: comparison.results[index] };
+    }),
+  };
 }
