@@ -33,7 +33,7 @@ function setPhase(phase) {
   const busy = ['creating', 'capturing', 'running', 'checking'].includes(phase);
   const locked = busy || ['approval', 'captured', 'unknown'].includes(phase);
   document.querySelectorAll('#rule-options input').forEach(input => { input.disabled = locked; });
-  runButton.disabled = busy;
+  runButton.disabled = busy || phase === 'unknown';
   policyInput.disabled = locked;
   scenarioSelect.disabled = locked;
   agentEndpoint.disabled = locked;
