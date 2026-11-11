@@ -40,6 +40,8 @@ export async function executeSandboxReplay({ item, sessionId, approval, refundHi
   try { refund = safeResponse(await adapter.refundCapture(captureId, { amount: args.amount, currency: args.currency, requestId })); }
   catch (error) { return failed(key, 'Refund outcome is uncertain. Do not retry automatically.', { capture, request, error: { stage: 'refund', name: safeString(error?.name) || 'Error' } }); }
   const base = { key, capture, request, refund, refundedBefore: '0.00' };
-  if (!refund.ok || refund.status !== 201 || refund.body.status !== 'COMPLETED' || !refund.body.id || /^MOCK-/i.test(refund.body.id) || parseMoney(refund.body.amount?.value) !== parseMoney(args.amount) || refund.body.amount?.currency_code !== args.currency) return failed(key, 'Provider response is not a confirmed comparable success.', base);
-  return { ...base, source: simulated ? 'simulated-provider-fixture' : 'paypal-sandbox', simulated, executor: 'trusted-local', humanApprovedFreshCapture: true };
+  const success = refund.ok && refund.status === 201 && refund.body.status === 'COMPLETED' && refund.body.id && !/^MOCK-/i.test(refund.body.id) && parseMoney(refund.body.amount?.value) === parseMoney(args.amount) && refund.body.amount?.currency_code === args.currency;
+  const rejection = !refund.ok && refund.status >= 400 && refund.status < 500 && refund.body.name && refund.body.details?.some(detail => detail.issue);
+  if (!success && !rejection) return failed(key, 'Provider response is not a confirmed comparable success or rejection.', base);
+  return { ...base, status: success ? 'completed' : 'rejected', source: simulated ? 'simulated-provider-fixture' : 'paypal-sandbox', simulated, executor: 'trusted-local', humanApprovedFreshCapture: true };
 }

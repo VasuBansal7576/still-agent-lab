@@ -1,6 +1,7 @@
 import { createInterface } from 'node:readline';
 import { pathToFileURL } from 'node:url';
 import { createGateway } from './gateway.mjs';
+import { createDemoBinding } from './toolkit-demo.mjs';
 
 export const toolkitTools = [
   { name: 'get_order', description: 'Retrieve an order.', inputSchema: { type: 'object', properties: { order_id: { type: 'string' } }, required: ['order_id'] } },
@@ -20,6 +21,7 @@ export function createMcpHandler({ gateway, sessionId, decisionId } = {}) {
     if (message.method === 'tools/list') return response({ tools: toolkitTools });
     if (message.method === 'tools/call') {
       try {
+        if (!toolkitTools.some(tool => tool.name === message.params?.name)) return response({ content: [{ type: 'text', text: 'Tool is not supported.' }], isError: true });
         const result = await gateway.call({ sessionId, decisionId, name: message.params?.name, arguments: message.params?.arguments });
         return response({ content: [{ type: 'text', text: JSON.stringify(result) }], isError: result.ok === false });
       } catch {
@@ -35,8 +37,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     async inspect() { throw new Error('No account bound'); },
     async refund() { throw new Error('No account bound'); }
   };
-  const gateway = createGateway({ agentId: 'unbound', adapter });
-  const handle = createMcpHandler({ gateway, sessionId: 'stdio' });
+  if (process.argv.slice(2).some(arg => arg !== '--demo') || process.argv.slice(2).length > 1) throw new Error('Supported option: --demo');
+  const binding = process.argv[2] === '--demo'
+    ? await createDemoBinding()
+    : { gateway: createGateway({ agentId: 'unbound', adapter }), sessionId: 'stdio' };
+  const handle = createMcpHandler(binding);
   const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
   let queue = Promise.resolve();
   lines.on('line', line => {

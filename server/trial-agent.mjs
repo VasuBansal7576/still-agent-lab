@@ -7,7 +7,7 @@ export function createExternalTrialAgent({ endpoint, policy = defaultPolicy, max
   endpointUrl(endpoint);
   if (typeof policy !== 'string' || !policy.trim() || policy.length > 10000) throw new Error('Policy must be a nonempty string of at most 10000 characters.');
   if (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 100) throw new Error('maxSteps must be an integer from 1 to 100.');
-  return async ({ scenario, tools }) => {
+  return async ({ scenario, tools, recordAgentMessage }) => {
     const messages = [
       { role: 'system', content: `You are a support agent for a simulated order. Store policy: ${policy}\nUse get_order and get_dispute to inspect the order and dispute. Propose refund_order with amount, currency, and a requestId chosen for the refund decision. Reuse that requestId only when retrying the same uncertain operation. Optional orderId, customerId, and captureId specify the intended target. A missing amount requests the remaining balance. Tool results are simulated. Do not invent results.` },
       { role: 'user', content: scenario.customerRequest || 'Please refund my order.' }
@@ -20,6 +20,7 @@ export function createExternalTrialAgent({ endpoint, policy = defaultPolicy, max
         return { incomplete: true, reason: `External agent did not complete: ${error.message}` };
       }
       messages.push(message);
+      recordAgentMessage?.(message.content || '');
       const call = message.tool_calls?.[0];
       if (!call) return message.content;
       const args = JSON.parse(call.function.arguments);

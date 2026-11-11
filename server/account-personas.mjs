@@ -18,9 +18,11 @@ export async function importSandboxAccountPersonas({ paypal, startDate, endDate,
     do {
       const response = await paypal.listAccountTransactions({ startDate, endDate, page });
       if (!response.ok) { evidence.transactions.reason = `PayPal reporting unavailable (HTTP ${response.status})`; break; }
-      transactions.push(...response.body.transactions);
-      pages = response.body.totalPages;
-      if (pages === null) { evidence.transactions.reason = 'Report pagination is unknown'; break; }
+      const body = response.body;
+      if (!body || !Array.isArray(body.transactions) || !Number.isSafeInteger(body.totalPages) || body.totalPages < 0 || (body.totalPages === 0 && body.transactions.length)) { evidence.transactions.reason = 'Report shape or pagination is invalid'; break; }
+      if (pages !== null && pages !== body.totalPages) { evidence.transactions.reason = 'Report pagination changed during import'; break; }
+      pages = body.totalPages;
+      transactions.push(...body.transactions.map((entry, index) => ({ ...entry, reportPage: page, reportRow: index + 1 })));
       if (pages > 100) { evidence.transactions.reason = 'Report exceeds the 100-page import limit'; break; }
       if (page >= pages) {
         evidence.transactions = transactions.length
@@ -36,12 +38,13 @@ export async function importSandboxAccountPersonas({ paypal, startDate, endDate,
   try {
     const response = await paypal.listAccountDisputes();
     if (!response.ok) evidence.disputes.reason = `PayPal disputes unavailable (HTTP ${response.status})`;
+    else if (!response.body || !Array.isArray(response.body.disputes) || typeof response.body.hasNext !== 'boolean') evidence.disputes.reason = 'Dispute listing shape or pagination is unknown';
     else {
       let incomplete = response.body.hasNext;
       for (const item of response.body.disputes) {
-        if (!safeId(item.id)) { incomplete = true; continue; }
+        if (!item || !safeId(item.id)) { incomplete = true; continue; }
         const detail = await paypal.getAccountDispute(item.id);
-        if (!detail.ok || detail.body.id !== item.id) { incomplete = true; continue; }
+        if (!detail.ok || !detail.body || detail.body.id !== item.id || !Array.isArray(detail.body.sellerTransactionIds) || detail.body.sellerTransactionIds.some((id) => !safeId(id))) { incomplete = true; continue; }
         disputes.push({ id: item.id, status: safeCode(detail.body.status), sellerTransactionIds: detail.body.sellerTransactionIds.filter(safeId) });
       }
       evidence.disputes = { status: 'unverified', reason: incomplete ? 'Dispute listing or details incomplete' : 'No absence of a dispute can be established from this import' };
@@ -50,7 +53,7 @@ export async function importSandboxAccountPersonas({ paypal, startDate, endDate,
     evidence.disputes.reason = 'Dispute retrieval failed';
   }
 
-  const eligible = transactions.filter((entry) => safeId(entry.id) && entry.amount && /^[A-Z]{3}$/.test(entry.amount.currency_code) && /^\d{1,8}\.\d{2}$/.test(entry.amount.value) && Number(entry.amount.value) >= 0.02);
+  const eligible = evidence.transactions.status === 'retrieved' ? transactions.filter((entry) => safeId(entry.id) && entry.amount && /^[A-Z]{3}$/.test(entry.amount.currency_code) && /^\d{1,8}\.\d{2}$/.test(entry.amount.value) && Number(entry.amount.value) >= 0.02) : [];
   const records = eligible.map((entry) => {
     const amountCents = Math.round(Number(entry.amount.value) * 100);
     return { recordId: entry.id, amount: entry.amount.value, currency: entry.amount.currency_code, approvedReturn: (Math.floor(amountCents / 2) / 100).toFixed(2), disputeOpen: false };
@@ -70,7 +73,7 @@ export async function importSandboxAccountPersonas({ paypal, startDate, endDate,
       license: 'Account owner supplied; not a public dataset', url: null,
     };
     personas[i].accountEvidence = {
-      transaction: { id: entry.id, status: safeCode(entry.status), eventCode: safeCode(entry.eventCode), amount: entry.amount, orderId },
+      transaction: { id: entry.id, status: safeCode(entry.status), eventCode: safeCode(entry.eventCode), amount: entry.amount, orderId, initiatedAt: typeof entry.initiatedAt === 'string' && Number.isFinite(Date.parse(entry.initiatedAt)) ? entry.initiatedAt : null, reportPage: entry.reportPage, reportRow: entry.reportRow },
       relatedTransactions: related.map((item) => ({ id: item.id, eventCode: safeCode(item.eventCode), status: safeCode(item.status), amount: item.amount && typeof item.amount.value === 'string' && /^-?\d{1,8}\.\d{2}$/.test(item.amount.value) && /^[A-Z]{3}$/.test(item.amount.currency_code) ? item.amount : null })),
       disputes: linkedDisputes.map(({ id, status }) => ({ id, status })),
       disputeState: linkedDisputes.length ? 'linked records retrieved; inspect statuses' : 'unverified',

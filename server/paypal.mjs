@@ -125,22 +125,24 @@ export function createPayPalSandbox({ clientId, clientSecret } = {}) {
       const query = new URLSearchParams({ start_date: new Date(start).toISOString(), end_date: new Date(end).toISOString(), fields: 'transaction_info', page_size: '100', page: String(page) });
       return readAccount(`/v1/reporting/transactions?${query}`, (data) => ({
         totalPages: Number.isSafeInteger(data.total_pages) ? data.total_pages : null,
-        transactions: Array.isArray(data.transaction_details) ? data.transaction_details.map(({ transaction_info: info = {} }) => ({
+        transactions: Array.isArray(data.transaction_details) ? data.transaction_details.map((row) => {
+          const info = row?.transaction_info || {};
+          return {
           id: info.transaction_id, referenceId: info.paypal_reference_id, referenceType: info.paypal_reference_id_type,
-          eventCode: info.transaction_event_code, status: info.transaction_status, amount: publicAmount(info.transaction_amount),
-        })) : [],
+          eventCode: info.transaction_event_code, status: info.transaction_status, amount: publicAmount(info.transaction_amount), initiatedAt: info.transaction_initiation_date,
+        }; }) : null,
       }));
     },
     listAccountDisputes() {
       return readAccount('/v1/customer/disputes?page_size=50', (data) => ({
-        disputes: Array.isArray(data.items) ? data.items.map((item) => ({ id: item.dispute_id, status: item.status })) : [],
-        hasNext: Array.isArray(data.links) && data.links.some((link) => link.rel === 'next'),
+        disputes: Array.isArray(data.items) ? data.items.map((item) => ({ id: item?.dispute_id, status: item?.status })) : null,
+        hasNext: Array.isArray(data.links) ? data.links.some((link) => link?.rel === 'next') : null,
       }));
     },
     getAccountDispute(disputeId) {
       return readAccount(`/v1/customer/disputes/${identifier(disputeId, 'Dispute ID')}`, (data) => ({
         id: data.dispute_id, status: data.status, amount: publicAmount(data.dispute_amount),
-        sellerTransactionIds: Array.isArray(data.disputed_transactions) ? data.disputed_transactions.map((item) => item.seller_transaction_id).filter((id) => typeof id === 'string') : [],
+        sellerTransactionIds: Array.isArray(data.disputed_transactions) ? data.disputed_transactions.map((item) => item?.seller_transaction_id) : null,
       }));
     },
     createOrder({ amount = '50.00', currency = 'USD', requestId } = {}) {

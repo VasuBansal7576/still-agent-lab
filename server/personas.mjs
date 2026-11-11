@@ -6,7 +6,30 @@ const PUBLIC_SEEDS = Object.freeze([
   { source: { dataset: 'τ-bench retail tasks', recordId: 'tasks.py:instruction-line-272', license: 'MIT, Copyright 2024 Sierra', url: 'https://github.com/sierra-research/tau-bench/blob/main/tau_bench/envs/retail/tasks.py#L272' }, concept: 'return items from two orders and request a different payment method' },
   { source: { dataset: 'UCI Online Retail', recordId: 'invoice 536365, stock code 85123A', license: 'CC BY 4.0', url: 'https://archive.ics.uci.edu/dataset/352/online+retail' }, concept: 'a basket line with six items priced at GBP 2.55 each', base: { cents: 1530, approvedCents: 765, currency: 'GBP' } },
   { source: { dataset: 'CFPB consumer complaint narrative', recordId: '4288475', license: 'Previously published narrative described by CFPB as public domain for FOIA purposes', url: 'https://www.consumerfinance.gov/data-research/consumer-complaints/search/detail/4288475', evidenceUrl: 'https://files-prod.consumerfinance.gov/f/documents/cfpb_buy-now-pay-later-market-trends-consumer-impacts_report_2022-09.pdf' }, concept: 'a consumer reports difficulty opening a dispute over purchases' },
-  { source: { dataset: 'Public refund dispute discussion', recordId: 'reddit post 1hb4xjo', license: 'No reuse license identified; situation paraphrased without copying post text', url: 'https://www.reddit.com/r/personalfinance/comments/1hb4xjo/' }, concept: 'a customer seeking a chargeback is asked for a refund transaction identifier' }
+  { source: { dataset: 'Public refund dispute discussion', recordId: 'reddit post 1hb4xjo', license: 'No reuse license identified; situation paraphrased without copying post text', url: 'https://www.reddit.com/r/personalfinance/comments/1hb4xjo/' }, concept: 'a customer seeking a chargeback is asked for a refund transaction identifier' },
+  ...[
+    [176, 'an exchange request changes at confirmation'],
+    [200, 'an exchange request includes a preferred power source'],
+    [224, 'an exchange request seeks a brighter item'],
+    [248, 'an exchange request has a preferred power source and brightness'],
+    [341, 'a customer returns unrelated items and accepts an alternative refund method'],
+    [368, 'a customer returns selected items and prefers the original payment method'],
+    [420, 'a customer cancels pending orders and returns one delivered item'],
+    [480, 'a damaged item return changes to an exchange at confirmation'],
+    [503, 'a customer weighs a return and exchanges against the savings'],
+    [691, 'an order went to the wrong address and a customer seeks a partial return'],
+    [707, 'a customer seeks tracking and a partial return without an order number'],
+    [737, 'a customer requests both returns and an exchange'],
+    [1527, 'a customer is uncertain of an order number and requests an original-method refund'],
+    [1577, 'a customer requests an urgent refund for an item damaged in delivery'],
+    [1914, 'a customer asks for an exchange, then a return if unavailable'],
+    [1972, 'a customer seeks a refund after finding a better price'],
+    [2077, 'a customer wants to return all but one purchased item'],
+    [2233, 'a customer wants to cancel selected items or the whole order']
+  ].map(([line, concept]) => ({
+    source: { dataset: 'τ-bench retail tasks', recordId: `tasks.py:instruction-line-${line}`, license: 'MIT, Copyright 2024 Sierra', url: `https://github.com/sierra-research/tau-bench/blob/main/tau_bench/envs/retail/tasks.py#L${line}` },
+    concept
+  }))
 ]);
 const MUTATIONS = Object.freeze([
   { name: 'angry', kind: 'partial-return', request: ({ approved, currency }) => `I am frustrated. Return my items and refund the approved ${currency} ${approved} now.` },
@@ -40,6 +63,7 @@ function makePersona(index, seed, source, concept, base, mutationIndex = index) 
   const currency = base?.currency ?? 'USD';
   return {
     id: `persona-${key.slice(0, 20)}`,
+    synthetic: true,
     mutation: mutation.name,
     source: { ...source },
     scenario: {

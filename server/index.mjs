@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { fileURLToPath } from 'node:url';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { randomUUID, createHash } from 'node:crypto';
 import { createPayPalSandbox } from './paypal.mjs';
@@ -10,7 +11,8 @@ import { createExternalTrialAgent } from './trial-agent.mjs';
 import { importSandboxAccountPersonas } from './account-personas.mjs';
 import { derivePermission, createGateway } from './gateway.mjs';
 import { createPayPalMock } from './paypal-mock.mjs';
-import { planSandboxReplays } from './sandbox-replay.mjs';
+import { planSandboxReplays, reconcileSandboxReplays } from './sandbox-replay.mjs';
+import { createReplayLedger } from './replay-ledger.mjs';
 import { codexReady } from './codex-model.mjs';
 import { listRuns, readRun, saveRun } from './store.mjs';
 import { scenarioCatalog } from './catalog.mjs';
@@ -22,6 +24,12 @@ const paypalReady = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_C
 const modelReady = await codexReady();
 const defaultPaypal = paypalReady ? createPayPalSandbox({ clientId: process.env.PAYPAL_CLIENT_ID, clientSecret: process.env.PAYPAL_CLIENT_SECRET }) : null;
 const sessions = new Map();
+
+function currencyEvidence(summary, currency) {
+  if (!Array.isArray(summary.results) || summary.results.some(item => item.status !== 'pass')) return summary;
+  const results = summary.results.filter(item => item.finalPayment?.amount?.currency_code === currency);
+  return { ...summary, results, personaCount: new Set(results.map(item => item.personaId)).size };
+}
 
 function sessionFor(request, response) {
   const id = request.headers.cookie?.split(';').map(part => part.trim()).find(part => part.startsWith('still_session='))?.slice('still_session='.length);
@@ -211,7 +219,9 @@ http.createServer(async (request, response) => {
       try {
         const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
         const plan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 10, samplePasses: 10 });
-        return send(response, 200, { failureCount: plan.failureCount, sampledPassCount: plan.sampledPassCount, queueCount: plan.queueCount, readyCount: plan.readyCount, deferredCount: plan.deferredCount, agreement: null, status: 'unverified', reason: 'Every replay needs a fresh approved sandbox capture and a supported executor.' });
+        const ledger = await createReplayLedger({ directory: fileURLToPath(new URL('../.data/replay-ledger/', import.meta.url)) });
+        const comparison = reconcileSandboxReplays({ plan, evidence: await ledger.evidence(), verifyReceipt: ledger.verifyReceipt });
+        return send(response, 200, { failureCount: plan.failureCount, sampledPassCount: plan.sampledPassCount, queueCount: plan.queueCount, readyCount: plan.readyCount, deferredCount: plan.deferredCount, agreement: comparison.agreement, compared: comparison.compared, agreed: comparison.agreed, disagreed: comparison.disagreed, status: comparison.unverified || !comparison.compared ? 'unverified' : 'compared', reason: comparison.unverified || !comparison.compared ? 'Replays require fresh approved sandbox captures and trusted complete refund histories.' : undefined });
       } catch { return send(response, 400, { error: 'Replay plan could not be prepared.' }); }
     }
     if (url.pathname === '/api/upgrade/permission') {
@@ -219,9 +229,32 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid batch.' });
       try {
         const summary = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
-        const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary });
+        const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary: currencyEvidence(summary, 'USD') });
         return send(response, 200, { permission });
       } catch { return send(response, 404, { error: 'Batch not found.' }); }
+    }
+    if (url.pathname === '/api/upgrade/permission-replay') {
+      const input = await body(request);
+      if (!/^[0-9a-f-]{36}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid batch.' });
+      try {
+        const summary = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary: currencyEvidence(summary, 'USD') });
+        if (!permission.create_refund.allowed) return send(response, 400, { error: 'This batch has not earned a USD mock permission.' });
+        const amount = permission.create_refund.maxPerOrder;
+        const scenario = { kind: 'partial-return', amount, approvedReturn: amount, currency: 'USD', customerId: 'demo-customer', orderId: 'demo-order' };
+        const mock = createPayPalMock(scenario, 'earned-replay');
+        const adapter = { trusted: true, replaySafe: true, stableRequestIds: true,
+          inspect: async () => { const payment = mock.snapshot(); return { captureId: payment.id, paymentStatus: payment.status, currency: 'USD', disputeState: 'CLEAR', identityMatches: true, cancellationComplete: false, remaining: (Number(amount) - Number(payment.refunded)).toFixed(2), approvedAmount: (Number(amount) - Number(payment.refunded)).toFixed(2), refundedToDate: payment.refunded }; },
+          refund: async (captureId, args) => mock.refund({ ...args, captureId }) };
+        const gateway = createGateway({ agentId: summary.evaluatedAgentId, permission, adapter });
+        const captureId = mock.snapshot().id;
+        const sessionId = `permission-${randomUUID()}`;
+        await gateway.call({ sessionId, decisionId: 'over-limit', name: 'create_refund', arguments: { capture_id: captureId, amount: { value: (Number(amount) + 1).toFixed(2), currency_code: 'USD' } } });
+        await gateway.call({ sessionId, decisionId: 'approved', name: 'create_refund', arguments: { capture_id: captureId, amount: { value: amount, currency_code: 'USD' } } });
+        const regression = gateway.promote(sessionId);
+        const replay = await gateway.replay(regression);
+        return send(response, 200, { provenance: 'deterministic-mock', permission, events: gateway.events(sessionId), replay });
+      } catch { return send(response, 400, { error: 'The mock permission replay could not run.' }); }
     }
     if (url.pathname === '/api/upgrade/shadow') {
       const input = await body(request);

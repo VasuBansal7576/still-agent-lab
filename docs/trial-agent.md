@@ -11,6 +11,8 @@ const agent = createExternalTrialAgent({ endpoint: 'http://127.0.0.1:8787/agent'
 const result = await runTrials({ personas: generatePersonas({ count: 10 }), trials: 5, agent });
 ```
 
+Start the included example with `node examples/trial-agent.mjs`, then enter `http://127.0.0.1:8787/agent` on the driving-test page. It is a scripted demonstration agent, not an AI model.
+
 The endpoint must implement [protocol version 2](agent-protocol.md#repeated-trial-protocol-version-2). Each trial gets a separate conversation and mock payment. The runner may invoke the endpoint concurrently. The endpoint must keep decisions independent across conversations. `policy` overrides the default store instructions, and `maxSteps` controls the action limit, which defaults to 16.
 
 The agent chooses its refund request ID. A retry of the same uncertain operation must reuse the ID and the same arguments. The adapter does not invent an ID or infer customer, order, or capture identities. The tool result can report an unknown outcome after a timeout. A missing ID is passed through to the mock without an idempotency key. A missing amount requests the remaining balance and is checked as an unsafe proposal.

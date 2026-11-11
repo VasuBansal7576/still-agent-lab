@@ -1,7 +1,9 @@
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
+import { fileURLToPath } from 'node:url';
 
-const child = spawn(process.execPath, [new URL('../server/toolkit-mcp.mjs', import.meta.url).pathname], { stdio: ['pipe', 'pipe', 'inherit'] });
+const demo = process.argv.includes('--demo');
+const child = spawn(process.execPath, [fileURLToPath(new URL('../server/toolkit-mcp.mjs', import.meta.url)), ...(demo ? ['--demo'] : [])], { stdio: ['pipe', 'pipe', 'inherit'] });
 const lines = createInterface({ input: child.stdout });
 const replies = new Map();
 lines.on('line', line => {
@@ -19,5 +21,8 @@ function request(method, params = {}) {
 }
 console.log(JSON.stringify(await request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'still-example', version: '1' } })));
 console.log(JSON.stringify(await request('tools/list')));
-console.log(JSON.stringify(await request('tools/call', { name: 'create_refund', arguments: { capture_id: 'demo-capture', amount: { value: '50.00', currency_code: 'USD' } } })));
+const args = { capture_id: demo ? 'MOCK-CAPTURE-toolkit' : 'demo-capture', amount: { value: '50.00', currency_code: 'USD' } };
+for (const arguments_ of demo ? [{ ...args, amount: { value: '60.00', currency_code: 'USD' } }, args, args] : [args]) {
+  console.log(JSON.stringify(await request('tools/call', { name: 'create_refund', arguments: arguments_ })));
+}
 child.stdin.end();
