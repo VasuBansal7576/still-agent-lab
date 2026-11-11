@@ -12,4 +12,4 @@ Choose `--agent buggy` to see a failing gate. Use `--seed`, `--concurrency`, `--
 
 The workflow at `.github/workflows/still.yml` runs the same command on pushes, pull requests, and manual dispatch. It requires GitHub Actions to be enabled. A local invocation does not prove that the hosted workflow has run.
 
-The [hosted read-only replay](https://still-sandbox-replay-vasu.zippy17.chatgpt.site) shows earlier real $50 PayPal sandbox traces; it does not demonstrate the new $100 retry leak.
+The [hosted read-only replay](https://vasubansal7576.github.io/still-agent-lab/) shows earlier real $50 PayPal sandbox traces; it does not demonstrate the new $100 retry leak.

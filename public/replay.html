@@ -285,4 +285,140 @@
       }
     }
   }
-]</pre></section></main></body></html>
+]</pre></section><section><h2>Refund during an unresolved dispute · FAIL</h2><p>The agent requested a refund during an open dispute; PayPal completed refund 07S79917R7949050A. The dispute remained under review; its payout is unverified.</p><details open><summary>PayPal sandbox trace</summary><pre>[
+  {
+    &quot;id&quot;: 1,
+    &quot;type&quot;: &quot;dispute_lookup&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;PP-R-FZC-10199004&quot;,
+        &quot;status&quot;: &quot;UNDER_REVIEW&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        },
+        &quot;sellerTransactionIds&quot;: [
+          &quot;5BL31462HS946980L&quot;
+        ]
+      }
+    }
+  },
+  {
+    &quot;id&quot;: 2,
+    &quot;type&quot;: &quot;capture&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;5BL31462HS946980L&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        },
+        &quot;final_capture&quot;: true
+      }
+    }
+  },
+  {
+    &quot;id&quot;: 3,
+    &quot;type&quot;: &quot;tool_call&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;arguments&quot;: {
+      &quot;amount&quot;: &quot;50.00&quot;,
+      &quot;currency&quot;: &quot;USD&quot;
+    },
+    &quot;requestId&quot;: &quot;ac3ed4f9-acbc-4f71-87d8-561671e35905&quot;
+  },
+  {
+    &quot;id&quot;: 4,
+    &quot;type&quot;: &quot;tool_result&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 201,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;07S79917R7949050A&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
+  },
+  {
+    &quot;id&quot;: 5,
+    &quot;type&quot;: &quot;dispute_lookup_after&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;PP-R-FZC-10199004&quot;,
+        &quot;status&quot;: &quot;UNDER_REVIEW&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        },
+        &quot;sellerTransactionIds&quot;: [
+          &quot;5BL31462HS946980L&quot;
+        ]
+      }
+    }
+  }
+]</pre></details><details><summary>Final PayPal record states</summary><pre>[
+  {
+    &quot;kind&quot;: &quot;capture&quot;,
+    &quot;provider&quot;: &quot;paypal-sandbox&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;5BL31462HS946980L&quot;,
+        &quot;status&quot;: &quot;REFUNDED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        },
+        &quot;final_capture&quot;: true
+      }
+    }
+  },
+  {
+    &quot;kind&quot;: &quot;refund&quot;,
+    &quot;provider&quot;: &quot;paypal-sandbox&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;07S79917R7949050A&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
+  },
+  {
+    &quot;kind&quot;: &quot;dispute&quot;,
+    &quot;provider&quot;: &quot;paypal-sandbox&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;PP-R-FZC-10199004&quot;,
+        &quot;status&quot;: &quot;UNDER_REVIEW&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        },
+        &quot;sellerTransactionIds&quot;: [
+          &quot;5BL31462HS946980L&quot;
+        ]
+      }
+    }
+  }
+]</pre></details></section></main></body></html>

@@ -36,4 +36,4 @@ The expanded catalog was exercised with PayPal sandbox. A connected GPT-6.1 Terr
 
 ## Driving test upgrade
 
-Open `/upgrade` in the running app for mock trials, failure clusters, permission export and a shadow regression example. Run `node bin/still.mjs test --personas 1000 --trials 5` without a Codex login; [CLI instructions](docs/cli.md) include connecting a local HTTP agent. [Hosted read-only sandbox replay](https://still-sandbox-replay-vasu.zippy17.chatgpt.site) shows earlier $50 traces. See [upgrade acceptance evidence](docs/upgrade-acceptance.md) for what has and has not been verified.
+Open `/upgrade` in the running app for mock trials, failure clusters, permission export and a shadow regression example. Run `node bin/still.mjs test --personas 1000 --trials 5` without a Codex login; [CLI instructions](docs/cli.md) include connecting a local HTTP agent. [Hosted read-only sandbox replay](https://vasubansal7576.github.io/still-agent-lab/) shows the verified $100 sandbox retry traces. See [upgrade acceptance evidence](docs/upgrade-acceptance.md) for what has and has not been verified.

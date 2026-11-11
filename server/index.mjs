@@ -6,6 +6,7 @@ import { createPayPalSandbox } from './paypal.mjs';
 import { saveSandboxCredentials, loadSandboxCredentials } from './sandbox-credentials.mjs';
 import { runScenario, normalizeRuleSettings } from './runner.mjs';
 import { runRetryDemo } from './retry-demo.mjs';
+import { runDisputeDemo } from './dispute-demo.mjs';
 import { generatePersonas } from './personas.mjs';
 import { runTrials } from './trials.mjs';
 import { createExternalTrialAgent } from './trial-agent.mjs';
@@ -17,6 +18,7 @@ import { planSandboxReplays, reconcileSandboxReplays, executePlannedSandboxRepla
 import { createReplayLedger } from './replay-ledger.mjs';
 import { createShadowSessions } from './shadow-sessions.mjs';
 import { createReplayCheckout } from './replay-checkout.mjs';
+import { loadObservedAgreement } from './observed-agreement.mjs';
 import { codexReady, codexChat } from './codex-model.mjs';
 import { listRuns, readRun, saveRun } from './store.mjs';
 import { scenarioCatalog } from './catalog.mjs';
@@ -99,6 +101,7 @@ http.createServer(async (request, response) => {
     }
     if (request.method === 'GET' && url.pathname === '/api/status') return send(response, 200, { ready: Boolean(session.paypal) && modelReady, paypalReady: Boolean(session.paypal), paypalPersistence, modelReady, model: process.env.CODEX_MODEL || 'gpt-6.1-terra', provider: process.env.STILL_SYNTHETIC_PROVIDER === '1' ? 'synthetic-provider-fixture' : 'paypal-sandbox' });
     if (request.method === 'GET' && url.pathname === '/api/checkout') return send(response, 200, { checkout: publicCheckout(session.checkout) });
+    if (request.method === 'GET' && url.pathname === '/api/upgrade/observed-agreement') { try { return send(response, 200, await loadObservedAgreement()); } catch { return send(response, 503, { error: 'Recorded sandbox comparison is unavailable.' }); } }
     if (request.method === 'GET' && url.pathname === '/api/scenarios') return send(response, 200, { scenarios: scenarioCatalog });
     if (request.method === 'GET' && url.pathname === '/api/runs') return send(response, 200, { runs: await listRuns() });
     const savedMatch = url.pathname.match(/^\/api\/runs\/([A-Za-z0-9-]+)$/);
@@ -384,6 +387,14 @@ http.createServer(async (request, response) => {
       await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
       const { results, ...summary } = result;
       return send(response, 200, { id, agent: input.agent, ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0] });
+    }
+    if (url.pathname === '/api/upgrade/dispute-demo') {
+      const input = await body(request);
+      if (!session.paypal || !/^[A-Za-z0-9_-]{1,127}$/.test(input.disputeId || '')) return send(response, 400, { error: 'Connect a sandbox account and enter a valid dispute ID.' });
+      const result = await runDisputeDemo({ paypal: session.paypal, disputeId: input.disputeId, reserve: async id => { if (session.spent.has(id)) return false; const dir = new URL('../.data/dispute-reservations/', import.meta.url); await mkdir(dir, { recursive: true, mode: 0o700 }); try { await writeFile(new URL(`${id}.json`, dir), JSON.stringify({ captureId: id, disputeId: input.disputeId }), { flag: 'wx', mode: 0o600 }); } catch { return false; } session.spent.add(id); return true; } });
+      if (result.status === 'unverified') return send(response, 200, result);
+      try { return send(response, 200, await saveRun('scripted-dispute-buggy', result)); }
+      catch { return send(response, 200, { ...result, storageWarning: 'The run could not be saved.' }); }
     }
     if (url.pathname === '/api/retry-demo') {
       const input = await body(request);

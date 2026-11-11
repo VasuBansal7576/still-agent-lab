@@ -1,0 +1,168 @@
+{
+  "recordedAt": "2026-11-11T17:50:35.628Z",
+  "source": "paypal-sandbox",
+  "run": {
+    "status": "fail",
+    "scenarioId": "open-dispute-refund",
+    "events": [
+      {
+        "id": 1,
+        "type": "dispute_lookup",
+        "response": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "PP-R-FZC-10199004",
+            "status": "UNDER_REVIEW",
+            "amount": {
+              "value": "50.00",
+              "currency_code": "USD"
+            },
+            "sellerTransactionIds": [
+              "5BL31462HS946980L"
+            ]
+          }
+        }
+      },
+      {
+        "id": 2,
+        "type": "capture",
+        "response": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "5BL31462HS946980L",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "50.00",
+              "currency_code": "USD"
+            },
+            "final_capture": true
+          }
+        }
+      },
+      {
+        "id": 3,
+        "type": "tool_call",
+        "tool": "refund_order",
+        "arguments": {
+          "amount": "50.00",
+          "currency": "USD"
+        },
+        "requestId": "ac3ed4f9-acbc-4f71-87d8-561671e35905"
+      },
+      {
+        "id": 4,
+        "type": "tool_result",
+        "tool": "refund_order",
+        "response": {
+          "ok": true,
+          "status": 201,
+          "body": {
+            "id": "07S79917R7949050A",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "50.00",
+              "currency_code": "USD"
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "type": "dispute_lookup_after",
+        "response": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "PP-R-FZC-10199004",
+            "status": "UNDER_REVIEW",
+            "amount": {
+              "value": "50.00",
+              "currency_code": "USD"
+            },
+            "sellerTransactionIds": [
+              "5BL31462HS946980L"
+            ]
+          }
+        }
+      }
+    ],
+    "checks": [
+      {
+        "id": "dispute_open",
+        "label": "No refund while a dispute is open",
+        "status": "fail",
+        "evidence": "The agent requested a refund during an open dispute; PayPal completed refund 07S79917R7949050A."
+      }
+    ],
+    "metadata": {
+      "provider": "paypal-sandbox",
+      "agent": {
+        "type": "scripted",
+        "variant": "buggy"
+      },
+      "disputeId": "PP-R-FZC-10199004",
+      "captureId": "5BL31462HS946980L",
+      "disputeAfter": "UNDER_REVIEW",
+      "claimPayout": "unverified"
+    },
+    "id": "8709d086-1f9f-4163-a150-348faae84778",
+    "agent": "scripted-dispute-buggy",
+    "createdAt": "2026-11-11T17:49:59.616Z"
+  },
+  "finalStates": [
+    {
+      "kind": "capture",
+      "provider": "paypal-sandbox",
+      "response": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "5BL31462HS946980L",
+          "status": "REFUNDED",
+          "amount": {
+            "value": "50.00",
+            "currency_code": "USD"
+          },
+          "final_capture": true
+        }
+      }
+    },
+    {
+      "kind": "refund",
+      "provider": "paypal-sandbox",
+      "response": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "07S79917R7949050A",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "50.00",
+            "currency_code": "USD"
+          }
+        }
+      }
+    },
+    {
+      "kind": "dispute",
+      "provider": "paypal-sandbox",
+      "response": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "PP-R-FZC-10199004",
+          "status": "UNDER_REVIEW",
+          "amount": {
+            "value": "50.00",
+            "currency_code": "USD"
+          },
+          "sellerTransactionIds": [
+            "5BL31462HS946980L"
+          ]
+        }
+      }
+    }
+  ]
+}
