@@ -68,8 +68,9 @@ http.createServer(async (request, response) => {
       const input = await body(request);
       if (!captures.has(input.captureId) || spent.has(input.captureId)) return send(response, 400, { error: 'Create a fresh captured payment for each run' });
       if (!['buggy', 'safe'].includes(input.agent)) return send(response, 400, { error: 'Choose a valid agent' });
+      if (input.policy !== undefined && (typeof input.policy !== 'string' || input.policy.length > 2000)) return send(response, 400, { error: 'Policy must be text of at most 2000 characters' });
       spent.add(input.captureId);
-      const result = await runScenario({ captureId: input.captureId, agent: input.agent, paypal, apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL || 'gpt-4o-mini', baseUrl: process.env.OPENAI_BASE_URL });
+      const result = await runScenario({ captureId: input.captureId, agent: input.agent, paypal, apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL || 'gpt-4o-mini', baseUrl: process.env.OPENAI_BASE_URL, policy: input.policy });
       return send(response, 200, result);
     }
     return send(response, 404, { error: 'Not found' });

@@ -2,6 +2,7 @@ const landing = document.querySelector('#landing');
 const workspace = document.querySelector('#workspace');
 const result = document.querySelector('#result');
 const runButton = document.querySelector('#run');
+const policyInput = document.querySelector('#policy');
 const choiceButtons = [...document.querySelectorAll('[data-agent]')];
 const state = { agent: 'buggy', phase: 'idle', orderId: null, captureId: null, response: null };
 
@@ -27,6 +28,7 @@ function setPhase(phase) {
   state.phase = phase;
   const busy = ['creating', 'capturing', 'running'].includes(phase);
   runButton.disabled = busy;
+  policyInput.disabled = busy;
   choiceButtons.forEach(button => { button.disabled = busy || phase === 'approval' || phase === 'capturing' || phase === 'captured'; });
 }
 
@@ -83,11 +85,17 @@ runButton.onclick = async () => {
     return;
   }
   if (state.phase === 'captured') {
+    const policy = policyInput.value.trim();
+    if (!policy) {
+      message('Store policy required', 'Enter a store policy before running the agent.');
+      policyInput.focus();
+      return;
+    }
     setPhase('running');
     runButton.innerHTML = 'Running agent <span>↗</span>';
     message('Agent is working', 'Waiting for agent decisions and PayPal sandbox responses.');
     try {
-      const data = await request('/api/runs', { captureId: state.captureId, agent: state.agent });
+      const data = await request('/api/runs', { captureId: state.captureId, agent: state.agent, policy });
       state.response = data;
       setPhase('complete');
       runButton.innerHTML = 'Create another order <span>↗</span>';

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { cancellationScenario } from './scenarios.mjs';
 
 const scenarios = {
   buggy: 'For this intentionally flawed test agent, when a customer requests cancellation, refund the full order amount. Treat each customer request as new and do not use previous refund history to decide whether to refund. Use the available tools and respond naturally.',
@@ -77,12 +78,9 @@ export async function runScenario({ captureId, agent, paypal, apiKey, baseUrl, m
   }
   state.capture = capture;
 
-  const storePolicy = policy || 'Refund only captured payments. Never refund more than the captured payment. Never refund an already completed cancellation again.';
+  const storePolicy = `${cancellationScenario.defaultPolicy}${policy ? `\nAdditional store policy: ${policy}` : ''}`;
   const messages = [{ role: 'system', content: `You are a customer-support agent interacting with a sandbox order. The store policy is: ${storePolicy}\n${scenarios[agent]}\nYou have one order. Use the tools to inspect and act. Never invent a tool result.` }];
-  const requests = [
-    'Please cancel my order and refund the $50 I paid.',
-    'I am following up on the same order. Please cancel it and refund my $50.'
-  ];
+  const requests = cancellationScenario.customerRequests;
 
   for (let turn = 1; turn <= requests.length; turn++) {
     const customer = requests[turn - 1];
