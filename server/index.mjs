@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { randomUUID, createHash } from 'node:crypto';
 import { createPayPalSandbox } from './paypal.mjs';
+import { saveSandboxCredentials, loadSandboxCredentials } from './sandbox-credentials.mjs';
 import { runScenario, normalizeRuleSettings } from './runner.mjs';
 import { runRetryDemo } from './retry-demo.mjs';
 import { generatePersonas } from './personas.mjs';
@@ -22,9 +23,17 @@ import { endpointUrl } from './agent-connection.mjs';
 
 try { process.loadEnvFile('.env'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const port = Number(process.env.PORT || 3000);
-const paypalReady = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
 const modelReady = await codexReady();
-const defaultPaypal = paypalReady ? createPayPalSandbox({ clientId: process.env.PAYPAL_CLIENT_ID, clientSecret: process.env.PAYPAL_CLIENT_SECRET }) : null;
+let defaultPaypal = null;
+let paypalPersistence = 'none';
+if (process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET) {
+  defaultPaypal = createPayPalSandbox({ clientId: process.env.PAYPAL_CLIENT_ID, clientSecret: process.env.PAYPAL_CLIENT_SECRET });
+  paypalPersistence = 'environment';
+} else if (process.platform === 'darwin' && process.env.STILL_SYNTHETIC_PROVIDER !== '1') {
+  try { const stored = await loadSandboxCredentials(); if (stored) { defaultPaypal = createPayPalSandbox(stored); paypalPersistence = 'macos-keychain'; } }
+  catch { paypalPersistence = 'keychain-unavailable'; }
+}
+
 const sessions = new Map();
 const shadowSessions = createShadowSessions({ directory: fileURLToPath(new URL('../.data/shadow-sessions/', import.meta.url)) });
 
@@ -87,7 +96,7 @@ http.createServer(async (request, response) => {
       response.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
       return response.end(content);
     }
-    if (request.method === 'GET' && url.pathname === '/api/status') return send(response, 200, { ready: Boolean(session.paypal) && modelReady, paypalReady: Boolean(session.paypal), modelReady, model: process.env.CODEX_MODEL || 'gpt-6.1-terra', provider: process.env.STILL_SYNTHETIC_PROVIDER === '1' ? 'synthetic-provider-fixture' : 'paypal-sandbox' });
+    if (request.method === 'GET' && url.pathname === '/api/status') return send(response, 200, { ready: Boolean(session.paypal) && modelReady, paypalReady: Boolean(session.paypal), paypalPersistence, modelReady, model: process.env.CODEX_MODEL || 'gpt-6.1-terra', provider: process.env.STILL_SYNTHETIC_PROVIDER === '1' ? 'synthetic-provider-fixture' : 'paypal-sandbox' });
     if (request.method === 'GET' && url.pathname === '/api/checkout') return send(response, 200, { checkout: publicCheckout(session.checkout) });
     if (request.method === 'GET' && url.pathname === '/api/scenarios') return send(response, 200, { scenarios: scenarioCatalog });
     if (request.method === 'GET' && url.pathname === '/api/runs') return send(response, 200, { runs: await listRuns() });
@@ -102,8 +111,15 @@ http.createServer(async (request, response) => {
       if (!origin || session.checkout || session.captures.size) return send(response, 403, { error: 'Sandbox setup is unavailable during an active session' });
       const input = await body(request);
       if (!/^[A-Za-z0-9_-]{10,256}$/.test(input.clientId || '') || !/^[A-Za-z0-9_-]{10,256}$/.test(input.clientSecret || '')) return send(response, 400, { error: 'Enter a valid sandbox client ID and secret' });
-      session.paypal = createPayPalSandbox({ clientId: input.clientId, clientSecret: input.clientSecret });
-      return send(response, 200, { connected: true, persistence: 'memory-only' });
+      try {
+        const client = createPayPalSandbox({ clientId: input.clientId, clientSecret: input.clientSecret });
+        await client.authenticate();
+        await saveSandboxCredentials({ clientId: input.clientId, clientSecret: input.clientSecret });
+        defaultPaypal = client;
+        paypalPersistence = 'macos-keychain';
+        session.paypal = client;
+        return send(response, 200, { connected: true, persistence: paypalPersistence });
+      } catch { return send(response, 503, { error: 'Sandbox authentication or secure credential storage failed. Check the sandbox app and unlock the macOS Keychain.' }); }
     }
     if (url.pathname === '/api/orders') {
       if (!session.paypal) return send(response, 503, { error: 'PayPal sandbox credentials are not configured' });

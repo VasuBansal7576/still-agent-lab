@@ -118,6 +118,7 @@ export function createPayPalSandbox({ clientId, clientSecret } = {}) {
   }
 
   return {
+    async authenticate() { await accessToken(); return true; },
     listAccountTransactions({ startDate, endDate, page = 1 } = {}) {
       const start = Date.parse(startDate), end = Date.parse(endDate);
       if (typeof startDate !== 'string' || typeof endDate !== 'string' || !Number.isFinite(start) || !Number.isFinite(end) || end <= start || end - start > 31 * 86400000) throw new TypeError('Transaction range must be valid and no longer than 31 days');
