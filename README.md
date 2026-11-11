@@ -2,7 +2,7 @@
 
 Still is a prototype for testing online-store support agents against payment policies. It records agent decisions, sandbox tool calls and PayPal responses so a developer can inspect a cancellation followed by a duplicate refund request.
 
-**Status:** The live PayPal and AI journey has not yet been verified. The first scenario is implemented for a fresh $50 USD sandbox capture. This project is a local prototype, not a production payment integration.
+**Status:** The first scenario has been exercised end to end with Codex and PayPal sandbox using separate $50 USD captures. This project is a local prototype, not a production payment integration.
 
 ## Run locally
 
@@ -22,6 +22,8 @@ The intentionally buggy agent loses its prior conversation and sees an empty ref
 
 The demo runs one hand-authored scenario. It does not yet import τ-bench or UCI Online Retail data, connect arbitrary external agents, or estimate real-world failure rates. See [PRODUCT.md](PRODUCT.md) for the wider product vision and acceptance criteria.
 
-## Evidence required before claiming success
+## Verified demo
 
-Run both variants on separate fresh captures, then inspect the recorded customer requests, agent messages, tool calls, sanitized PayPal responses and policy checks. The buggy run must show a second refund attempt and a failure. The corrected run must show the duplicate request and no second refund call. A model or sandbox failure is an unverified run, not a pass.
+On November 11, 2026, the buggy agent received a completed $50 sandbox capture, issued a completed $50 refund, and attempted another $50 refund on the duplicate request. PayPal rejected the second request with HTTP 422 and `CAPTURE_FULLY_REFUNDED`; the fixed amount and duplicate checks failed. On a separate fresh capture, the corrected agent issued a completed $50 refund, recognized the duplicate request, and made no second refund call; all four checks passed. Both runs used the signed-in Codex CLI with `gpt-6.1-terra`. Their full sanitized traces remain in the local run history, not in the public repository.
+
+Model behavior can vary. For a new demonstration, inspect the customer requests, agent messages, tool calls, PayPal responses and policy checks for each run. A model or sandbox failure is an unverified run, not a pass.
