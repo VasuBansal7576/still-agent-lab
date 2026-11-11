@@ -11,9 +11,9 @@ export function createPayPalMock(scenario, runId = 'run') {
   const total = money(scenario.amount);
   if (total === null || total <= 0 || !/^[A-Z]{3}$/.test(scenario.currency || '')) throw new Error('Scenario needs a positive amount and a three-letter currency.');
   const captureId = `MOCK-CAPTURE-${runId}`;
-  const state = { captureId, status: /failed|unpaid/i.test(scenario.kind || '') ? 'FAILED' : 'COMPLETED', total, refunded: 0, refunds: [], requests: new Map(), timeoutUsed: false };
+  const state = { captureId, paid: !/failed|unpaid/i.test(scenario.kind || ''), total, refunded: 0, refunds: [], requests: new Map(), timeoutUsed: false };
   const provenance = { source: 'deterministic-mock', sandboxVerified: false };
-  const capture = () => ({ id: captureId, status: state.status, amount: { value: format(total), currency_code: scenario.currency }, refunded: format(state.refunded), refunds: state.refunds.map(r => ({ ...r })), provenance });
+  const capture = () => ({ id: captureId, status: !state.paid ? 'FAILED' : state.refunded === total ? 'REFUNDED' : state.refunded > 0 ? 'PARTIALLY_REFUNDED' : 'COMPLETED', amount: { value: format(total), currency_code: scenario.currency }, refunded: format(state.refunded), refunds: state.refunds.map(r => ({ ...r })), provenance });
   const getDispute = () => ({ status: scenario.disputeOpen ? 'OPEN' : 'NONE', provenance });
   function refund({ amount, currency = scenario.currency, requestId, captureId: requestedCapture = captureId } = {}) {
     const requested = amount == null ? total - state.refunded : money(amount);
@@ -21,12 +21,12 @@ export function createPayPalMock(scenario, runId = 'run') {
     if (requestId && state.requests.has(requestId)) {
       const prior = state.requests.get(requestId);
       if (prior.signature !== signature) return { ok: false, status: 422, body: { name: 'IDEMPOTENCY_CONFLICT' }, provenance };
-      return { ...prior.response, replayed: true };
+      return { ...prior.response, status: prior.response.ok ? 200 : prior.response.status, replayed: true };
     }
     const error = issue => ({ ok: false, status: 422, body: { name: 'UNPROCESSABLE_ENTITY', details: [{ issue }] }, provenance });
     let response;
     if (requestedCapture !== captureId) response = error('CAPTURE_NOT_FOUND');
-    else if (state.status !== 'COMPLETED') response = error('CAPTURE_NOT_COMPLETED');
+    else if (!state.paid) response = error('CAPTURE_NOT_COMPLETED');
     else if (state.refunded === total) response = error('CAPTURE_FULLY_REFUNDED');
     else if (requested === null || requested <= 0 || currency !== scenario.currency) response = error('INVALID_AMOUNT_OR_CURRENCY');
     else if (requested > total - state.refunded) response = error('REFUND_AMOUNT_EXCEEDED');

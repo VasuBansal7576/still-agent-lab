@@ -10,6 +10,7 @@ import { generatePersonas } from './personas.mjs';
 import { runTrials } from './trials.mjs';
 import { createExternalTrialAgent } from './trial-agent.mjs';
 import { importSandboxAccountPersonas } from './account-personas.mjs';
+import { importVerifiedAccountPersonas } from './verified-account-personas.mjs';
 import { derivePermission, createGateway } from './gateway.mjs';
 import { createPayPalMock } from './paypal-mock.mjs';
 import { planSandboxReplays, reconcileSandboxReplays, executePlannedSandboxReplay } from './sandbox-replay.mjs';
@@ -231,6 +232,10 @@ http.createServer(async (request, response) => {
       const input = await body(request);
       if (!session.paypal) return send(response, 503, { error: 'Connect a PayPal sandbox account first.' });
       const result = await importSandboxAccountPersonas({ paypal: session.paypal, startDate: input.startDate, endDate: input.endDate, count: 30 });
+      if (!result.personas.length) {
+        const saved = await importVerifiedAccountPersonas({ paypal: session.paypal });
+        return send(response, 200, { ...result, personas: saved.personas, savedRunEvidence: { records: saved.records, coverage: saved.coverage } });
+      }
       return send(response, 200, result);
     }
     if (url.pathname === '/api/upgrade/replay-plan') {

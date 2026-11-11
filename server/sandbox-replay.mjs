@@ -35,10 +35,11 @@ function comparable(item) {
   const responses = item.events.filter(event => event.type === 'tool_result' && event.tool === 'create_refund' && event.callId === call.id);
   if (responses.length !== 1 || !responses[0].response || responses[0].response.status == null) return { reason: 'The mock response is missing or ambiguous.' };
   const payment = item.finalPayment;
-  if (!payment || payment.status !== 'COMPLETED' || !payment.amount || parseMoney(payment.amount.value) === null || !/^[A-Z]{3}$/.test(payment.amount.currency_code || '')) return { reason: 'The mock capture is not a completed payment with a known amount and currency.' };
+  if (!payment || !['PARTIALLY_REFUNDED', 'REFUNDED'].includes(payment.status) || !payment.amount || parseMoney(payment.amount.value) === null || !/^[A-Z]{3}$/.test(payment.amount.currency_code || '')) return { reason: 'The mock capture is not a refunded payment with a known amount and currency.' };
   if (typeof args.amount !== 'string' || parseMoney(args.amount) === null || parseMoney(args.amount) <= 0 || args.currency !== payment.amount.currency_code || args.captureId || args.customerId || args.orderId) return { reason: 'The refund must specify an amount and currency on the scenario capture; identity-changing and omitted-amount requests are unsupported.' };
   const response = responses[0].response;
   if (response.status !== 201 || response.body?.status !== 'COMPLETED' || parseMoney(response.body?.amount?.value) !== parseMoney(args.amount) || response.body?.amount?.currency_code !== args.currency) return { reason: 'Only confirmed mock refund successes are comparable.' };
+  if (parseMoney(payment.refunded) !== parseMoney(args.amount) || payment.status !== (parseMoney(args.amount) === parseMoney(payment.amount.value) ? 'REFUNDED' : 'PARTIALLY_REFUNDED')) return { reason: 'The mock capture state does not match its single refund.' };
   return { amount: args.amount, currency: args.currency, captureAmount: payment.amount.value, mockResponse: response };
 }
 

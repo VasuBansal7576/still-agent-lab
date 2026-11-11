@@ -21,7 +21,7 @@ export function replayCheckoutAmount(item) {
   const responses = item.events.filter(event => event.type === 'tool_result' && event.tool === 'create_refund' && event.callId === calls[0].id);
   const payment = item.finalPayment;
   const amount = payment?.amount?.value, currency = payment?.amount?.currency_code;
-  if (payment?.status !== 'COMPLETED' || !decimal(amount) || !/^[A-Z]{3}$/.test(currency || '') || !decimal(args.amount) || args.currency !== currency || parseMoney(args.amount) > parseMoney(amount) || args.captureId || args.customerId || args.orderId) return null;
+  if (!['COMPLETED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(payment?.status) || !decimal(amount) || !/^[A-Z]{3}$/.test(currency || '') || !decimal(args.amount) || args.currency !== currency || parseMoney(args.amount) > parseMoney(amount) || args.captureId || args.customerId || args.orderId) return null;
   const response = responses[0]?.response;
   if (responses.length !== 1 || response?.status !== 201 || response.body?.status !== 'COMPLETED' || parseMoney(response.body.amount?.value) !== parseMoney(args.amount) || response.body.amount?.currency_code !== currency) return null;
   return { amount, currency };

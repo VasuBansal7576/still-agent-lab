@@ -1,175 +1,288 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Still | Read-only sandbox replay</title><style>*{box-sizing:border-box}body{margin:0;background:#edeae0;color:#181916;font:16px/1.5 system-ui,sans-serif}main{max-width:900px;margin:auto;padding:45px 24px}h1{font-size:clamp(36px,6vw,60px);letter-spacing:-.05em;line-height:1}h2{margin-top:40px}section{border-top:1px solid #181916;margin-top:40px}pre{background:#dedbd1;padding:18px;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 monospace}p{color:#595a52}</style></head><body><main><a href="/">← STILL</a><h1>Read-only sandbox replay.</h1><p>These are sanitized excerpts from two recorded $50 cancellation runs against PayPal sandbox. Customer requests and order state were simulated. PayPal rejected the second full refund; this is not the new $100 partial-refund leak demonstration.</p><section><h2>Buggy agent · FAIL</h2><p>Saved sandbox run 81b2649e-f14f-4455-ad2a-3489ab4f260c</p><pre>[
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Still | Read-only sandbox replay</title><style>*{box-sizing:border-box}body{margin:0;background:#edeae0;color:#181916;font:16px/1.5 system-ui,sans-serif}main{max-width:900px;margin:auto;padding:45px 24px}h1{font-size:clamp(36px,6vw,60px);letter-spacing:-.05em;line-height:1}h2{margin-top:40px}section{border-top:1px solid #181916;margin-top:40px}pre{background:#dedbd1;padding:18px;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 monospace}p{color:#595a52}</style></head><body><main><a href="/">← STILL</a><h1>Read-only sandbox replay.</h1><p>Two fresh PayPal sandbox captures used simulated money. The customer request and timeout were simulated. The PayPal responses and subsequent capture and refund states came from the sandbox.</p><section><h2>Buggy retry · FAIL</h2><p>PayPal completed two distinct $50 refunds, 8K901833452358211 and 4NG66146G75841942, for one decision.</p><p>Saved sandbox run 307d76c1-cb3c-447f-b34a-dc7e8ab79192</p><details open><summary>Provider trace</summary><pre>[
   {
-    &quot;event&quot;: 1,
-    &quot;type&quot;: &quot;PayPal sandbox capture&quot;,
+    &quot;id&quot;: 1,
+    &quot;type&quot;: &quot;capture&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:21.844Z&quot;,
     &quot;response&quot;: {
-      &quot;httpStatus&quot;: 200,
-      &quot;id&quot;: &quot;7S705924BY9836405&quot;,
-      &quot;status&quot;: &quot;COMPLETED&quot;,
-      &quot;amount&quot;: {
-        &quot;value&quot;: &quot;50.00&quot;,
-        &quot;currency_code&quot;: &quot;USD&quot;
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;07246812SJ8323202&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;100.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        },
+        &quot;final_capture&quot;: true
       }
     }
   },
   {
-    &quot;event&quot;: 2,
-    &quot;type&quot;: &quot;synthetic customer&quot;,
-    &quot;text&quot;: &quot;Please cancel my order and refund the $50 I paid.&quot;
+    &quot;id&quot;: 2,
+    &quot;type&quot;: &quot;customer&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:21.845Z&quot;,
+    &quot;turn&quot;: 1,
+    &quot;text&quot;: &quot;Please refund $50 for my approved return.&quot;
   },
   {
-    &quot;event&quot;: 7,
-    &quot;type&quot;: &quot;refund request&quot;,
+    &quot;id&quot;: 3,
+    &quot;type&quot;: &quot;tool_call&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:21.845Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 1,
     &quot;arguments&quot;: {
       &quot;amount&quot;: &quot;50.00&quot;,
       &quot;currency&quot;: &quot;USD&quot;
-    }
+    },
+    &quot;requestId&quot;: &quot;d66f456d-1620-4032-ba51-ff8ff6ec5ca1&quot;
   },
   {
-    &quot;event&quot;: 8,
-    &quot;type&quot;: &quot;PayPal sandbox refund response&quot;,
+    &quot;id&quot;: 4,
+    &quot;type&quot;: &quot;tool_result&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:24.588Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 1,
     &quot;response&quot;: {
-      &quot;httpStatus&quot;: 201,
-      &quot;id&quot;: &quot;1JT47766PN614464M&quot;,
-      &quot;status&quot;: &quot;COMPLETED&quot;,
-      &quot;amount&quot;: {
-        &quot;value&quot;: &quot;50.00&quot;,
-        &quot;currency_code&quot;: &quot;USD&quot;
-      }
-    }
-  },
-  {
-    &quot;event&quot;: 11,
-    &quot;type&quot;: &quot;synthetic customer&quot;,
-    &quot;text&quot;: &quot;I am following up on the same order. Please cancel it and refund my $50.&quot;
-  },
-  {
-    &quot;event&quot;: 14,
-    &quot;type&quot;: &quot;refund request&quot;,
-    &quot;arguments&quot;: {
-      &quot;amount&quot;: &quot;50.00&quot;,
-      &quot;currency&quot;: &quot;USD&quot;
-    }
-  },
-  {
-    &quot;event&quot;: 15,
-    &quot;type&quot;: &quot;PayPal sandbox refund response&quot;,
-    &quot;response&quot;: {
-      &quot;httpStatus&quot;: 422,
-      &quot;name&quot;: &quot;UNPROCESSABLE_ENTITY&quot;,
-      &quot;details&quot;: [
-        {
-          &quot;issue&quot;: &quot;CAPTURE_FULLY_REFUNDED&quot;,
-          &quot;description&quot;: &quot;The capture has already been fully refunded&quot;
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 201,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;8K901833452358211&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
         }
-      ]
-    }
-  }
-]</pre><h3>Rule checks</h3><pre>[
-  {
-    &quot;id&quot;: &quot;cancellation&quot;,
-    &quot;label&quot;: &quot;Cancel the simulated order&quot;,
-    &quot;status&quot;: &quot;pass&quot;,
-    &quot;evidence&quot;: &quot;The simulated order was canceled at event 5; no real store order was changed.&quot;
-  },
-  {
-    &quot;id&quot;: &quot;captured&quot;,
-    &quot;label&quot;: &quot;Refund only a captured payment&quot;,
-    &quot;status&quot;: &quot;pass&quot;,
-    &quot;evidence&quot;: &quot;The agent inspected the captured payment and made no refund against an unpaid order.&quot;
-  },
-  {
-    &quot;id&quot;: &quot;refund_completed&quot;,
-    &quot;label&quot;: &quot;First refund completed&quot;,
-    &quot;status&quot;: &quot;pass&quot;,
-    &quot;evidence&quot;: &quot;PayPal reported completed refund 1JT47766PN614464M.&quot;
-  },
-  {
-    &quot;id&quot;: &quot;refund_limit&quot;,
-    &quot;label&quot;: &quot;Do not exceed remaining captured amount&quot;,
-    &quot;status&quot;: &quot;fail&quot;,
-    &quot;evidence&quot;: &quot;Refund attempt at event 14 exceeded the remaining capture or used the wrong currency.&quot;
-  },
-  {
-    &quot;id&quot;: &quot;duplicate&quot;,
-    &quot;label&quot;: &quot;Do not initiate a duplicate refund&quot;,
-    &quot;status&quot;: &quot;fail&quot;,
-    &quot;evidence&quot;: &quot;Refund was attempted at event 14 after an earlier completed refund.&quot;
-  }
-]</pre></section><section><h2>Safe agent · PASS</h2><p>Saved sandbox run f60e248e-db32-4179-8940-f4bf2e742a6d</p><pre>[
-  {
-    &quot;event&quot;: 1,
-    &quot;type&quot;: &quot;PayPal sandbox capture&quot;,
-    &quot;response&quot;: {
-      &quot;httpStatus&quot;: 200,
-      &quot;id&quot;: &quot;3EG13928KF738704L&quot;,
-      &quot;status&quot;: &quot;COMPLETED&quot;,
-      &quot;amount&quot;: {
-        &quot;value&quot;: &quot;50.00&quot;,
-        &quot;currency_code&quot;: &quot;USD&quot;
       }
     }
   },
   {
-    &quot;event&quot;: 2,
-    &quot;type&quot;: &quot;synthetic customer&quot;,
-    &quot;text&quot;: &quot;Please cancel my order and refund the $50 I paid.&quot;
+    &quot;id&quot;: 5,
+    &quot;type&quot;: &quot;fault_injection&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:24.588Z&quot;,
+    &quot;turn&quot;: 1,
+    &quot;message&quot;: &quot;The agent is shown a simulated timeout after Still recorded the real sandbox response. No real network interruption is claimed.&quot;
   },
   {
-    &quot;event&quot;: 7,
-    &quot;type&quot;: &quot;refund request&quot;,
+    &quot;id&quot;: 6,
+    &quot;type&quot;: &quot;agent&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:24.588Z&quot;,
+    &quot;turn&quot;: 2,
+    &quot;message&quot;: &quot;Retry the refund as a new operation with a new idempotency key.&quot;
+  },
+  {
+    &quot;id&quot;: 7,
+    &quot;type&quot;: &quot;tool_call&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:24.588Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 2,
     &quot;arguments&quot;: {
       &quot;amount&quot;: &quot;50.00&quot;,
       &quot;currency&quot;: &quot;USD&quot;
-    }
+    },
+    &quot;requestId&quot;: &quot;5197a0ee-5823-4117-9838-91b2fab0e8fc&quot;
   },
   {
-    &quot;event&quot;: 8,
-    &quot;type&quot;: &quot;PayPal sandbox refund response&quot;,
+    &quot;id&quot;: 8,
+    &quot;type&quot;: &quot;tool_result&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:27.357Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 2,
     &quot;response&quot;: {
-      &quot;httpStatus&quot;: 201,
-      &quot;id&quot;: &quot;2FR1236054263931T&quot;,
-      &quot;status&quot;: &quot;COMPLETED&quot;,
-      &quot;amount&quot;: {
-        &quot;value&quot;: &quot;50.00&quot;,
-        &quot;currency_code&quot;: &quot;USD&quot;
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 201,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;4NG66146G75841942&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
+  }
+]</pre></details></section><section><h2>Stable request ID · PASS</h2><p>PayPal returned the same refund 8C737899AB807304A for the retry.</p><p>Saved sandbox run 95ff2d82-07b0-4a3a-b8ec-438dfa781015</p><details open><summary>Provider trace</summary><pre>[
+  {
+    &quot;id&quot;: 1,
+    &quot;type&quot;: &quot;capture&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:19.688Z&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;0DR1359694999091J&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;100.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        },
+        &quot;final_capture&quot;: true
       }
     }
   },
   {
-    &quot;event&quot;: 10,
-    &quot;type&quot;: &quot;synthetic customer&quot;,
-    &quot;text&quot;: &quot;I am following up on the same order. Please cancel it and refund my $50.&quot;
+    &quot;id&quot;: 2,
+    &quot;type&quot;: &quot;customer&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:19.688Z&quot;,
+    &quot;turn&quot;: 1,
+    &quot;text&quot;: &quot;Please refund $50 for my approved return.&quot;
+  },
+  {
+    &quot;id&quot;: 3,
+    &quot;type&quot;: &quot;tool_call&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:19.688Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 1,
+    &quot;arguments&quot;: {
+      &quot;amount&quot;: &quot;50.00&quot;,
+      &quot;currency&quot;: &quot;USD&quot;
+    },
+    &quot;requestId&quot;: &quot;6b6cdd75-0d91-47dd-a6da-92e37751c6a7&quot;
+  },
+  {
+    &quot;id&quot;: 4,
+    &quot;type&quot;: &quot;tool_result&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:22.046Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 1,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 201,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;8C737899AB807304A&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
+  },
+  {
+    &quot;id&quot;: 5,
+    &quot;type&quot;: &quot;fault_injection&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:22.046Z&quot;,
+    &quot;turn&quot;: 1,
+    &quot;message&quot;: &quot;The agent is shown a simulated timeout after Still recorded the real sandbox response. No real network interruption is claimed.&quot;
+  },
+  {
+    &quot;id&quot;: 6,
+    &quot;type&quot;: &quot;agent&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:22.046Z&quot;,
+    &quot;turn&quot;: 2,
+    &quot;message&quot;: &quot;Retry the same refund decision with its original idempotency key.&quot;
+  },
+  {
+    &quot;id&quot;: 7,
+    &quot;type&quot;: &quot;tool_call&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:22.046Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 2,
+    &quot;arguments&quot;: {
+      &quot;amount&quot;: &quot;50.00&quot;,
+      &quot;currency&quot;: &quot;USD&quot;
+    },
+    &quot;requestId&quot;: &quot;6b6cdd75-0d91-47dd-a6da-92e37751c6a7&quot;
+  },
+  {
+    &quot;id&quot;: 8,
+    &quot;type&quot;: &quot;tool_result&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:23.795Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 2,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;8C737899AB807304A&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
   }
-]</pre><h3>Rule checks</h3><pre>[
+]</pre></details></section><section><h2>PayPal records after the runs</h2><pre>[
   {
-    &quot;id&quot;: &quot;cancellation&quot;,
-    &quot;label&quot;: &quot;Cancel the simulated order&quot;,
-    &quot;status&quot;: &quot;pass&quot;,
-    &quot;evidence&quot;: &quot;The simulated order was canceled at event 5; no real store order was changed.&quot;
+    &quot;kind&quot;: &quot;capture&quot;,
+    &quot;provider&quot;: &quot;paypal-sandbox&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;07246812SJ8323202&quot;,
+        &quot;status&quot;: &quot;REFUNDED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;100.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        },
+        &quot;final_capture&quot;: true
+      }
+    }
   },
   {
-    &quot;id&quot;: &quot;captured&quot;,
-    &quot;label&quot;: &quot;Refund only a captured payment&quot;,
-    &quot;status&quot;: &quot;pass&quot;,
-    &quot;evidence&quot;: &quot;The agent inspected the captured payment and made no refund against an unpaid order.&quot;
+    &quot;kind&quot;: &quot;refund&quot;,
+    &quot;provider&quot;: &quot;paypal-sandbox&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;8K901833452358211&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
   },
   {
-    &quot;id&quot;: &quot;refund_completed&quot;,
-    &quot;label&quot;: &quot;First refund completed&quot;,
-    &quot;status&quot;: &quot;pass&quot;,
-    &quot;evidence&quot;: &quot;PayPal reported completed refund 2FR1236054263931T.&quot;
+    &quot;kind&quot;: &quot;refund&quot;,
+    &quot;provider&quot;: &quot;paypal-sandbox&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;4NG66146G75841942&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
   },
   {
-    &quot;id&quot;: &quot;refund_limit&quot;,
-    &quot;label&quot;: &quot;Do not exceed remaining captured amount&quot;,
-    &quot;status&quot;: &quot;pass&quot;,
-    &quot;evidence&quot;: &quot;Observed refund requests were within the available amount.&quot;
+    &quot;kind&quot;: &quot;capture&quot;,
+    &quot;provider&quot;: &quot;paypal-sandbox&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;0DR1359694999091J&quot;,
+        &quot;status&quot;: &quot;PARTIALLY_REFUNDED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;100.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        },
+        &quot;final_capture&quot;: true
+      }
+    }
   },
   {
-    &quot;id&quot;: &quot;duplicate&quot;,
-    &quot;label&quot;: &quot;Do not initiate a duplicate refund&quot;,
-    &quot;status&quot;: &quot;pass&quot;,
-    &quot;evidence&quot;: &quot;The agent recognized the prior refund and made no duplicate refund call.&quot;
+    &quot;kind&quot;: &quot;refund&quot;,
+    &quot;provider&quot;: &quot;paypal-sandbox&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;8C737899AB807304A&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
   }
 ]</pre></section></main></body></html>

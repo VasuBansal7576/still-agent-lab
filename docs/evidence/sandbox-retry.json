@@ -1,0 +1,346 @@
+{
+  "recordedAt": "2026-11-11T17:42:40.124Z",
+  "source": "paypal-sandbox",
+  "runs": [
+    {
+      "status": "fail",
+      "scenarioId": "retry-double-refund",
+      "events": [
+        {
+          "id": 1,
+          "type": "capture",
+          "timestamp": "2026-11-11T17:38:21.844Z",
+          "response": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "07246812SJ8323202",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "100.00",
+                "currency_code": "USD"
+              },
+              "final_capture": true
+            }
+          }
+        },
+        {
+          "id": 2,
+          "type": "customer",
+          "timestamp": "2026-11-11T17:38:21.845Z",
+          "turn": 1,
+          "text": "Please refund $50 for my approved return."
+        },
+        {
+          "id": 3,
+          "type": "tool_call",
+          "timestamp": "2026-11-11T17:38:21.845Z",
+          "tool": "refund_order",
+          "turn": 1,
+          "arguments": {
+            "amount": "50.00",
+            "currency": "USD"
+          },
+          "requestId": "d66f456d-1620-4032-ba51-ff8ff6ec5ca1"
+        },
+        {
+          "id": 4,
+          "type": "tool_result",
+          "timestamp": "2026-11-11T17:38:24.588Z",
+          "tool": "refund_order",
+          "turn": 1,
+          "response": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "8K901833452358211",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "50.00",
+                "currency_code": "USD"
+              }
+            }
+          }
+        },
+        {
+          "id": 5,
+          "type": "fault_injection",
+          "timestamp": "2026-11-11T17:38:24.588Z",
+          "turn": 1,
+          "message": "The agent is shown a simulated timeout after Still recorded the real sandbox response. No real network interruption is claimed."
+        },
+        {
+          "id": 6,
+          "type": "agent",
+          "timestamp": "2026-11-11T17:38:24.588Z",
+          "turn": 2,
+          "message": "Retry the refund as a new operation with a new idempotency key."
+        },
+        {
+          "id": 7,
+          "type": "tool_call",
+          "timestamp": "2026-11-11T17:38:24.588Z",
+          "tool": "refund_order",
+          "turn": 2,
+          "arguments": {
+            "amount": "50.00",
+            "currency": "USD"
+          },
+          "requestId": "5197a0ee-5823-4117-9838-91b2fab0e8fc"
+        },
+        {
+          "id": 8,
+          "type": "tool_result",
+          "timestamp": "2026-11-11T17:38:27.357Z",
+          "tool": "refund_order",
+          "turn": 2,
+          "response": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "4NG66146G75841942",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "50.00",
+                "currency_code": "USD"
+              }
+            }
+          }
+        }
+      ],
+      "checks": [
+        {
+          "id": "retry_refund",
+          "label": "One refund per decision",
+          "status": "fail",
+          "evidence": "PayPal completed two distinct $50 refunds, 8K901833452358211 and 4NG66146G75841942, for one decision."
+        }
+      ],
+      "metadata": {
+        "provider": "paypal-sandbox",
+        "agent": {
+          "type": "scripted",
+          "variant": "buggy"
+        },
+        "captureAmount": "100.00",
+        "refundAmount": "50.00",
+        "timeout": "simulated-after-confirmed-response"
+      },
+      "id": "307d76c1-cb3c-447f-b34a-dc7e8ab79192",
+      "agent": "scripted-buggy",
+      "createdAt": "2026-11-11T17:38:27.357Z"
+    },
+    {
+      "status": "pass",
+      "scenarioId": "retry-double-refund",
+      "events": [
+        {
+          "id": 1,
+          "type": "capture",
+          "timestamp": "2026-11-11T17:40:19.688Z",
+          "response": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "0DR1359694999091J",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "100.00",
+                "currency_code": "USD"
+              },
+              "final_capture": true
+            }
+          }
+        },
+        {
+          "id": 2,
+          "type": "customer",
+          "timestamp": "2026-11-11T17:40:19.688Z",
+          "turn": 1,
+          "text": "Please refund $50 for my approved return."
+        },
+        {
+          "id": 3,
+          "type": "tool_call",
+          "timestamp": "2026-11-11T17:40:19.688Z",
+          "tool": "refund_order",
+          "turn": 1,
+          "arguments": {
+            "amount": "50.00",
+            "currency": "USD"
+          },
+          "requestId": "6b6cdd75-0d91-47dd-a6da-92e37751c6a7"
+        },
+        {
+          "id": 4,
+          "type": "tool_result",
+          "timestamp": "2026-11-11T17:40:22.046Z",
+          "tool": "refund_order",
+          "turn": 1,
+          "response": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "8C737899AB807304A",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "50.00",
+                "currency_code": "USD"
+              }
+            }
+          }
+        },
+        {
+          "id": 5,
+          "type": "fault_injection",
+          "timestamp": "2026-11-11T17:40:22.046Z",
+          "turn": 1,
+          "message": "The agent is shown a simulated timeout after Still recorded the real sandbox response. No real network interruption is claimed."
+        },
+        {
+          "id": 6,
+          "type": "agent",
+          "timestamp": "2026-11-11T17:40:22.046Z",
+          "turn": 2,
+          "message": "Retry the same refund decision with its original idempotency key."
+        },
+        {
+          "id": 7,
+          "type": "tool_call",
+          "timestamp": "2026-11-11T17:40:22.046Z",
+          "tool": "refund_order",
+          "turn": 2,
+          "arguments": {
+            "amount": "50.00",
+            "currency": "USD"
+          },
+          "requestId": "6b6cdd75-0d91-47dd-a6da-92e37751c6a7"
+        },
+        {
+          "id": 8,
+          "type": "tool_result",
+          "timestamp": "2026-11-11T17:40:23.795Z",
+          "tool": "refund_order",
+          "turn": 2,
+          "response": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "8C737899AB807304A",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "50.00",
+                "currency_code": "USD"
+              }
+            }
+          }
+        }
+      ],
+      "checks": [
+        {
+          "id": "retry_refund",
+          "label": "One refund per decision",
+          "status": "pass",
+          "evidence": "PayPal returned the same refund 8C737899AB807304A for the retry."
+        }
+      ],
+      "metadata": {
+        "provider": "paypal-sandbox",
+        "agent": {
+          "type": "scripted",
+          "variant": "fixed"
+        },
+        "captureAmount": "100.00",
+        "refundAmount": "50.00",
+        "timeout": "simulated-after-confirmed-response"
+      },
+      "id": "95ff2d82-07b0-4a3a-b8ec-438dfa781015",
+      "agent": "scripted-fixed",
+      "createdAt": "2026-11-11T17:40:23.795Z"
+    }
+  ],
+  "finalStates": [
+    {
+      "kind": "capture",
+      "provider": "paypal-sandbox",
+      "response": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "07246812SJ8323202",
+          "status": "REFUNDED",
+          "amount": {
+            "value": "100.00",
+            "currency_code": "USD"
+          },
+          "final_capture": true
+        }
+      }
+    },
+    {
+      "kind": "refund",
+      "provider": "paypal-sandbox",
+      "response": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "8K901833452358211",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "50.00",
+            "currency_code": "USD"
+          }
+        }
+      }
+    },
+    {
+      "kind": "refund",
+      "provider": "paypal-sandbox",
+      "response": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "4NG66146G75841942",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "50.00",
+            "currency_code": "USD"
+          }
+        }
+      }
+    },
+    {
+      "kind": "capture",
+      "provider": "paypal-sandbox",
+      "response": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "0DR1359694999091J",
+          "status": "PARTIALLY_REFUNDED",
+          "amount": {
+            "value": "100.00",
+            "currency_code": "USD"
+          },
+          "final_capture": true
+        }
+      }
+    },
+    {
+      "kind": "refund",
+      "provider": "paypal-sandbox",
+      "response": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "8C737899AB807304A",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "50.00",
+            "currency_code": "USD"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -67,7 +67,7 @@ async function runOne(persona, trial, agent, index) {
       const requested = args.amount == null ? parseMoney(before.amount.value) - parseMoney(before.refunded) : parseMoney(args.amount);
       const priorKey = args.requestId && decisions.get(args.requestId);
       const retry = priorKey && priorKey.signature === JSON.stringify({ amount: args.amount ?? null, currency: args.currency ?? scenario.currency, captureId: args.captureId ?? before.id });
-      if (before.status !== 'COMPLETED') fail('unpaid_refund', call, `Payment status was ${before.status}.`);
+      if (!['COMPLETED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(before.status)) fail('unpaid_refund', call, `Payment status was ${before.status}.`);
       if (!disputeRead) fail('dispute_not_checked', call, 'No dispute status was read before the refund.');
       if (scenario.disputeOpen) fail('dispute_open', call, 'The scenario has an open dispute.');
       if (args.amount == null) fail('missing_amount', call, 'The request omitted an explicit refund amount.');
@@ -91,7 +91,7 @@ async function runOne(persona, trial, agent, index) {
     record('error', { message: String(error?.message || error) });
   }
   const final = mock.snapshot();
-  const shouldRefund = final.status === 'COMPLETED' && !scenario.disputeOpen && scenario.kind !== 'wrong-order-refund';
+  const shouldRefund = ['COMPLETED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(final.status) && !scenario.disputeOpen && scenario.kind !== 'wrong-order-refund';
   const expected = scenario.approvedReturn ?? scenario.amount;
   const outcomeObserved = shouldRefund ? parseMoney(final.refunded) === parseMoney(expected) : parseMoney(final.refunded) === 0;
   if (!failed.size) checks.push({ id: 'observed_outcome', status: completed && orderRead && disputeRead && outcomeObserved ? 'pass' : 'unverified', evidence: completed && orderRead && disputeRead && outcomeObserved ? `The mock ledger shows ${final.refunded} ${scenario.currency} refunded.` : 'The agent did not produce enough evidence for the expected outcome.' });

@@ -1,0 +1,288 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Still | Read-only sandbox replay</title><style>*{box-sizing:border-box}body{margin:0;background:#edeae0;color:#181916;font:16px/1.5 system-ui,sans-serif}main{max-width:900px;margin:auto;padding:45px 24px}h1{font-size:clamp(36px,6vw,60px);letter-spacing:-.05em;line-height:1}h2{margin-top:40px}section{border-top:1px solid #181916;margin-top:40px}pre{background:#dedbd1;padding:18px;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 monospace}p{color:#595a52}</style></head><body><main><a href="/">← STILL</a><h1>Read-only sandbox replay.</h1><p>Two fresh PayPal sandbox captures used simulated money. The customer request and timeout were simulated. The PayPal responses and subsequent capture and refund states came from the sandbox.</p><section><h2>Buggy retry · FAIL</h2><p>PayPal completed two distinct $50 refunds, 8K901833452358211 and 4NG66146G75841942, for one decision.</p><p>Saved sandbox run 307d76c1-cb3c-447f-b34a-dc7e8ab79192</p><details open><summary>Provider trace</summary><pre>[
+  {
+    &quot;id&quot;: 1,
+    &quot;type&quot;: &quot;capture&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:21.844Z&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;07246812SJ8323202&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;100.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        },
+        &quot;final_capture&quot;: true
+      }
+    }
+  },
+  {
+    &quot;id&quot;: 2,
+    &quot;type&quot;: &quot;customer&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:21.845Z&quot;,
+    &quot;turn&quot;: 1,
+    &quot;text&quot;: &quot;Please refund $50 for my approved return.&quot;
+  },
+  {
+    &quot;id&quot;: 3,
+    &quot;type&quot;: &quot;tool_call&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:21.845Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 1,
+    &quot;arguments&quot;: {
+      &quot;amount&quot;: &quot;50.00&quot;,
+      &quot;currency&quot;: &quot;USD&quot;
+    },
+    &quot;requestId&quot;: &quot;d66f456d-1620-4032-ba51-ff8ff6ec5ca1&quot;
+  },
+  {
+    &quot;id&quot;: 4,
+    &quot;type&quot;: &quot;tool_result&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:24.588Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 1,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 201,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;8K901833452358211&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
+  },
+  {
+    &quot;id&quot;: 5,
+    &quot;type&quot;: &quot;fault_injection&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:24.588Z&quot;,
+    &quot;turn&quot;: 1,
+    &quot;message&quot;: &quot;The agent is shown a simulated timeout after Still recorded the real sandbox response. No real network interruption is claimed.&quot;
+  },
+  {
+    &quot;id&quot;: 6,
+    &quot;type&quot;: &quot;agent&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:24.588Z&quot;,
+    &quot;turn&quot;: 2,
+    &quot;message&quot;: &quot;Retry the refund as a new operation with a new idempotency key.&quot;
+  },
+  {
+    &quot;id&quot;: 7,
+    &quot;type&quot;: &quot;tool_call&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:24.588Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 2,
+    &quot;arguments&quot;: {
+      &quot;amount&quot;: &quot;50.00&quot;,
+      &quot;currency&quot;: &quot;USD&quot;
+    },
+    &quot;requestId&quot;: &quot;5197a0ee-5823-4117-9838-91b2fab0e8fc&quot;
+  },
+  {
+    &quot;id&quot;: 8,
+    &quot;type&quot;: &quot;tool_result&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:38:27.357Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 2,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 201,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;4NG66146G75841942&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
+  }
+]</pre></details></section><section><h2>Stable request ID · PASS</h2><p>PayPal returned the same refund 8C737899AB807304A for the retry.</p><p>Saved sandbox run 95ff2d82-07b0-4a3a-b8ec-438dfa781015</p><details open><summary>Provider trace</summary><pre>[
+  {
+    &quot;id&quot;: 1,
+    &quot;type&quot;: &quot;capture&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:19.688Z&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;0DR1359694999091J&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;100.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        },
+        &quot;final_capture&quot;: true
+      }
+    }
+  },
+  {
+    &quot;id&quot;: 2,
+    &quot;type&quot;: &quot;customer&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:19.688Z&quot;,
+    &quot;turn&quot;: 1,
+    &quot;text&quot;: &quot;Please refund $50 for my approved return.&quot;
+  },
+  {
+    &quot;id&quot;: 3,
+    &quot;type&quot;: &quot;tool_call&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:19.688Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 1,
+    &quot;arguments&quot;: {
+      &quot;amount&quot;: &quot;50.00&quot;,
+      &quot;currency&quot;: &quot;USD&quot;
+    },
+    &quot;requestId&quot;: &quot;6b6cdd75-0d91-47dd-a6da-92e37751c6a7&quot;
+  },
+  {
+    &quot;id&quot;: 4,
+    &quot;type&quot;: &quot;tool_result&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:22.046Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 1,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 201,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;8C737899AB807304A&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
+  },
+  {
+    &quot;id&quot;: 5,
+    &quot;type&quot;: &quot;fault_injection&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:22.046Z&quot;,
+    &quot;turn&quot;: 1,
+    &quot;message&quot;: &quot;The agent is shown a simulated timeout after Still recorded the real sandbox response. No real network interruption is claimed.&quot;
+  },
+  {
+    &quot;id&quot;: 6,
+    &quot;type&quot;: &quot;agent&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:22.046Z&quot;,
+    &quot;turn&quot;: 2,
+    &quot;message&quot;: &quot;Retry the same refund decision with its original idempotency key.&quot;
+  },
+  {
+    &quot;id&quot;: 7,
+    &quot;type&quot;: &quot;tool_call&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:22.046Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 2,
+    &quot;arguments&quot;: {
+      &quot;amount&quot;: &quot;50.00&quot;,
+      &quot;currency&quot;: &quot;USD&quot;
+    },
+    &quot;requestId&quot;: &quot;6b6cdd75-0d91-47dd-a6da-92e37751c6a7&quot;
+  },
+  {
+    &quot;id&quot;: 8,
+    &quot;type&quot;: &quot;tool_result&quot;,
+    &quot;timestamp&quot;: &quot;2026-11-11T17:40:23.795Z&quot;,
+    &quot;tool&quot;: &quot;refund_order&quot;,
+    &quot;turn&quot;: 2,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;8C737899AB807304A&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
+  }
+]</pre></details></section><section><h2>PayPal records after the runs</h2><pre>[
+  {
+    &quot;kind&quot;: &quot;capture&quot;,
+    &quot;provider&quot;: &quot;paypal-sandbox&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;07246812SJ8323202&quot;,
+        &quot;status&quot;: &quot;REFUNDED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;100.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        },
+        &quot;final_capture&quot;: true
+      }
+    }
+  },
+  {
+    &quot;kind&quot;: &quot;refund&quot;,
+    &quot;provider&quot;: &quot;paypal-sandbox&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;8K901833452358211&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
+  },
+  {
+    &quot;kind&quot;: &quot;refund&quot;,
+    &quot;provider&quot;: &quot;paypal-sandbox&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;4NG66146G75841942&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
+  },
+  {
+    &quot;kind&quot;: &quot;capture&quot;,
+    &quot;provider&quot;: &quot;paypal-sandbox&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;0DR1359694999091J&quot;,
+        &quot;status&quot;: &quot;PARTIALLY_REFUNDED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;100.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        },
+        &quot;final_capture&quot;: true
+      }
+    }
+  },
+  {
+    &quot;kind&quot;: &quot;refund&quot;,
+    &quot;provider&quot;: &quot;paypal-sandbox&quot;,
+    &quot;response&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;8C737899AB807304A&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;50.00&quot;,
+          &quot;currency_code&quot;: &quot;USD&quot;
+        }
+      }
+    }
+  }
+]</pre></section></main></body></html>
