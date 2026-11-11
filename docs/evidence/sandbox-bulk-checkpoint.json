@@ -1,0 +1,10 @@
+{
+  "at": "2026-11-11T19:07:11.777Z",
+  "batchId": "40f79126-1d0a-4152-b23d-5ef9c221e7ce",
+  "claims": 2239,
+  "compared": 1448,
+  "agreed": 6,
+  "disagreed": 1442,
+  "unverified": 3552,
+  "note": "Checkpoint only. Unverified includes unattempted, pending, and cases awaiting reconciliation. The sandbox run is not complete."
+}
