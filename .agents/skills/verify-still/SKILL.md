@@ -17,7 +17,7 @@ Open `http://127.0.0.1:3001/`, choose `Explore the demo`, and check the status a
 
 ## Drive and evidence
 
-Use the available computer-use browser on the app. Follow the matching feature recipe in `features/`. Capture the scenario, agent, customer requests, tool calls, provider responses, checks, and final outcome. Reopen each completed run in `Saved runs`; the app stores sanitized records in `.data/runs/`. Copy the relevant record to an evidence directory outside the repository when it must survive cleanup. A mock or synthetic payment is not a PayPal response. If a step cannot be observed, mark it unverified.
+Use the available computer-use browser on the app. Follow the matching feature recipe in `features/`. Capture the scenario, agent, customer requests, tool calls, provider responses, checks, and final outcome. Reopen each completed run in `Saved runs`; the app stores sanitized records in `.data/runs/`. Copy the relevant record to an evidence directory outside the repository when it must survive cleanup. A mock or synthetic payment is not a PayPal response. If a step cannot be observed, mark it unverified. Checkout state is held in the server session; see [checkout recovery](features/checkout-recovery.md) before interrupting it.
 
 ## Cleanup
 

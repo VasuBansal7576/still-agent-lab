@@ -6,3 +6,5 @@ Choose the feature that matches the user journey. Run each scenario on a fresh a
 - [Run payment scenarios](payments.md)
 - [Run failed-payment scenarios](failed-payment.md)
 - [Inspect saved runs](history.md)
+- [Edit store policy](policies.md)
+- [Recover an interrupted checkout](checkout-recovery.md)

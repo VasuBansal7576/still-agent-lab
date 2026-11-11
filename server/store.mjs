@@ -18,7 +18,10 @@ export async function saveRun(agent, result) {
 
 export async function readRun(id) {
   if (!idPattern.test(id)) return null;
-  try { return JSON.parse(await readFile(new URL(`${id}.json`, directory), 'utf8')); }
+  try {
+    const run = JSON.parse(await readFile(new URL(`${id}.json`, directory), 'utf8'));
+    return { ...run, metadata: run.metadata ?? null };
+  }
   catch (error) { if (error.code === 'ENOENT') return null; throw error; }
 }
 
@@ -27,5 +30,5 @@ export async function listRuns() {
   try { files = await readdir(directory); }
   catch (error) { if (error.code === 'ENOENT') return []; throw error; }
   const runs = await Promise.all(files.filter(name => idPattern.test(name.replace(/\.json$/, '')) && name.endsWith('.json')).map(name => readRun(name.slice(0, -5))));
-  return runs.filter(Boolean).map(({ id, agent, scenarioId, status, createdAt }) => ({ id, agent, scenarioId, status, createdAt })).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return runs.filter(Boolean).map(({ id, agent, scenarioId, status, createdAt, metadata }) => ({ id, agent, scenarioId, status, createdAt, agentOrigin: metadata?.agent?.origin })).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
