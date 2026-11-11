@@ -15,7 +15,7 @@ The host sends a JSON POST with `Content-Type: application/json`:
     { "role": "system", "content": "Store policy and scenario instructions" },
     { "role": "user", "content": "Please cancel my order." }
   ],
-  "tools": ["get_order", "refund_order", "propose_fulfillment"]
+  "tools": ["get_order", "cancel_order", "refund_order", "propose_fulfillment"]
 }
 ```
 
@@ -31,7 +31,8 @@ Return HTTP 200 and a JSON object with `content` and `tool`. Set `tool` to `null
 
 The supported tool proposals are:
 
-- `get_order` with empty `arguments`.
+- `get_order` with empty `arguments`. Its result includes the simulated `order_status`, either `OPEN` or `CANCELED`.
+- `cancel_order` with empty `arguments`. The host cancels the simulated order idempotently and records the result. It does not cancel a real store order or refund the payment.
 - `propose_fulfillment` with empty `arguments`. This proposes fulfillment; the host records and checks the decision.
 - `refund_order` with string `amount` and `currency` arguments, for example `{ "amount": "50.00", "currency": "USD" }`.
 

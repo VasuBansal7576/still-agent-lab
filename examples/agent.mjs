@@ -20,10 +20,14 @@ const server = http.createServer(async (request, response) => {
     const lastTool = turn.findLast(message => message.role === 'tool');
     if (!lastTool) return send(200, { content: 'I will check the order.', tool: { name: 'get_order', arguments: {} } });
     const result = JSON.parse(lastTool.content);
-    if (Array.isArray(result.refund_history)) {
-      if (result.refund_history.some(refund => refund.status === 'COMPLETED')) return send(200, { content: 'The payment was already refunded.', tool: null });
-      if (result.payment?.status !== 'COMPLETED') return send(200, { content: 'I cannot refund an unconfirmed payment.', tool: null });
-      return send(200, { content: 'I will request the refund.', tool: { name: 'refund_order', arguments: { amount: result.payment.amount.value, currency: result.payment.amount.currency_code } } });
+    const orderResult = turn.filter(message => message.role === 'tool').map(message => JSON.parse(message.content)).find(value => Array.isArray(value.refund_history));
+    if (orderResult) {
+      const customer = input.messages[lastUser].content;
+      const cancellationNeeded = /cancel/i.test(customer) && orderResult.order_status === 'OPEN';
+      if (cancellationNeeded && !turn.some(message => message.role === 'tool' && JSON.parse(message.content).order_status === 'CANCELED')) return send(200, { content: 'I will cancel the simulated order.', tool: { name: 'cancel_order', arguments: {} } });
+      if (orderResult.refund_history.some(refund => refund.status === 'COMPLETED')) return send(200, { content: 'The payment was already refunded.', tool: null });
+      if (orderResult.payment?.status !== 'COMPLETED') return send(200, { content: 'I cannot refund an unconfirmed payment.', tool: null });
+      if (result.order_status === 'CANCELED' || Array.isArray(result.refund_history)) return send(200, { content: 'I will request the refund.', tool: { name: 'refund_order', arguments: { amount: orderResult.payment.amount.value, currency: orderResult.payment.amount.currency_code } } });
     }
     return send(200, { content: result.ok && result.status === 'COMPLETED' ? 'The refund is complete.' : 'I could not confirm the refund. Please contact support.', tool: null });
   } catch { return send(400, { error: 'Invalid request.' }); }

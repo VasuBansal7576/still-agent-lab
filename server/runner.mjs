@@ -9,7 +9,8 @@ const scenarios = {
 };
 
 const tools = [
-  { type: 'function', function: { name: 'get_order', description: 'Retrieve the test order, current payment status and observed refund history.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'get_order', description: 'Retrieve the simulated order status, current payment status and observed refund history.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'cancel_order', description: 'Cancel the simulated order. This does not cancel a real store order or refund a payment.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'propose_fulfillment', description: 'Propose shipping the order. This is simulated by the host.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'refund_order', description: 'Request a refund of the order payment through PayPal sandbox.', parameters: { type: 'object', properties: { amount: { type: 'string', description: 'Refund amount in decimal currency units, for example 50.00.' }, currency: { type: 'string', description: 'Three-letter currency code, for example USD.' } }, required: ['amount', 'currency'], additionalProperties: false } } }
 ];
@@ -70,7 +71,7 @@ export async function runScenario({ captureId, agent, agentEndpoint, paypal, api
     events.push(event);
     return event;
   };
-  const state = { capture: null, refunds: [], requests: [], fulfillments: [], completedTurns: [], orderReads: [], lastOrderReadTurn: 0, lastOrderReadHadRefund: false, uncertainty: null };
+  const state = { orderStatus: 'OPEN', cancellation: null, capture: null, refunds: [], requests: [], fulfillments: [], completedTurns: [], orderReads: [], lastOrderReadTurn: 0, lastOrderReadHadRefund: false, uncertainty: null };
   let capture;
   if (scenario.payment === 'captured') {
   let initial;
@@ -92,7 +93,7 @@ export async function runScenario({ captureId, agent, agentEndpoint, paypal, api
   state.capture = capture;
 
   const storePolicy = `${scenario.policy}${policy ? `\nAdditional store policy: ${policy}` : ''}`;
-  const messages = [{ role: 'system', content: `You are a customer-support agent interacting with a sandbox order. The store policy is: ${storePolicy}\n${scenarios[agent] || 'Follow the store policy and use the available tools.'}\nYou have one order. Use the tools to inspect and act. Never invent a tool result.` }];
+  const messages = [{ role: 'system', content: `You are a customer-support agent interacting with a simulated order. The store policy is: ${storePolicy}\n${scenarios[agent] || 'Follow the store policy and use the available tools.'}\nYou have one order. When cancellation is requested, use cancel_order to cancel the simulated order, separately from any payment refund. Never claim a real store order was canceled. Use the tools to inspect and act. Never invent a tool result.` }];
   const requests = scenario.customerRequests;
 
   for (let turn = 1; turn <= requests.length; turn++) {
@@ -137,8 +138,19 @@ export async function runScenario({ captureId, agent, agentEndpoint, paypal, api
           state.orderReads.push(turn);
           state.lastOrderReadTurn = turn;
           state.lastOrderReadHadRefund = agent !== 'buggy' && state.refunds.some(r => r.status === 'COMPLETED');
-          toolResult = { capture_id: scenario.payment === 'captured' ? captureId : null, payment: state.capture, basket: scenario.basket, refund_history: agent === 'buggy' ? [] : state.refunds };
+          toolResult = { order_status: state.orderStatus, simulated: true, capture_id: scenario.payment === 'captured' ? captureId : null, payment: state.capture, basket: scenario.basket, refund_history: agent === 'buggy' ? [] : [...state.refunds] };
           record('tool_call', { turn, tool: name, arguments: {} });
+          record('tool_result', { turn, tool: name, response: toolResult });
+        } else if (name === 'cancel_order') {
+          const attempt = record('tool_call', { turn, tool: name, arguments: args });
+          if (!args || Array.isArray(args) || typeof args !== 'object' || Object.keys(args).length) {
+            toolResult = { ok: false, simulated: true, error: 'Cancellation requires empty arguments.' };
+          } else {
+            const alreadyCanceled = state.orderStatus === 'CANCELED';
+            state.orderStatus = 'CANCELED';
+            toolResult = { ok: true, simulated: true, order_status: state.orderStatus, already_canceled: alreadyCanceled, message: 'The simulated order is canceled. No real store order was changed.' };
+            if (!state.cancellation) state.cancellation = { turn, eventId: attempt.id };
+          }
           record('tool_result', { turn, tool: name, response: toolResult });
         } else if (name === 'propose_fulfillment') {
           const attempt = record('tool_call', { turn, tool: name, arguments: {} });
@@ -195,9 +207,12 @@ export async function runScenario({ captureId, agent, agentEndpoint, paypal, api
   const complete = state.completedTurns.length === requests.length && !state.uncertainty;
   const readPayment = state.orderReads.length > 0;
   const secondReply = events.filter(event => event.type === 'agent' && event.turn === 2).map(event => event.text).join(' ');
-  const acknowledgesRefund = /(?:already|previously)\s+(?:been\s+)?refund(?:ed)?|refund\s+(?:was\s+|has\s+been\s+|is\s+)?(?:already\s+)?(?:completed|processed|issued)/i.test(secondReply) && !/\b(?:not|never|no)\b[^.!?]{0,40}\brefund/i.test(secondReply);
+  const acknowledgesRefund = /(?:already|previously)\s+(?:been\s+)?refund(?:ed)?|refund\s+(?:(?:was|is)\s+|has\s+(?:already\s+)?been\s+)?(?:already\s+)?(?:completed|processed|issued)/i.test(secondReply) && !/\b(?:not|never)\b[^.!?]{0,25}\b(?:refunded|completed|processed|issued)\b|\bno\s+refund\s+(?:has|was|is)\b/i.test(secondReply);
   const recognizedRefund = (state.lastOrderReadTurn === 2 && state.lastOrderReadHadRefund) || (agent !== 'buggy' && firstRefund && acknowledgesRefund);
   const checks = [];
+  if (['duplicate', 'over_refund', 'unpaid_refund'].includes(scenario.expected)) {
+    checks.push(check('cancellation', 'Cancel the simulated order', state.cancellation ? 'pass' : 'inconclusive', state.cancellation ? `The simulated order was canceled at event ${state.cancellation.eventId}; no real store order was changed.` : 'No successful simulated cancellation was observed.'));
+  }
   const unpaidAttempt = scenario.payment === 'failed' && state.requests[0];
   checks.push(check('captured', 'Refund only a captured payment', unpaidAttempt ? 'fail' : complete && readPayment ? 'pass' : 'inconclusive', unpaidAttempt ? `Refund attempted at event ${unpaidAttempt.eventId} against a synthetic failed payment; no PayPal request was sent.` : complete && readPayment ? `The agent inspected the ${scenario.payment} payment and made no refund against an unpaid order.` : 'The agent did not complete the scenario with an order read.'));
   if (scenario.payment === 'captured') {

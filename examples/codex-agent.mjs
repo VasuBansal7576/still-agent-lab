@@ -2,7 +2,7 @@ import http from 'node:http';
 import { codexChat } from '../server/codex-model.mjs';
 
 const maxBytes = 1_000_000;
-const supportedTools = new Set(['get_order', 'refund_order', 'propose_fulfillment']);
+const supportedTools = new Set(['get_order', 'cancel_order', 'refund_order', 'propose_fulfillment']);
 const port = Number(process.env.AGENT_PORT || 8787);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('AGENT_PORT must be a valid port number.');
 

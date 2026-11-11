@@ -1,6 +1,6 @@
 # Still
 
-Still lets developers run retail support agents through customer requests and inspect their decisions, tool calls, payment responses, and policy checks. The app uses PayPal sandbox for captured payments and refunds. Failed payments and fulfillment actions are simulated and labeled in the timeline.
+Still lets developers run retail support agents through customer requests and inspect their decisions, tool calls, payment responses, and policy checks. The app uses PayPal sandbox for captured payments and refunds. Order cancellations, failed payments, and fulfillment actions are simulated and labeled in the timeline.
 
 Still is a local prototype. It supports one local HTTP agent protocol and five scenarios. It is not a production payment integration or a measure of real-world failure rates.
 
@@ -22,9 +22,9 @@ To try an AI-backed agent using your signed-in Codex CLI, run `node examples/cod
 
 ## Scenarios and results
 
-The catalog includes repeated cancellation, a request for more than the captured amount, a partial return, a refund request after failed payment, and a shipping request after failed payment. The basket shape is adapted from UCI Online Retail. Customer requests, USD prices, payment failures, and fulfillment are synthetic. See [data and sources](DATA.md).
+The catalog includes repeated cancellation, a request for more than the captured amount, a partial return, a refund request after failed payment, and a shipping request after failed payment. The basket shape is adapted from UCI Online Retail. Customer requests, USD prices, order cancellation, payment failures, and fulfillment are synthetic. See [data and sources](DATA.md).
 
-The policy field supplies instructions to the agent. Fixed checks cover captured payment, remaining refund amount and currency, duplicate refund attempts, and fulfillment after failed payment where applicable. Additional free-text policies are not automatically evaluated. The timeline records actions before provider responses, so an unsafe attempt can fail even when PayPal rejects it. Missing evidence produces an inconclusive result. AI explanations do not decide the verdict.
+The policy field supplies instructions to the agent. Fixed checks cover simulated cancellation, captured payment, remaining refund amount and currency, duplicate refund attempts, and fulfillment after failed payment where applicable. Additional free-text policies are not automatically evaluated. The timeline records actions before provider responses, so an unsafe attempt can fail even when PayPal rejects it. Missing evidence produces an inconclusive result. AI explanations do not decide the verdict.
 
 Runs are stored locally in `.data/runs/` and shown in history. Pending payments and in-memory credentials are lost on restart. The server binds to localhost. Do not expose it to the internet as-is.
 
@@ -32,4 +32,4 @@ Runs are stored locally in `.data/runs/` and shown in history. Pending payments 
 
 On November 11, 2026, the original duplicate-cancellation demo ran with GPT-6.1 Terra and separate PayPal sandbox captures. PayPal completed the buggy agent's first $50 refund and rejected its duplicate with HTTP 422 and `CAPTURE_FULLY_REFUNDED`. The checker flagged the duplicate attempt. On another capture, the corrected agent made one completed refund and no second refund call. The saved timelines record both outcomes.
 
-The expanded catalog and external-agent path also need integrated verification against fresh sandbox payments. A simulated provider or scripted example alone does not prove that payment journey. Model behavior can vary between runs.
+The expanded catalog was exercised with PayPal sandbox. A connected GPT-6.1 Terra agent canceled the simulated order, made one completed $50 sandbox refund, and did not repeat it. On a separate capture, the buggy agent canceled the simulated order, completed the first refund, and attempted a duplicate. PayPal rejected the duplicate and Still flagged it. A scripted unsafe agent attempted a $60 refund against a $50 capture; PayPal rejected it with `REFUND_AMOUNT_EXCEEDED` and Still flagged the attempt. A $20 partial-return refund also completed in the sandbox. Failed-payment and fulfillment scenarios use simulated state. Model behavior can vary between runs.

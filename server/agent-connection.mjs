@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 const maxBytes = 1_000_000;
-const allowedTools = ['get_order', 'refund_order', 'propose_fulfillment'];
+const allowedTools = ['get_order', 'cancel_order', 'refund_order', 'propose_fulfillment'];
 
 export function endpointUrl(endpoint) {
   let url;
