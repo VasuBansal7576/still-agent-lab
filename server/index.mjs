@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { createPayPalSandbox } from './paypal.mjs';
 import { runScenario } from './runner.mjs';
 import { codexReady } from './codex-model.mjs';
+import { listRuns, readRun, saveRun } from './store.mjs';
 
 try { process.loadEnvFile('.env'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const port = Number(process.env.PORT || 3000);
@@ -42,6 +43,12 @@ http.createServer(async (request, response) => {
       return response.end(content);
     }
     if (request.method === 'GET' && url.pathname === '/api/status') return send(response, 200, { ready: paypalReady && modelReady, paypalReady, modelReady, model: process.env.CODEX_MODEL || 'gpt-6.1-terra' });
+    if (request.method === 'GET' && url.pathname === '/api/runs') return send(response, 200, { runs: await listRuns() });
+    const savedMatch = url.pathname.match(/^\/api\/runs\/([A-Za-z0-9-]+)$/);
+    if (request.method === 'GET' && savedMatch) {
+      const run = await readRun(savedMatch[1]);
+      return run ? send(response, 200, run) : send(response, 404, { error: 'Run not found' });
+    }
     if (request.method !== 'POST') return send(response, 404, { error: 'Not found' });
     if (request.headers['content-type']?.split(';')[0] !== 'application/json') return send(response, 415, { error: 'JSON required' });
     if (url.pathname === '/api/orders') {
@@ -72,7 +79,8 @@ http.createServer(async (request, response) => {
       if (input.policy !== undefined && (typeof input.policy !== 'string' || input.policy.length > 2000)) return send(response, 400, { error: 'Policy must be text of at most 2000 characters' });
       spent.add(input.captureId);
       const result = await runScenario({ captureId: input.captureId, agent: input.agent, paypal, model: process.env.CODEX_MODEL || 'gpt-6.1-terra', policy: input.policy });
-      return send(response, 200, result);
+      try { return send(response, 200, await saveRun(input.agent, result)); }
+      catch { return send(response, 200, { ...result, agent: input.agent, storageWarning: 'The run could not be saved. Copy the trace before leaving this page.' }); }
     }
     return send(response, 404, { error: 'Not found' });
   } catch (error) {
