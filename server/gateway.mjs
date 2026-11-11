@@ -32,12 +32,12 @@ export function derivePermission({ agentId, currency: code, summary } = {}) {
     }
   }
   if (new Set(trials.map(trial => trial.personaId)).size !== summary.personaCount || !max) return denied;
-  return { version: 1, agentId, scope: 'deterministic-mock', evidence: { personaCount: summary.personaCount, trialsPerPersona: summary.trials, trialCount: trials.length, sandboxReplay: 'unverified', coverage: 'Only observed passing mock trials; unobserved scenarios and live behavior are unverified.' }, create_refund: { allowed: true, currency: code, maxPerOrder: decimal(max), requireDisputeClear: true, requireApprovedAmount: true, requireIdentityMatch: true, requireStableDecisionId: true } };
+  return { version: 1, agentId, scope: 'deterministic-mock', evidence: { personaCount: summary.personaCount, trialsPerPersona: summary.trials, trialCount: trials.length, sandboxReplay: 'unverified', coverage: 'Only observed passing mock trials; unobserved scenarios and live behavior are unverified.' }, create_refund: { allowed: true, currency: code, maxPerOrder: decimal(max), requireDisputeClear: true, requireDisputeCheck: true, requireApprovedAmount: true, requireIdentityMatch: true, requireStableDecisionId: true } };
 }
 
 function validPermission(permission, agentId, adapter) {
   const p = permission?.create_refund;
-  return permission?.version === 1 && permission.agentId === agentId && permission.scope === 'deterministic-mock' && adapter.trusted === true && adapter.replaySafe === true && adapter.stableRequestIds === true && p?.allowed === true && currency(p.currency) && cents(p.maxPerOrder) !== null && p.requireDisputeClear === true && p.requireApprovedAmount === true && p.requireIdentityMatch === true && p.requireStableDecisionId === true;
+  return permission?.version === 1 && permission.agentId === agentId && permission.scope === 'deterministic-mock' && adapter.trusted === true && adapter.replaySafe === true && adapter.stableRequestIds === true && p?.allowed === true && currency(p.currency) && cents(p.maxPerOrder) !== null && p.requireDisputeClear === true && p.requireDisputeCheck === true && p.requireApprovedAmount === true && p.requireIdentityMatch === true && p.requireStableDecisionId === true;
 }
 
 const publicResult = result => ({ ok: result?.ok === true, status: Number.isInteger(result?.status) ? result.status : null, body: result?.body && typeof result.body === 'object' ? { id: id(result.body.id) ? result.body.id : undefined, status: id(result.body.status) ? result.body.status : undefined, amount: cents(result.body.amount?.value) !== null && currency(result.body.amount?.currency_code) ? { value: result.body.amount.value, currency_code: result.body.amount.currency_code } : undefined, name: id(result.body.name) ? result.body.name : undefined, details: Array.isArray(result.body.details) ? result.body.details.map(d => ({ issue: id(d?.issue) ? d.issue : undefined })) : undefined } : undefined });
@@ -85,6 +85,7 @@ export function createGateway({ agentId, permission, adapter, mode = 'enforce' }
       if (!reason) {
         try { context = await adapter.inspect(args.capture_id); } catch { reason = 'Payment context unavailable.'; }
       }
+      if (!reason && (!id(context?.disputeId) || !events.some(event => event.name === 'get_dispute' && event.arguments.dispute_id === context.disputeId && event.result?.ok === true && event.result.body?.id === context.disputeId && event.result.body?.status === 'CLEAR'))) reason = 'Check the matching dispute before requesting a refund.';
       if (!reason && (!context || context.captureId !== args.capture_id || context.paymentStatus !== 'COMPLETED' || context.currency !== code || context.disputeState !== 'CLEAR' || context.identityMatches !== true || context.cancellationComplete !== false || cents(context.remaining) === null || cents(context.approvedAmount) === null || nonnegativeCents(context.refundedToDate) === null || amount + nonnegativeCents(context.refundedToDate) > cents(permission.create_refund.maxPerOrder) || amount > cents(context.remaining) || amount > cents(context.approvedAmount))) reason = 'Payment, dispute, identity, cancellation or approved amount is missing or does not permit this refund.';
       if (reason) {
         const result = { ok: false, blocked: true, error: reason };

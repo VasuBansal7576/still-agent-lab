@@ -13,6 +13,7 @@ import { derivePermission, createGateway } from './gateway.mjs';
 import { createPayPalMock } from './paypal-mock.mjs';
 import { planSandboxReplays, reconcileSandboxReplays } from './sandbox-replay.mjs';
 import { createReplayLedger } from './replay-ledger.mjs';
+import { createShadowSessions } from './shadow-sessions.mjs';
 import { codexReady } from './codex-model.mjs';
 import { listRuns, readRun, saveRun } from './store.mjs';
 import { scenarioCatalog } from './catalog.mjs';
@@ -24,6 +25,7 @@ const paypalReady = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_C
 const modelReady = await codexReady();
 const defaultPaypal = paypalReady ? createPayPalSandbox({ clientId: process.env.PAYPAL_CLIENT_ID, clientSecret: process.env.PAYPAL_CLIENT_SECRET }) : null;
 const sessions = new Map();
+const shadowSessions = createShadowSessions({ directory: fileURLToPath(new URL('../.data/shadow-sessions/', import.meta.url)) });
 
 function currencyEvidence(summary, currency) {
   if (!Array.isArray(summary.results) || summary.results.some(item => item.status !== 'pass')) return summary;
@@ -244,17 +246,33 @@ http.createServer(async (request, response) => {
         const scenario = { kind: 'partial-return', amount, approvedReturn: amount, currency: 'USD', customerId: 'demo-customer', orderId: 'demo-order' };
         const mock = createPayPalMock(scenario, 'earned-replay');
         const adapter = { trusted: true, replaySafe: true, stableRequestIds: true,
-          inspect: async () => { const payment = mock.snapshot(); return { captureId: payment.id, paymentStatus: payment.status, currency: 'USD', disputeState: 'CLEAR', identityMatches: true, cancellationComplete: false, remaining: (Number(amount) - Number(payment.refunded)).toFixed(2), approvedAmount: (Number(amount) - Number(payment.refunded)).toFixed(2), refundedToDate: payment.refunded }; },
-          refund: async (captureId, args) => mock.refund({ ...args, captureId }) };
+          inspect: async () => { const payment = mock.snapshot(); return { captureId: payment.id, paymentStatus: payment.status, currency: 'USD', disputeState: 'CLEAR', disputeId: 'earned-dispute', identityMatches: true, cancellationComplete: false, remaining: (Number(amount) - Number(payment.refunded)).toFixed(2), approvedAmount: (Number(amount) - Number(payment.refunded)).toFixed(2), refundedToDate: payment.refunded }; },
+          refund: async (captureId, args) => mock.refund({ ...args, captureId }), get_dispute: async disputeId => ({ ok: true, status: 200, body: { id: disputeId, status: 'CLEAR' } }) };
         const gateway = createGateway({ agentId: summary.evaluatedAgentId, permission, adapter });
         const captureId = mock.snapshot().id;
         const sessionId = `permission-${randomUUID()}`;
+        await gateway.call({ sessionId, name: 'get_dispute', arguments: { dispute_id: 'earned-dispute' } });
         await gateway.call({ sessionId, decisionId: 'over-limit', name: 'create_refund', arguments: { capture_id: captureId, amount: { value: (Number(amount) + 1).toFixed(2), currency_code: 'USD' } } });
         await gateway.call({ sessionId, decisionId: 'approved', name: 'create_refund', arguments: { capture_id: captureId, amount: { value: amount, currency_code: 'USD' } } });
         const regression = gateway.promote(sessionId);
         const replay = await gateway.replay(regression);
         return send(response, 200, { provenance: 'deterministic-mock', permission, events: gateway.events(sessionId), replay });
       } catch { return send(response, 400, { error: 'The mock permission replay could not run.' }); }
+    }
+    if (url.pathname === '/api/upgrade/shadow-session') {
+      const input = await body(request);
+      try {
+        if (input.action === 'create') {
+          const record = await shadowSessions.create({ source: 'local-agent', amount: input.amount, approvedReturn: input.approvedReturn, currency: input.currency, disputeOpen: input.disputeOpen });
+          session.shadowIds ??= new Set(); session.shadowIds.add(record.id);
+          return send(response, 200, { session: record });
+        }
+        if (!session.shadowIds?.has(input.id)) return send(response, 403, { error: 'Create this mock session in the current browser session first.' });
+        if (input.action === 'call') return send(response, 200, await shadowSessions.call(input.id, input.call));
+        if (input.action === 'promote') return send(response, 200, { regression: await shadowSessions.promote(input.id), replay: await shadowSessions.replay(input.id) });
+        if (input.action === 'get') return send(response, 200, { session: await shadowSessions.get(input.id) });
+        return send(response, 400, { error: 'Unknown mock shadow action.' });
+      } catch { return send(response, 400, { error: 'Mock shadow action failed. Check the session and tool arguments.' }); }
     }
     if (url.pathname === '/api/upgrade/shadow') {
       const input = await body(request);

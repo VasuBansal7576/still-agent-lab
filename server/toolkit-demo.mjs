@@ -13,7 +13,7 @@ export async function createDemoBinding() {
     trusted: true, replaySafe: true, stableRequestIds: true,
     async inspect(captureId) {
       const payment = mock.snapshot();
-      return { captureId: payment.id, paymentStatus: payment.status, currency: scenario.currency, disputeState: 'CLEAR', identityMatches: captureId === payment.id, cancellationComplete: false, remaining: (100 - Number(payment.refunded)).toFixed(2), approvedAmount: (50 - Number(payment.refunded)).toFixed(2), refundedToDate: payment.refunded };
+      return { captureId: payment.id, paymentStatus: payment.status, currency: scenario.currency, disputeState: 'CLEAR', disputeId: 'demo-dispute', identityMatches: captureId === payment.id, cancellationComplete: false, remaining: (100 - Number(payment.refunded)).toFixed(2), approvedAmount: (50 - Number(payment.refunded)).toFixed(2), refundedToDate: payment.refunded };
     },
     async refund(captureId, { amount, currency, requestId }) { return mock.refund({ captureId, amount, currency, requestId }); },
     async get_order(orderId) { return orderId === scenario.orderId ? { ok: true, status: 200, body: { id: orderId, status: 'COMPLETED', amount: mock.snapshot().amount } } : { ok: false, status: 404 }; },

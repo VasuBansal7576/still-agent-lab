@@ -1,0 +1,32 @@
+# Shadow sessions
+
+`server/shadow-sessions.mjs` records calls made to an isolated deterministic PayPal mock through the Still gateway. It supports demo clients and local agents. It does not connect to a PayPal account, make sandbox calls, capture a conversation, or prove an agent's reasoning. A replay repeats gateway tool calls rather than rerunning the agent.
+
+## Host API
+
+Import `createShadowSessions` and pass a private local `directory`. The returned methods are asynchronous.
+
+- `create({source, amount, approvedReturn, currency, disputeOpen})` creates a session. `source` is required and is `demo` or `local-agent`. The optional defaults are `100.00`, `50.00`, `USD`, and `false`. Amounts are positive decimal strings with two places. The return value includes `id`, `scenario.orderId`, `captureId`, and `disputeId` for calls.
+- `call(id, {name, arguments, decisionId})` sends an actual call to the session's gateway and returns `{result, session}`. Supported tools are `get_order`, `get_dispute`, `get_refund`, and `create_refund`. Use the generated mock identifiers. Refunds require a matching `get_dispute` call and an explicit amount, currency, and decision ID. Use the same decision ID for a retry of one decision. The stored decision ID is a hash of the submitted value.
+- `get(id)` reads the persisted session. `list()` returns stored sessions, newest first.
+- `promote(id)` stores and returns a regression containing the calls recorded so far. An empty session cannot be promoted. Promoting again replaces the regression with the current sequence.
+- `replay(id)` runs the promoted calls against a fresh mock and returns `{provenance, sourceSessionId, sessionId, results, events}`. The original and replay results can be compared by the caller. Replay does not change the recorded session.
+
+Example for a local agent, after creating a store and session:
+
+```js
+const session = await store.create({ source: 'local-agent', amount: '80.00', approvedReturn: '30.00' });
+await store.call(session.id, { name: 'get_order', arguments: { order_id: session.scenario.orderId } });
+await store.call(session.id, { name: 'get_dispute', arguments: { dispute_id: session.disputeId } });
+await store.call(session.id, {
+  name: 'create_refund',
+  arguments: { capture_id: session.captureId, amount: { value: '30.00', currency_code: 'USD' } },
+  decisionId: 'return-17'
+});
+await store.promote(session.id);
+const replay = await store.replay(session.id);
+```
+
+The store allows 200 sessions and 100 calls per session. It writes one JSON file per session with private file permissions and restores mock state from the recorded calls after a restart. Calls are serialized within one store instance. Multiple processes must not write to the same directory. The gateway blocks unsafe refunds in shadow mode; shadow mode does not bypass enforcement. Only generated mock identifiers and constrained arguments are accepted. Do not put credentials or customer data in decision IDs. Hashing is not encryption. Protect the directory because amounts and mock traces remain visible.
+
+The driving-test page creates a local-agent mock session and promotes it with one click. The same-origin HTTP endpoint `/api/upgrade/shadow-session` accepts `create`, `call`, `get`, and `promote` actions. The caller retains the browser session cookie and uses the returned session ID. Calls from a different browser session are denied. Both original and replay results have `deterministic-mock` provenance and are not live PayPal evidence.
