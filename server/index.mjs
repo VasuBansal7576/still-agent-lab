@@ -3,11 +3,12 @@ import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { createPayPalSandbox } from './paypal.mjs';
 import { runScenario } from './runner.mjs';
+import { codexReady } from './codex-model.mjs';
 
 try { process.loadEnvFile('.env'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const port = Number(process.env.PORT || 3000);
 const paypalReady = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
-const modelReady = Boolean(process.env.OPENAI_API_KEY);
+const modelReady = await codexReady();
 const paypal = paypalReady ? createPayPalSandbox({ clientId: process.env.PAYPAL_CLIENT_ID, clientSecret: process.env.PAYPAL_CLIENT_SECRET }) : null;
 const pending = new Map();
 const captures = new Set();
@@ -40,7 +41,7 @@ http.createServer(async (request, response) => {
       response.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
       return response.end(content);
     }
-    if (request.method === 'GET' && url.pathname === '/api/status') return send(response, 200, { ready: paypalReady && modelReady, paypalReady, modelReady, model: process.env.OPENAI_MODEL || 'gpt-4o-mini' });
+    if (request.method === 'GET' && url.pathname === '/api/status') return send(response, 200, { ready: paypalReady && modelReady, paypalReady, modelReady, model: process.env.CODEX_MODEL || 'gpt-6.1-terra' });
     if (request.method !== 'POST') return send(response, 404, { error: 'Not found' });
     if (request.headers['content-type']?.split(';')[0] !== 'application/json') return send(response, 415, { error: 'JSON required' });
     if (url.pathname === '/api/orders') {
@@ -70,7 +71,7 @@ http.createServer(async (request, response) => {
       if (!['buggy', 'safe'].includes(input.agent)) return send(response, 400, { error: 'Choose a valid agent' });
       if (input.policy !== undefined && (typeof input.policy !== 'string' || input.policy.length > 2000)) return send(response, 400, { error: 'Policy must be text of at most 2000 characters' });
       spent.add(input.captureId);
-      const result = await runScenario({ captureId: input.captureId, agent: input.agent, paypal, apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL || 'gpt-4o-mini', baseUrl: process.env.OPENAI_BASE_URL, policy: input.policy });
+      const result = await runScenario({ captureId: input.captureId, agent: input.agent, paypal, model: process.env.CODEX_MODEL || 'gpt-6.1-terra', policy: input.policy });
       return send(response, 200, result);
     }
     return send(response, 404, { error: 'Not found' });

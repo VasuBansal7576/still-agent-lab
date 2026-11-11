@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "content": { "type": "string" },
+    "tool": { "type": "string", "enum": ["none", "get_order", "refund_order"] },
+    "amount": { "type": "string" },
+    "currency": { "type": "string" }
+  },
+  "required": ["content", "tool", "amount", "currency"],
+  "additionalProperties": false
+}

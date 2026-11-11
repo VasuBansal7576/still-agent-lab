@@ -6,15 +6,15 @@ Still is a prototype for testing online-store support agents against payment pol
 
 ## Run locally
 
-Use Node.js 22 or later. Copy `.env.example` to `.env` and set:
+Use Node.js 22 or later and an installed Codex CLI signed in with ChatGPT. Copy `.env.example` to `.env` and set:
 
 - `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` from a PayPal **sandbox** REST app.
-- `OPENAI_API_KEY` for a tool-calling model. `OPENAI_MODEL` defaults to `gpt-4o-mini`. An OpenAI-compatible `OPENAI_BASE_URL` can be configured when needed.
+- `CODEX_MODEL` defaults to `gpt-6.1-terra`. The local runner uses the signed-in Codex CLI to propose agent actions. The application executes the PayPal sandbox calls itself.
 - `PORT` if port 3000 is unavailable.
 
 Start with `npm start` and open `http://127.0.0.1:3000`. Choose an agent, create a sandbox order, approve it using a PayPal sandbox buyer, return to capture it, and run the scenario. Create a new order for each agent. Only PayPal sandbox endpoints are used. Credentials remain on the server and `.env` is excluded from Git.
 
-The app binds to localhost and keeps order state in memory. Restarting clears the current session. Do not expose it to the internet as-is. Calls to the AI provider can incur charges according to your account and model.
+The app binds to localhost and keeps order state in memory. Restarting clears the current session. Do not expose it to the internet as-is. Codex usage is subject to your account's plan and limits.
 
 ## What the verdict means
 
