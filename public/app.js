@@ -129,7 +129,7 @@ runButton.onclick = async () => {
 
 request('/api/status').then(data => {
   const status = document.querySelector('#service-status');
-  if (status) status.textContent = data.ready === true ? 'SANDBOX READY' : 'SETUP REQUIRED';
+  if (status) status.textContent = data.ready === true ? 'SANDBOX AND CODEX READY' : data.modelReady ? 'CODEX READY · PAYPAL SETUP REQUIRED' : data.paypalReady ? 'PAYPAL READY · CODEX SIGN-IN REQUIRED' : 'PAYPAL AND CODEX SETUP REQUIRED';
 }).catch(() => {
   const status = document.querySelector('#service-status');
   if (status) status.textContent = 'SERVER UNAVAILABLE';
