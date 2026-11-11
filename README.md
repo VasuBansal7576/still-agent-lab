@@ -18,7 +18,7 @@ The app binds to localhost and keeps order state in memory. Restarting clears th
 
 ## What the verdict means
 
-The buggy agent is instructed to treat the duplicate customer request as new. The corrected agent is instructed to inspect refund history. Both use a real model and the same tool interface; neither outcome is guaranteed. The application records calls before PayPal responds so an unsafe attempted duplicate can be flagged even when PayPal rejects it. Deterministic checks decide the verdict. A missing provider response or incomplete agent run is inconclusive. AI-generated explanations do not change the verdict.
+The intentionally buggy agent loses its prior conversation and sees an empty refund history on each request. The corrected agent keeps its conversation and can inspect refund history. Both use a real model and the same tool interface; neither outcome is guaranteed. The application records calls before PayPal responds so an unsafe attempted duplicate can be flagged even when PayPal rejects it. Deterministic checks decide the verdict. A missing provider response or incomplete agent run is inconclusive. AI-generated explanations do not change the verdict.
 
 The demo runs one hand-authored scenario. It does not yet import τ-bench or UCI Online Retail data, connect arbitrary external agents, or estimate real-world failure rates. See [PRODUCT.md](PRODUCT.md) for the wider product vision and acceptance criteria.
 
