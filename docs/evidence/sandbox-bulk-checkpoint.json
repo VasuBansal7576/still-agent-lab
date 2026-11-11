@@ -1,10 +1,10 @@
 {
-  "at": "2026-11-11T19:51:06.718Z",
+  "at": "2026-11-11T20:20:46.667Z",
   "batchId": "40f79126-1d0a-4152-b23d-5ef9c221e7ce",
-  "claims": 4246,
-  "compared": 3049,
+  "claims": 4998,
+  "compared": 3683,
   "agreed": 6,
-  "disagreed": 3043,
-  "unverified": 1951,
-  "note": "Checkpoint only. Unverified includes unattempted and cases awaiting reconciliation. Uncertain provider errors are excluded from comparisons. The sandbox run is not complete."
+  "disagreed": 3677,
+  "unverified": 1317,
+  "note": "Checkpoint only. Fresh-case candidate lists have been exhausted; unverified includes cases awaiting reconciliation. Uncertain provider errors are excluded from comparisons. The sandbox run is not complete."
 }
