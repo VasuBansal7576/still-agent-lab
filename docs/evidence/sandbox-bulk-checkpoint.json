@@ -1,10 +1,21 @@
 {
-  "at": "2026-11-11T20:20:46.667Z",
+  "at": "2026-11-11T20:24:48.552Z",
   "batchId": "40f79126-1d0a-4152-b23d-5ef9c221e7ce",
   "claims": 4998,
-  "compared": 3683,
+  "compared": 3684,
   "agreed": 6,
-  "disagreed": 3677,
-  "unverified": 1317,
-  "note": "Checkpoint only. Fresh-case candidate lists have been exhausted; unverified includes cases awaiting reconciliation. Uncertain provider errors are excluded from comparisons. The sandbox run is not complete."
+  "disagreed": 3678,
+  "unverified": 1316,
+  "deferredDisputePass": {
+    "inspected": 410,
+    "attempted": 3,
+    "remaining": 407
+  },
+  "delayedContinuationPass": {
+    "eligible": 769,
+    "previouslyClaimed": 302,
+    "attempted": 467,
+    "disagreed": 467
+  },
+  "note": "Checkpoint only. Fresh-case candidate lists exhausted; unverified includes provider-dependent cases. Delayed continuation results are separate from immediate comparisons. The sandbox run is not complete."
 }
