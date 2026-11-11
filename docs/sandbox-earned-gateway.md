@@ -1,12 +1,12 @@
 # Earned sandbox gateway
 
-`server/sandbox-earned-gateway.mjs` provides a server-side experimental gateway. It is not yet wired into the Still browser or toolkit interface. It never uses PayPal's production endpoint. It is not a production authorization system.
+`server/sandbox-earned-gateway.mjs` provides a server-side experimental gateway. Still exposes a controlled sandbox scenario in the browser. It is not wired into the toolkit interface. It never uses PayPal's production endpoint. It is not a production authorization system.
 
 `earnSandboxPermission` derives a mock permission from a complete passing batch and authenticates sampled PayPal sandbox receipts from Still's private replay ledger. The returned refund ceiling is the lower of the mock ceiling and the largest matching sandbox refund in the selected currency. An agent must pass the whole batch. A sandbox comparison must match, and any recorded disagreement rejects the grant. Unreplayed samples remain unverified. A sampled agreement does not establish reliability on those samples or all failure cases.
 
 `createSandboxEarnedGateway` requires a server-owned permission, sandbox credentials, a trusted store inspection function, and a durable reservation function. The gateway checks the agent, currency, explicit amount and ceiling, matching store identity, approved amount, payment history and dispute status. It fetches the capture from PayPal sandbox and reserves the capture and decision before attempting a refund. An uncertain provider outcome is not retried automatically. Never pass a permission, store adapter, or reservation function directly from an HTTP client.
 
-A trusted store adapter must independently establish the complete payment and dispute context. PayPal's reporting API and capture status alone cannot establish complete current refund history or the absence of every dispute. Still does not yet supply such a trusted adapter for this gateway. A positive sandbox refund through this module is **unverified**. Its grant does not authorize production PayPal access.
+A trusted store adapter must independently establish the complete payment and dispute context. PayPal's reporting API and capture status alone cannot establish complete current refund history or the absence of every dispute. Still does not yet supply such a trusted adapter for a real store. The controlled scenario below uses explicitly synthetic facts and has completed a sandbox refund. The grant does not authorize production PayPal access.
 
 ## Observed evidence
 
@@ -25,3 +25,9 @@ const ledger = await createReplayLedger({ directory: '.data/replay-ledger' });
 console.log(JSON.stringify(await earnSandboxPermission({ batchId, batch, ledger })));
 NODE
 ```
+
+## Controlled scenario adapter
+
+`createSandboxScenarioGateway` in `server/sandbox-scenario-gateway.mjs` binds a freshly captured USD sandbox checkout approved by a sandbox buyer or created and captured by the server using a sandbox test card from Still's server session to a synthetic $50 approval, synthetic customer and synthetic clear-dispute state. It reserves the capture in the shared replay ledger before a refund and marks the checkout spent. A restarted process cannot reuse a reserved capture through this adapter. No client may supply the session, permission, credentials or reservation directory.
+
+The scenario facts are fictional. PayPal capture data does not establish an actual approved return, real customer identity, absence of a dispute, complete refund history, or exclusive use of the sandbox account. Successful execution demonstrates the earned gateway on this controlled scenario only. It does not establish a production authorization guarantee. The integrated browser scenario used a sandbox test-card capture, blocked an over-ceiling request and received HTTP 201 for a USD 50 refund. The [recorded evidence](evidence/sandbox-earned-gateway.json) includes PayPal re-reads of the partially refunded capture and completed refund.

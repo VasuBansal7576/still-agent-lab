@@ -10,7 +10,7 @@ export async function executeFailureReplay({ item, sessionId, approval, adapter,
   const failed = (reason, extra = {}) => ({ key, source: 'unverified-executor', reason, ...extra });
   if (spec.reason) return failed(spec.reason);
   const captureId = approval?.captureId;
-  if (!sessionId || approval?.sessionId !== sessionId || approval?.buyerApprovedFreshCapture !== true || !validId(captureId)) return failed('A fresh buyer-approved sandbox capture is required.');
+  if (!sessionId || approval?.sessionId !== sessionId || (approval?.buyerApprovedFreshCapture !== true && approval?.funding !== 'paypal-sandbox-test-card') || !validId(captureId)) return failed('A fresh buyer-approved sandbox capture is required.');
   if (spec.disputeRequired && (!validId(approval?.disputeId) || simulated)) return failed('A verified real sandbox dispute is required.');
   if (typeof adapter?.getCapture !== 'function' || typeof adapter?.refundCapture !== 'function' || typeof adapter?.refundCaptureWithoutAmount !== 'function' || typeof reserve !== 'function') return failed('A sandbox adapter and durable atomic reservation are required.');
   let capture;
@@ -35,5 +35,5 @@ export async function executeFailureReplay({ item, sessionId, approval, adapter,
       if (!refund.ok || ![200, 201].includes(refund.status) || refund.body.status !== 'COMPLETED' || !validId(refund.body.id)) break;
     } catch { return failed('Refund outcome is uncertain. Do not retry automatically.', { capture, attempts }); }
   }
-  return { key, capture, attempts, refundHistory: 'not-established', identityNote: spec.identityNote, status: 'completed', source: simulated ? 'simulated-provider-fixture' : 'paypal-sandbox', simulated, executor: 'trusted-local', buyerApprovedFreshCapture: true };
+  return { key, capture, attempts, refundHistory: 'not-established', ...(spec.disputeRequired ? { disputeKind: approval?.disputeKind === 'sandbox-card-chargeback' ? 'sandbox-card-chargeback' : 'sandbox-wallet-dispute' } : {}), identityNote: spec.identityNote, status: 'completed', source: simulated ? 'simulated-provider-fixture' : 'paypal-sandbox', simulated, executor: 'trusted-local', buyerApprovedFreshCapture: approval?.buyerApprovedFreshCapture === true, ...(approval?.funding === 'paypal-sandbox-test-card' ? { funding: 'paypal-sandbox-test-card' } : {}) };
 }

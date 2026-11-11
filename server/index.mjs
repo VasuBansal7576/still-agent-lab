@@ -7,6 +7,9 @@ import { saveSandboxCredentials, loadSandboxCredentials } from './sandbox-creden
 import { runScenario, normalizeRuleSettings } from './runner.mjs';
 import { runRetryDemo } from './retry-demo.mjs';
 import { runDisputeDemo } from './dispute-demo.mjs';
+import { earnSandboxPermission } from './sandbox-earned-gateway.mjs';
+import { createSandboxScenarioGateway } from './sandbox-scenario-gateway.mjs';
+import { createSandboxTestCardCapture } from './batch-replay-runner.mjs';
 import { verifyReplayDispute } from './replay-dispute.mjs';
 import { runExtraLeakDemo } from './extra-leak-demo.mjs';
 import { generatePersonas } from './personas.mjs';
@@ -276,6 +279,31 @@ http.createServer(async (request, response) => {
         const status = result.status === 'approval_required' ? 200 : result.status === 'unavailable' ? 503 : result.status === 'create_unknown' ? 502 : 409;
         return send(response, status, { status: result.status, error: result.error, checkout: publicCheckout(result.checkout) });
       } catch { return send(response, 503, { error: 'Replay checkout could not be prepared. Check the current checkout before trying again.' }); }
+    }
+    if (url.pathname === '/api/upgrade/sandbox-permission-demo') {
+      const input = await body(request);
+      if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || !session.paypal) return send(response, 400, { error: 'Open a valid passing batch and connect PayPal sandbox.' });
+      if (session.checkout && session.checkout.state !== 'spent') return send(response, 409, { error: 'Finish the current checkout before starting this demo.' });
+      const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+      const directory = fileURLToPath(new URL('../.data/replay-ledger/', import.meta.url));
+      const ledger = await createReplayLedger({ directory });
+      const permission = await earnSandboxPermission({ batchId: input.batchId, batch, ledger });
+      const credentials = await loadSandboxCredentials();
+      session.checkout = { state: 'capture_unknown', amount: '100.00', currency: 'USD', error: 'Sandbox test-card capture outcome is unknown. Do not automatically retry.' };
+      let paid;
+      try { paid = await createSandboxTestCardCapture({ amount: '100.00', currency: 'USD', credentials }); }
+      catch { return send(response, 502, { error: 'Sandbox capture outcome is unknown. Do not automatically retry.' }); }
+      if (!paid.ok) return send(response, 502, { error: 'PayPal did not confirm the sandbox capture. Do not automatically retry.', capture: paid });
+      const checkout = session.checkout;
+      checkout.orderId = paid.orderId; checkout.testCardCaptureConfirmed = true;
+      recordCapture(session, checkout, { id: paid.captureId, status: paid.captureStatus, amount: paid.amount });
+      const { facts, gateway, funding } = await createSandboxScenarioGateway({ session, permission, credentials, ledgerDirectory: directory });
+      const args = { agentId: permission.agentId, captureId: facts.captureId, orderId: facts.orderId, customerId: facts.customerId, currency: 'USD', decisionId: randomUUID() };
+      const blocked = await gateway.refund({ ...args, amount: '999999.00' });
+      const allowed = await gateway.refund({ ...args, amount: '50.00' });
+      const result = { permission, funding, facts, blocked, allowed, capture: paid, note: 'Sandbox only. Store approval, customer identity and clear-dispute facts are synthetic; external history and dispute state are not established.' };
+      try { return send(response, 200, await saveRun('sandbox-earned-permission', { ...result, scenarioId: 'sandbox-earned-permission', status: blocked.blocked && allowed.result?.ok && allowed.result.body?.status === 'COMPLETED' ? 'pass' : 'unverified', metadata: { provider: 'paypal-sandbox', facts: 'synthetic' } })); }
+      catch { return send(response, 200, { ...result, storageWarning: 'The result could not be saved.' }); }
     }
     if (url.pathname === '/api/upgrade/replay-dispute') {
       const input = await body(request);

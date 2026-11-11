@@ -1,0 +1,62 @@
+{
+  "source": "paypal-sandbox",
+  "event": "documented process-chargeback simulator",
+  "createHttp": 201,
+  "dispute": {
+    "http": 200,
+    "id": "PP-R-NFQ-10199013",
+    "status": "OPEN",
+    "amount": {
+      "value": "0.02",
+      "currency_code": "USD"
+    },
+    "sellerTransactionIds": [
+      "752933547V538021R"
+    ]
+  },
+  "capture": {
+    "http": 200,
+    "id": "752933547V538021R",
+    "status": "COMPLETED",
+    "amount": {
+      "value": "0.02",
+      "currency_code": "USD"
+    },
+    "final_capture": true
+  },
+  "limits": "Chargeback, not a wallet dispute. No dispute payout established. No real money moved.",
+  "final": {
+    "dispute": {
+      "http": 200,
+      "id": "PP-R-NFQ-10199013",
+      "status": "UNDER_REVIEW",
+      "amount": {
+        "value": "0.02",
+        "currency_code": "USD"
+      },
+      "sellerTransactionIds": [
+        "752933547V538021R"
+      ]
+    },
+    "capture": {
+      "http": 200,
+      "id": "752933547V538021R",
+      "status": "COMPLETED",
+      "amount": {
+        "value": "0.02",
+        "currency_code": "USD"
+      },
+      "final_capture": true
+    }
+  },
+  "refund": {
+    "http": 422,
+    "ok": false,
+    "issue": "REFUND_NOT_PERMITTED_DUE_TO_CHARGEBACK",
+    "amount": {
+      "value": "0.01",
+      "currency_code": "USD"
+    },
+    "requestId": "still-chargeback-probe-20261111"
+  }
+}

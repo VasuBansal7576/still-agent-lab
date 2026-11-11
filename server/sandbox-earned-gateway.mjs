@@ -27,7 +27,7 @@ export async function earnSandboxPermission({ batchId, batch, ledger, currency =
 
 // `store` and `reserve` are host-owned trusted inputs, never user-supplied JSON.
 // PayPal's sandbox API cannot itself prove a complete refund/dispute history.
-export function createSandboxEarnedGateway({ permission, credentials, store, reserve } = {}) {
+export function createSandboxEarnedGateway({ permission, credentials, store, reserve, scenarioMode = false } = {}) {
   if (permission?.scope !== 'paypal-sandbox-only' || !validId(permission.agentId) || !validId(permission.batchId) || permission.create_refund?.allowed !== true || money(permission.create_refund.maxPerOrder) === null || !/^[A-Z]{3}$/.test(permission.create_refund.currency || '') || typeof store?.inspect !== 'function' || typeof reserve !== 'function') throw new Error('A sandbox permission, trusted store and durable reservation are required.');
   const paypal = createPayPalSandbox(credentials);
   let chain = Promise.resolve();
@@ -37,11 +37,12 @@ export function createSandboxEarnedGateway({ permission, credentials, store, res
       if (agentId !== permission.agentId || !validId(captureId) || !validId(orderId) || !validId(customerId) || !validId(decisionId) || currency !== permission.create_refund.currency || money(amount) === null || money(amount) > money(permission.create_refund.maxPerOrder)) return denied('Request exceeds or does not match the earned permission.');
       let facts, capture;
       try { [facts, capture] = await Promise.all([store.inspect({ captureId, orderId, customerId }), paypal.getCapture(captureId)]); } catch { return denied('Store or sandbox payment context unavailable.'); }
-      if (!facts || facts.provenance !== 'trusted-store' || facts.complete !== true || facts.captureId !== captureId || facts.orderId !== orderId || facts.customerId !== customerId || facts.currency !== currency || facts.disputeState !== 'CLEAR' || facts.disputeChecked !== true || facts.cancellationComplete !== false || money(facts.approvedRemaining) === null || money(facts.paymentRemaining) === null || money(amount) > money(facts.approvedRemaining) || money(amount) > money(facts.paymentRemaining)) return denied('Trusted identity, approved amount, complete payment history and a clear dispute check are required.');
+      const acceptableFacts = scenarioMode ? facts?.provenance === 'sandbox-scenario' && facts.complete === false && facts.disputeState === 'SYNTHETIC_CLEAR' : facts?.provenance === 'trusted-store' && facts.complete === true && facts.disputeState === 'CLEAR';
+      if (!acceptableFacts || facts.captureId !== captureId || facts.orderId !== orderId || facts.customerId !== customerId || facts.currency !== currency || facts.disputeChecked !== true || facts.cancellationComplete !== false || money(facts.approvedRemaining) === null || money(facts.paymentRemaining) === null || money(amount) > money(facts.approvedRemaining) || money(amount) > money(facts.paymentRemaining)) return denied('Trusted identity, approved amount, complete payment history and a clear dispute check are required.');
       if (!capture.ok || capture.status !== 200 || capture.body?.id !== captureId || capture.body?.status !== 'COMPLETED' || capture.body?.amount?.currency_code !== currency || money(capture.body?.amount?.value) === null || money(amount) > money(capture.body.amount.value)) return denied('PayPal did not confirm a matching completed sandbox capture.');
       const requestId = `still-${createHash('sha256').update(JSON.stringify([permission.batchId,agentId,captureId,decisionId])).digest('hex').slice(0,40)}`;
       try { if (await reserve({ batchId: permission.batchId, captureId, decisionId, requestId }) !== true) return denied('Capture or decision was already reserved.'); } catch { return denied('A durable reservation could not be established.'); }
-      try { const result = await paypal.refundCapture(captureId, { amount, currency, requestId }); return { source: 'paypal-sandbox', requestId, result }; }
+      try { const result = await paypal.refundCapture(captureId, { amount, currency, requestId }); return { source: 'paypal-sandbox', requestId, result, ...(scenarioMode ? { scenarioFacts: 'synthetic', externalRefundHistory: 'not-established', realDisputeState: 'not-established' } : {}) }; }
       catch { return { ok: false, uncertain: true, source: 'paypal-sandbox', reason: 'Refund outcome unknown. Do not retry automatically.', requestId }; }
     };
     const result = chain.then(execute); chain = result.catch(() => {}); return result;

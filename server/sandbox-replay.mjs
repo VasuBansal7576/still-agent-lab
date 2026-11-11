@@ -91,7 +91,7 @@ export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } =
     if (expected.reason) return unverified(item, expected.reason);
     if (!receipt) return unverified(item, 'No executor receipt was supplied.');
     const simulated = receipt.source === 'simulated-provider-fixture' && receipt.simulated === true;
-    if (!simulated && (receipt.source !== 'paypal-sandbox' || receipt.executor !== 'trusted-local' || receipt.simulated !== false || receipt.buyerApprovedFreshCapture !== true && receipt.humanApprovedFreshCapture !== true)) return unverified(item, 'A trusted local executor must attest to a real sandbox response and a buyer-approved fresh capture.');
+    if (!simulated && (receipt.source !== 'paypal-sandbox' || receipt.executor !== 'trusted-local' || receipt.simulated !== false || receipt.buyerApprovedFreshCapture !== true && receipt.humanApprovedFreshCapture !== true && receipt.funding !== 'paypal-sandbox-test-card')) return unverified(item, 'A trusted local executor must attest to a real sandbox response and a buyer-approved fresh capture.');
     if (!simulated) {
       let verified = false;
       try { verified = verifyReceipt?.(receipt, item) === true; } catch { /* A failed verifier cannot establish provenance. */ }
@@ -116,7 +116,7 @@ export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } =
         comparisons[1].match = comparisons[1].match && mockSame === providerSame;
       }
       const agreement = comparisons.every(x => x.match);
-      return { key: item.key, personaId: item.personaId, trial: item.trial, status: simulated ? (agreement ? 'simulated-agreed' : 'simulated-disagreed') : (agreement ? 'agreed' : 'disagreed'), source: simulated ? 'simulated-provider-fixture' : 'paypal-sandbox', comparison: 'Refund outcome, amount, currency, retry identity and observable HTTP status', limitation: 'Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.', identityNote: expected.identityNote, comparisons };
+      return { key: item.key, personaId: item.personaId, trial: item.trial, status: simulated ? (agreement ? 'simulated-agreed' : 'simulated-disagreed') : (agreement ? 'agreed' : 'disagreed'), source: simulated ? 'simulated-provider-fixture' : 'paypal-sandbox', comparison: 'Refund outcome, amount, currency, retry identity and observable HTTP status', limitation: 'Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.', identityNote: expected.identityNote, disputeKind: receipt.disputeKind || (expected.disputeRequired ? 'unclassified-sandbox-dispute' : undefined), comparisons };
     }
     const capture = receipt.capture, refund = receipt.refund, request = receipt.request;
     const captureId = capture?.body?.id;

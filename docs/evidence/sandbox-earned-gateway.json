@@ -1,0 +1,87 @@
+{
+  "provenance": "paypal-sandbox",
+  "funding": "paypal-sandbox-test-card",
+  "note": "Controlled scenario; customer, approved return and clear-dispute facts are synthetic. No complete refund history or absence of dispute is established.",
+  "permission": {
+    "version": 1,
+    "agentId": "scripted-safe",
+    "scope": "paypal-sandbox-only",
+    "batchId": "d0c88817-eae0-471a-93d1-571fdd77f8ca",
+    "evidence": {
+      "mockTrials": 4,
+      "sandboxCompared": 1,
+      "coverage": "Sampled sandbox agreement does not establish all failures, complete PayPal history, or real-world safety."
+    },
+    "create_refund": {
+      "allowed": true,
+      "currency": "USD",
+      "maxPerOrder": "87.62",
+      "requireDisputeClear": true,
+      "requireDisputeCheck": true,
+      "requireApprovedAmount": true,
+      "requireIdentityMatch": true,
+      "requireStableDecisionId": true
+    }
+  },
+  "blocked": {
+    "amount": "999999.00",
+    "blocked": true,
+    "reason": "Request exceeds or does not match the earned permission."
+  },
+  "observedRefund": {
+    "requestId": "still-9c7fad36e7a7f7e6977daf3d740c30a9a6add68b",
+    "http": 201,
+    "id": "1FC31917X63879831",
+    "status": "COMPLETED",
+    "amount": {
+      "value": "50.00",
+      "currency_code": "USD"
+    }
+  },
+  "final": {
+    "capture": {
+      "http": 200,
+      "id": "5DC927363V559625J",
+      "status": "PARTIALLY_REFUNDED",
+      "amount": {
+        "value": "100.00",
+        "currency_code": "USD"
+      }
+    },
+    "refund": {
+      "http": 200,
+      "id": "1FC31917X63879831",
+      "status": "COMPLETED",
+      "amount": {
+        "value": "50.00",
+        "currency_code": "USD"
+      }
+    }
+  },
+  "secondRun": {
+    "runId": "4e846c3d-5069-4d81-9f20-29c1c229521e",
+    "overLimit": "blocked",
+    "request": {
+      "amount": "50.00",
+      "currency_code": "USD"
+    },
+    "providerResponse": {
+      "http": 201,
+      "id": "6SS1482157847540H",
+      "status": "PENDING"
+    },
+    "final": {
+      "capture": {
+        "http": 200,
+        "id": "5D569885GK602602X",
+        "status": "PARTIALLY_REFUNDED"
+      },
+      "refund": {
+        "http": 200,
+        "id": "6SS1482157847540H",
+        "status": "PENDING"
+      }
+    },
+    "verdict": "unverified"
+  }
+}

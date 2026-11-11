@@ -1,0 +1,143 @@
+{
+  "batchId": "40f79126-1d0a-4152-b23d-5ef9c221e7ce",
+  "note": "Snapshot after interrupted sandbox-only bulk pilot. Pending and rejected responses are actual sandbox mismatches. Interrupted claims need reconciliation.",
+  "compared": 25,
+  "agreed": 6,
+  "disagreed": 19,
+  "unverified": 4975,
+  "examples": [
+    {
+      "key": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-0005eaa92f659196361b\",5]",
+      "personaId": "persona-0005eaa92f659196361b",
+      "trial": 5,
+      "status": "disagreed",
+      "source": "paypal-sandbox",
+      "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+      "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+      "comparisons": [
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "442.14",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-234-5-1",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "ok": false,
+            "status": 422,
+            "body": {
+              "name": "UNPROCESSABLE_ENTITY",
+              "details": [
+                {
+                  "issue": "REFUND_NOT_ALLOWED"
+                }
+              ]
+            }
+          },
+          "match": false
+        }
+      ]
+    },
+    {
+      "key": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-00233e42116b64126550\",2]",
+      "personaId": "persona-00233e42116b64126550",
+      "trial": 2,
+      "status": "disagreed",
+      "source": "paypal-sandbox",
+      "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+      "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+      "comparisons": [
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "86.71",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-460-2-1",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "1CY54783D9423925A",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "86.71",
+                "currency_code": "GBP"
+              }
+            }
+          },
+          "match": true
+        },
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "86.71",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-460-2-2",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "25128041RE895463U",
+              "status": "PENDING",
+              "amount": {
+                "value": "86.71",
+                "currency_code": "GBP"
+              }
+            }
+          },
+          "match": false
+        }
+      ]
+    },
+    {
+      "key": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-0031748d972fb8ec645e\",1]",
+      "personaId": "persona-0031748d972fb8ec645e",
+      "trial": 1,
+      "status": "disagreed",
+      "source": "paypal-sandbox",
+      "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+      "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+      "comparisons": [
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "636.68",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-270-1-1",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "6Y3802794S109022L",
+              "status": "PENDING",
+              "amount": {
+                "value": "636.68",
+                "currency_code": "GBP"
+              }
+            }
+          },
+          "match": false
+        }
+      ]
+    }
+  ]
+}
