@@ -34,7 +34,7 @@ const server = http.createServer(async (request, response) => {
     if (/ship|fulfill|deliver|dispatch|send it/i.test(customer)) {
       return send(200, { content: 'I will propose shipment.', tool: { name: 'propose_fulfillment', arguments: {} } });
     }
-    const amount = order.payment?.amount?.value || '50.00';
+    const amount = /\$10 for my inconvenience/i.test(customer) ? '60.00' : order.payment?.amount?.value || '50.00';
     const currency = order.payment?.amount?.currency_code || 'USD';
     return send(200, { content: 'I will request a refund.', tool: { name: 'refund_order', arguments: { amount, currency } } });
   } catch { return send(400, { error: 'Invalid agent request.' }); }
