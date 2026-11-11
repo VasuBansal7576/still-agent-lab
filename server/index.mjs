@@ -6,6 +6,7 @@ import { runScenario } from './runner.mjs';
 import { codexReady } from './codex-model.mjs';
 import { listRuns, readRun, saveRun } from './store.mjs';
 import { scenarioCatalog } from './catalog.mjs';
+import { endpointUrl } from './agent-connection.mjs';
 
 try { process.loadEnvFile('.env'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const port = Number(process.env.PORT || 3000);
@@ -89,6 +90,9 @@ http.createServer(async (request, response) => {
       if (scenario.payment === 'captured' && (!captures.has(input.captureId) || spent.has(input.captureId))) return send(response, 400, { error: 'Create a fresh captured payment for each run' });
       if (!['buggy', 'safe', 'external'].includes(input.agent)) return send(response, 400, { error: 'Choose a valid agent' });
       if (input.agent === 'external' && (typeof input.agentEndpoint !== 'string' || input.agentEndpoint.length > 2048)) return send(response, 400, { error: 'Enter a local agent endpoint' });
+      if (input.agent === 'external') {
+        try { endpointUrl(input.agentEndpoint); } catch (error) { return send(response, 400, { error: error.message }); }
+      }
       if (input.policy !== undefined && (typeof input.policy !== 'string' || input.policy.length > 2000)) return send(response, 400, { error: 'Policy must be text of at most 2000 characters' });
       if (scenario.payment === 'captured') spent.add(input.captureId);
       const result = await runScenario({ captureId: input.captureId, agent: input.agent, agentEndpoint: input.agentEndpoint, scenario, paypal, model: process.env.CODEX_MODEL || 'gpt-6.1-terra', policy: input.policy });

@@ -56,15 +56,16 @@ function displayResults(data) {
   const label = pass ? 'PASSED' : fail ? 'VIOLATION' : 'INCONCLUSIVE';
   const eventRows = list.map((event, index) => {
     const type = event.type || event.kind || event.role || 'event';
-    const title = event.title || event.message || event.content || event.name || type;
+    const title = event.title || event.text || event.message || event.content || event.tool || event.name || type;
     const detail = event.detail || event.description || event.summary;
-    const extras = Object.fromEntries(entries(event).filter(([key]) => !['type','kind','role','title','message','content','name','detail','description','summary'].includes(key)));
+    const extras = Object.fromEntries(entries(event).filter(([key]) => !['type','kind','role','title','text','message','content','name','detail','description','summary'].includes(key)));
     return `<div class="row"><span class="n">${String(index + 1).padStart(2, '0')}</span><div><strong>${escapeHtml(typeof title === 'string' ? title : JSON.stringify(title))}</strong>${detail ? `<p>${escapeHtml(typeof detail === 'string' ? detail : JSON.stringify(detail))}</p>` : ''}${Object.keys(extras).length ? `<details class="details"><summary>VIEW EVENT DATA +</summary><pre>${escapeHtml(JSON.stringify(extras, null, 2))}</pre></details>` : ''}</div><span class="status">${escapeHtml(String(type).toUpperCase())}</span></div>`;
   }).join('');
   const checkRows = checks.map(check => `<div class="row"><span class="n">•</span><div><strong>${escapeHtml(check.label || check.name || check.rule || check.id || 'Policy check')}</strong><p>${escapeHtml(displayText(check.reason || check.evidence || check.message))}</p></div><span class="status">${escapeHtml(String(check.status ?? check.result ?? 'inconclusive').toUpperCase())}</span></div>`).join('');
   const agent = data.agent || state.agent;
   const agentName = agent === 'safe' ? 'Corrected agent' : agent === 'external' ? 'Your agent' : 'Buggy agent';
-  result.innerHTML = `<div class="result-head"><div><div class="mono" style="color:#85857b">02 / TEST RUN</div><h3>${agentName}</h3></div><span class="result-tag ${pass ? 'pass' : ''}">${escapeHtml(label)}</span></div>${data.storageWarning ? `<div class="storage-warning" role="alert"><strong>Run was not saved.</strong> ${escapeHtml(data.storageWarning)}</div>` : ''}<div class="rows">${eventRows || '<p>No events were recorded.</p>'}</div><div class="mono" style="margin-top:22px;color:#85857b">POLICY CHECKS</div><div class="rows">${checkRows || '<p>No policy checks were returned. The run cannot be verified.</p>'}</div>${data.explanation ? `<div class="notice"><strong>Explanation</strong><p>${escapeHtml(typeof data.explanation === 'string' ? data.explanation : JSON.stringify(data.explanation))}</p></div>` : ''}<div class="notice mono">TEST RUN / PROVIDER RESPONSES</div>`;
+  const scenarioName = state.scenarios.find(item => item.id === data.scenarioId)?.title || 'Repeated cancellation request';
+  result.innerHTML = `<div class="result-head"><div><div class="mono" style="color:#85857b">02 / TEST RUN · ${escapeHtml(scenarioName)}</div><h3>${agentName}</h3></div><span class="result-tag ${pass ? 'pass' : ''}">${escapeHtml(label)}</span></div>${data.storageWarning ? `<div class="storage-warning" role="alert"><strong>Run was not saved.</strong> ${escapeHtml(data.storageWarning)}</div>` : ''}<div class="rows">${eventRows || '<p>No events were recorded.</p>'}</div><div class="mono" style="margin-top:22px;color:#85857b">POLICY CHECKS</div><div class="rows">${checkRows || '<p>No policy checks were returned. The run cannot be verified.</p>'}</div>${data.explanation ? `<div class="notice"><strong>Explanation</strong><p>${escapeHtml(typeof data.explanation === 'string' ? data.explanation : JSON.stringify(data.explanation))}</p></div>` : ''}<div class="notice mono">TEST RUN / PROVIDER RESPONSES</div>`;
 }
 
 async function loadHistory() {

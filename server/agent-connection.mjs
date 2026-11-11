@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 const maxBytes = 1_000_000;
 const allowedTools = ['get_order', 'refund_order', 'propose_fulfillment'];
 
-function endpointUrl(endpoint) {
+export function endpointUrl(endpoint) {
   let url;
   try { url = new URL(endpoint); } catch { throw new Error('Invalid external agent endpoint.'); }
   if (url.protocol !== 'http:' || !['127.0.0.1', '[::1]'].includes(url.hostname) || url.username || url.password || url.hash) {
