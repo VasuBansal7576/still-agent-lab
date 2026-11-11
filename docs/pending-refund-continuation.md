@@ -19,3 +19,5 @@ node server/compare-pending-continuation.mjs BATCH-ID PERSONA-ID TRIAL
 ```
 
 The [pilot comparison](evidence/sandbox-pending-continuation-comparison.json) reports a disagreement because both actual refunds were pending while the mock expected completion. The relative refund ID identity matched the two distinct mock decisions.
+
+For new sandbox trials, the replay executor now follows a confirmed pending response with the next explicit recorded mock call. In a live bulk trial for persona `persona-92c9f74e23f45844d2a1`, trial 2, PayPal returned HTTP 201 for refund IDs `4BC7373935327500H` and `33T94470H6232842X`. Both were `PENDING` when read again. The durable receipt records `pending` and retains both calls. Transport-unknown responses still stop the replay.
