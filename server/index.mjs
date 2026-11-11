@@ -7,6 +7,7 @@ import { saveSandboxCredentials, loadSandboxCredentials } from './sandbox-creden
 import { runScenario, normalizeRuleSettings } from './runner.mjs';
 import { runRetryDemo } from './retry-demo.mjs';
 import { runDisputeDemo } from './dispute-demo.mjs';
+import { runExtraLeakDemo } from './extra-leak-demo.mjs';
 import { generatePersonas } from './personas.mjs';
 import { runTrials } from './trials.mjs';
 import { createExternalTrialAgent } from './trial-agent.mjs';
@@ -394,6 +395,20 @@ http.createServer(async (request, response) => {
       const result = await runDisputeDemo({ paypal: session.paypal, disputeId: input.disputeId, reserve: async id => { if (session.spent.has(id)) return false; const dir = new URL('../.data/dispute-reservations/', import.meta.url); await mkdir(dir, { recursive: true, mode: 0o700 }); try { await writeFile(new URL(`${id}.json`, dir), JSON.stringify({ captureId: id, disputeId: input.disputeId }), { flag: 'wx', mode: 0o600 }); } catch { return false; } session.spent.add(id); return true; } });
       if (result.status === 'unverified') return send(response, 200, result);
       try { return send(response, 200, await saveRun('scripted-dispute-buggy', result)); }
+      catch { return send(response, 200, { ...result, storageWarning: 'The run could not be saved.' }); }
+    }
+    if (url.pathname === '/api/upgrade/extra-leak') {
+      const input = await body(request);
+      if (!['omitted-amount', 'excessive-return', 'wrong-order', 'wrong-customer'].includes(input.scenarioId)) return send(response, 400, { error: 'Choose a sandbox scenario.' });
+      const result = await runExtraLeakDemo({ scenarioId: input.scenarioId, session, paypal: session.paypal, reserve: async data => {
+        if (session.spent.has(data.captureId)) return false;
+        const dir = new URL('../.data/extra-leak-reservations/', import.meta.url);
+        await mkdir(dir, { recursive: true, mode: 0o700 });
+        try { await writeFile(new URL(`${data.captureId}.json`, dir), JSON.stringify(data), { flag: 'wx', mode: 0o600 }); } catch { return false; }
+        session.spent.add(data.captureId); session.checkout.state = 'spent'; return true;
+      } });
+      if (result.status === 'unverified') return send(response, 200, result);
+      try { return send(response, 200, await saveRun('scripted-extra-buggy', result)); }
       catch { return send(response, 200, { ...result, storageWarning: 'The run could not be saved.' }); }
     }
     if (url.pathname === '/api/retry-demo') {

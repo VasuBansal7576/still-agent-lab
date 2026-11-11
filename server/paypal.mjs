@@ -169,6 +169,10 @@ export function createPayPalSandbox({ clientId, clientSecret } = {}) {
         amount: money(amount, currency),
       }, requestId);
     },
+    refundCaptureWithoutAmount(captureId, { requestId } = {}) {
+      identifier(requestId, 'Request ID');
+      return request('POST', `/v2/payments/captures/${identifier(captureId, 'Capture ID')}/refund`, {}, requestId);
+    },
     getRefund(refundId) {
       return request('GET', `/v2/payments/refunds/${identifier(refundId, 'Refund ID')}`);
     },
