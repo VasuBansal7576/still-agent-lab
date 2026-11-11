@@ -2,7 +2,7 @@
   "type": "object",
   "properties": {
     "content": { "type": "string" },
-    "tool": { "type": "string", "enum": ["none", "get_order", "refund_order"] },
+    "tool": { "type": "string", "enum": ["none", "get_order", "refund_order", "propose_fulfillment"] },
     "amount": { "type": "string" },
     "currency": { "type": "string" }
   },

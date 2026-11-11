@@ -1,29 +1,35 @@
 # Still
 
-Still is a prototype for testing online-store support agents against payment policies. It records agent decisions, sandbox tool calls and PayPal responses so a developer can inspect a cancellation followed by a duplicate refund request.
+Still lets developers run retail support agents through customer requests and inspect their decisions, tool calls, payment responses, and policy checks. The app uses PayPal sandbox for captured payments and refunds. Failed payments and fulfillment actions are simulated and labeled in the timeline.
 
-**Status:** The first scenario has been exercised end to end with Codex and PayPal sandbox using separate $50 USD captures. This project is a local prototype, not a production payment integration.
+Still is a local prototype. It supports one local HTTP agent protocol and five scenarios. It is not a production payment integration or a measure of real-world failure rates.
 
-## Run locally
+## Start the lab
 
-Use Node.js 22 or later and an installed Codex CLI signed in with ChatGPT. Copy `.env.example` to `.env` and set:
+Use Node.js 22 or later and a Codex CLI signed in with ChatGPT. Start the server with `npm start` and open [the local lab](http://127.0.0.1:3000). Set `PORT` before launch to use a different port.
 
-- `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` from a PayPal **sandbox** REST app.
-- `CODEX_MODEL` defaults to `gpt-6.1-terra`. The local runner uses the signed-in Codex CLI to propose agent actions. The application executes the PayPal sandbox calls itself.
-- `PORT` if port 3000 is unavailable.
+For captured-payment scenarios, create a PayPal sandbox REST app linked to a compatible sandbox business account. Enter its client ID and secret at `http://127.0.0.1:3000/setup`. They remain in server memory until it stops. Alternatively, copy `.env.example` to `.env` and enter the credentials there. Never use live credentials. US sandbox buyer and seller accounts support the $50 USD example. The app communicates only with PayPal sandbox.
 
-Start with `npm start` and open `http://127.0.0.1:3000`. Alternatively, enter the PayPal sandbox credentials at `http://127.0.0.1:3000/setup` after starting the server; this keeps them in memory only until the server stops. Choose an agent, create a sandbox order, approve it using a PayPal sandbox buyer, return to capture it, and run the scenario. Create a new order for each agent. Only PayPal sandbox endpoints are used. Credentials remain on the server and `.env` is excluded from Git.
+Choose a scenario and agent. For a captured-payment scenario, create a sandbox order, approve it with the sandbox buyer, return to Still, and capture it. Run the agent. Each run needs a fresh captured payment. For a failed-payment scenario, run directly without a sandbox capture.
 
-The app binds to localhost. Pending orders stay in memory and are cleared on restart. Completed run traces are saved locally under `.data/runs/`, which is excluded from Git. Do not expose the app to the internet as-is. Codex usage is subject to your account's plan and limits.
+The built-in buggy and corrected agents use the signed-in Codex CLI. `CODEX_MODEL` defaults to `gpt-6.1-terra`. Codex usage is subject to your account's plan and limits.
 
-## What the verdict means
+## Connect an agent
 
-The intentionally buggy agent loses its prior conversation and sees an empty refund history on each request. The corrected agent keeps its conversation and can inspect refund history. Both use a real model and the same tool interface; neither outcome is guaranteed. The application records calls before PayPal responds so an unsafe attempted duplicate can be flagged even when PayPal rejects it. Deterministic checks decide the verdict. A missing provider response or incomplete agent run is inconclusive. AI-generated explanations do not change the verdict.
+Run an agent that implements the [local agent protocol](docs/agent-protocol.md). Select **Your agent** and enter its loopback HTTP endpoint. Still sends the conversation and supported tool names. The agent proposes an action, and Still executes it and returns the result in the next request. Still does not give the agent PayPal credentials.
 
-The demo runs one hand-authored scenario. It does not yet import τ-bench or UCI Online Retail data, connect arbitrary external agents, or estimate real-world failure rates. See [PRODUCT.md](PRODUCT.md) for the wider product vision and acceptance criteria.
+To try an AI-backed agent using your signed-in Codex CLI, run `node examples/codex-agent.mjs` in another terminal and use `http://127.0.0.1:8787/agent`. `node examples/agent.mjs` is a scripted protocol example, not an AI agent. Set `AGENT_PORT` to change either example's port.
 
-## Verified demo
+## Scenarios and results
 
-On November 11, 2026, the buggy agent received a completed $50 sandbox capture, issued a completed $50 refund, and attempted another $50 refund on the duplicate request. PayPal rejected the second request with HTTP 422 and `CAPTURE_FULLY_REFUNDED`; the fixed amount and duplicate checks failed. On a separate fresh capture, the corrected agent issued a completed $50 refund, recognized the duplicate request, and made no second refund call; all four checks passed. Both runs used the signed-in Codex CLI with `gpt-6.1-terra`. Their full sanitized traces remain in the local run history, not in the public repository.
+The catalog includes repeated cancellation, a request for more than the captured amount, a partial return, a refund request after failed payment, and a shipping request after failed payment. The basket shape is adapted from UCI Online Retail. Customer requests, USD prices, payment failures, and fulfillment are synthetic. See [data and sources](DATA.md).
 
-Model behavior can vary. For a new demonstration, inspect the customer requests, agent messages, tool calls, PayPal responses and policy checks for each run. A model or sandbox failure is an unverified run, not a pass.
+The policy field supplies instructions to the agent. Fixed checks cover captured payment, remaining refund amount and currency, duplicate refund attempts, and fulfillment after failed payment where applicable. Additional free-text policies are not automatically evaluated. The timeline records actions before provider responses, so an unsafe attempt can fail even when PayPal rejects it. Missing evidence produces an inconclusive result. AI explanations do not decide the verdict.
+
+Runs are stored locally in `.data/runs/` and shown in history. Pending payments and in-memory credentials are lost on restart. The server binds to localhost. Do not expose it to the internet as-is.
+
+## Demonstrated behavior
+
+On November 11, 2026, the original duplicate-cancellation demo ran with GPT-6.1 Terra and separate PayPal sandbox captures. PayPal completed the buggy agent's first $50 refund and rejected its duplicate with HTTP 422 and `CAPTURE_FULLY_REFUNDED`. The checker flagged the duplicate attempt. On another capture, the corrected agent made one completed refund and no second refund call. The saved timelines record both outcomes.
+
+The expanded catalog and external-agent path also need integrated verification against fresh sandbox payments. A simulated provider or scripted example alone does not prove that payment journey. Model behavior can vary between runs.

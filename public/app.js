@@ -4,8 +4,11 @@ const result = document.querySelector('#result');
 const runButton = document.querySelector('#run');
 const policyInput = document.querySelector('#policy');
 const historyList = document.querySelector('#history-list');
+const scenarioSelect = document.querySelector('#scenario-select');
+const agentEndpoint = document.querySelector('#agent-endpoint');
+const agentConnection = document.querySelector('#agent-connection');
 const choiceButtons = [...document.querySelectorAll('[data-agent]')];
-const state = { agent: 'buggy', phase: 'idle', orderId: null, captureId: null, response: null, history: [] };
+const state = { agent: 'buggy', phase: 'idle', orderId: null, captureId: null, response: null, history: [], scenarios: [], scenario: null };
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
@@ -30,6 +33,8 @@ function setPhase(phase) {
   const busy = ['creating', 'capturing', 'running'].includes(phase);
   runButton.disabled = busy;
   policyInput.disabled = busy;
+  scenarioSelect.disabled = busy || ['approval', 'captured'].includes(phase);
+  agentEndpoint.disabled = busy || ['approval', 'captured'].includes(phase);
   choiceButtons.forEach(button => { button.disabled = busy || phase === 'approval' || phase === 'capturing' || phase === 'captured'; });
   historyList.querySelectorAll('button').forEach(button => { button.disabled = busy || phase === 'approval' || phase === 'captured'; });
 }
@@ -58,7 +63,8 @@ function displayResults(data) {
   }).join('');
   const checkRows = checks.map(check => `<div class="row"><span class="n">•</span><div><strong>${escapeHtml(check.label || check.name || check.rule || check.id || 'Policy check')}</strong><p>${escapeHtml(displayText(check.reason || check.evidence || check.message))}</p></div><span class="status">${escapeHtml(String(check.status ?? check.result ?? 'inconclusive').toUpperCase())}</span></div>`).join('');
   const agent = data.agent || state.agent;
-  result.innerHTML = `<div class="result-head"><div><div class="mono" style="color:#85857b">02 / SANDBOX RUN</div><h3>${agent === 'safe' ? 'Corrected agent' : 'Buggy agent'}</h3></div><span class="result-tag ${pass ? 'pass' : ''}">${escapeHtml(label)}</span></div>${data.storageWarning ? `<div class="storage-warning" role="alert"><strong>Run was not saved.</strong> ${escapeHtml(data.storageWarning)}</div>` : ''}<div class="rows">${eventRows || '<p>No events were recorded.</p>'}</div><div class="mono" style="margin-top:22px;color:#85857b">POLICY CHECKS</div><div class="rows">${checkRows || '<p>No policy checks were returned. The run cannot be verified.</p>'}</div>${data.explanation ? `<div class="notice"><strong>Explanation</strong><p>${escapeHtml(typeof data.explanation === 'string' ? data.explanation : JSON.stringify(data.explanation))}</p></div>` : ''}<div class="notice mono">SANDBOX RUN / PROVIDER RESPONSES</div>`;
+  const agentName = agent === 'safe' ? 'Corrected agent' : agent === 'external' ? 'Your agent' : 'Buggy agent';
+  result.innerHTML = `<div class="result-head"><div><div class="mono" style="color:#85857b">02 / TEST RUN</div><h3>${agentName}</h3></div><span class="result-tag ${pass ? 'pass' : ''}">${escapeHtml(label)}</span></div>${data.storageWarning ? `<div class="storage-warning" role="alert"><strong>Run was not saved.</strong> ${escapeHtml(data.storageWarning)}</div>` : ''}<div class="rows">${eventRows || '<p>No events were recorded.</p>'}</div><div class="mono" style="margin-top:22px;color:#85857b">POLICY CHECKS</div><div class="rows">${checkRows || '<p>No policy checks were returned. The run cannot be verified.</p>'}</div>${data.explanation ? `<div class="notice"><strong>Explanation</strong><p>${escapeHtml(typeof data.explanation === 'string' ? data.explanation : JSON.stringify(data.explanation))}</p></div>` : ''}<div class="notice mono">TEST RUN / PROVIDER RESPONSES</div>`;
 }
 
 async function loadHistory() {
@@ -74,8 +80,9 @@ async function loadHistory() {
     historyList.innerHTML = state.history.map(run => {
       const when = new Date(run.createdAt);
       const date = Number.isNaN(when.valueOf()) ? 'Date unavailable' : when.toLocaleString();
-      const name = run.agent === 'safe' ? 'Corrected agent' : run.agent === 'buggy' ? 'Buggy agent' : 'Agent';
-      return `<button class="history-item" data-run-id="${escapeHtml(run.id)}"><span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(date)}</small></span><span class="mono">${escapeHtml(String(run.status || 'inconclusive').toUpperCase())} &nbsp; ↗</span></button>`;
+      const name = run.agent === 'safe' ? 'Corrected agent' : run.agent === 'buggy' ? 'Buggy agent' : 'Your agent';
+      const scenarioName = state.scenarios.find(item => item.id === run.scenarioId)?.title || 'Repeated cancellation request';
+      return `<button class="history-item" data-run-id="${escapeHtml(run.id)}"><span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(scenarioName)} · ${escapeHtml(date)}</small></span><span class="mono">${escapeHtml(String(run.status || 'inconclusive').toUpperCase())} &nbsp; ↗</span></button>`;
     }).join('');
     setPhase(state.phase);
   } catch (error) {
@@ -115,8 +122,31 @@ document.querySelectorAll('.open-app').forEach(button => button.onclick = () => 
 document.querySelector('#back').onclick = () => { workspace.hidden = true; landing.hidden = false; window.scrollTo(0, 0); };
 choiceButtons.forEach(button => button.onclick = () => {
   state.agent = button.dataset.agent;
+  agentConnection.hidden = state.agent !== 'external';
   choiceButtons.forEach(choice => choice.classList.toggle('selected', choice === button));
 });
+
+function chooseScenario() {
+  state.scenario = state.scenarios.find(item => item.id === scenarioSelect.value);
+  if (!state.scenario) return;
+  policyInput.value = state.scenario.policy;
+  document.querySelector('.app-heading h1').textContent = state.scenario.title;
+  document.querySelector('.app-heading p').textContent = state.scenario.payment === 'captured' ? 'Use a fresh sandbox capture for each run.' : 'Use a simulated failed payment to check agent decisions.';
+  document.querySelector('.runner-left > .notice').textContent = state.scenario.payment === 'captured' ? 'Each run needs a new sandbox payment.' : 'The failed payment is simulated.';
+  document.querySelector('.scenario h2').textContent = state.scenario.title;
+  const items = state.scenario.basket.map(item => `${item.quantity} × ${item.item}`).join(', ');
+  document.querySelector('.scenario p').textContent = `${state.scenario.description} Basket: ${items}. ${state.scenario.provenance}`;
+  document.querySelector('.facts').innerHTML = `<div><span class="mono">ORDER</span><strong>${escapeHtml(state.scenario.amount)} ${escapeHtml(state.scenario.currency)}</strong></div><div><span class="mono">PAYMENT</span><strong>${state.scenario.payment === 'captured' ? 'PayPal sandbox' : 'Simulated failure'}</strong></div>`;
+  setPhase('idle');
+  runButton.innerHTML = state.scenario.payment === 'captured' ? 'Create sandbox order <span>↗</span>' : 'Run the agent <span>↗</span>';
+  message('Ready to run', state.scenario.payment === 'captured' ? 'Create and approve a fresh sandbox payment for this scenario.' : 'This scenario uses a synthetic failed payment. No PayPal transaction is created.');
+}
+scenarioSelect.onchange = chooseScenario;
+request('/api/scenarios').then(data => {
+  state.scenarios = data.scenarios;
+  scenarioSelect.innerHTML = state.scenarios.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.title)}</option>`).join('');
+  chooseScenario();
+}).catch(() => { scenarioSelect.innerHTML = '<option>Scenarios unavailable</option>'; runButton.disabled = true; });
 
 runButton.onclick = async () => {
   if (state.phase === 'approval') {
@@ -135,7 +165,7 @@ runButton.onclick = async () => {
     }
     return;
   }
-  if (state.phase === 'captured') {
+  if (state.phase === 'captured' || (state.scenario?.payment === 'failed' && !['running', 'approval'].includes(state.phase))) {
     const policy = policyInput.value.trim();
     if (!policy) {
       message('Store policy required', 'Enter a store policy before running the agent.');
@@ -146,16 +176,16 @@ runButton.onclick = async () => {
     runButton.innerHTML = 'Running agent <span>↗</span>';
     message('Agent is working', 'Waiting for agent decisions and PayPal sandbox responses.');
     try {
-      const data = await request('/api/runs', { captureId: state.captureId, agent: state.agent, policy });
+      const data = await request('/api/runs', { captureId: state.captureId, agent: state.agent, agentEndpoint: agentEndpoint.value, scenarioId: state.scenario.id, policy });
       state.response = data;
       setPhase('complete');
-      runButton.innerHTML = 'Create another order <span>↗</span>';
+      runButton.innerHTML = state.scenario.payment === 'captured' ? 'Create another order <span>↗</span>' : 'Run again <span>↗</span>';
       displayResults(data);
       loadHistory();
     } catch (error) {
       setPhase('failed');
-      runButton.innerHTML = 'Create another order <span>↗</span>';
-      message('Run not verified', `${error.message} Start a fresh sandbox order before trying again.`);
+      runButton.innerHTML = state.scenario.payment === 'captured' ? 'Create another order <span>↗</span>' : 'Run again <span>↗</span>';
+      message('Run not verified', error.message);
     }
     return;
   }

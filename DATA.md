@@ -1,17 +1,11 @@
 # Scenario data and sources
 
-## Current scenario
+The catalog contains five synthetic scenarios. Each uses a $50 USD synthetic order and customer requests. Failed payments and fulfillment decisions are simulations. When a scenario requires a captured payment, the capture and refund responses come from PayPal sandbox.
 
-The duplicate-cancellation scenario is hand-authored for this project. It uses a synthetic customer request and a $50 USD sandbox payment. It does not contain an imported τ-bench task, an Online Retail basket or a historical PayPal transaction. The actual capture and refund responses must come from the user's PayPal sandbox when the live scenario runs.
+The basket uses three product types and quantities adapted from the first invoice in [UCI Online Retail](https://archive.ics.uci.edu/dataset/352/online+retail). The source quantities are 6, 6, and 8. We shortened the descriptions and invented USD prices to total $50. The original prices are in pounds sterling. We do not include the original customer ID or invoice number. These baskets are not historical PayPal transactions.
 
-The original [τ-bench retail policy](https://github.com/sierra-research/tau-bench/blob/main/tau_bench/envs/retail/wiki.md) describes customer-service rules for order cancellation and refunds. Its policy checks order status and requires explicit customer confirmation. This project uses its own policy and duplicate-request scenario, so its verdicts are not τ-bench scores and the scenario is not a benchmark-compatible task.
+Online Retail is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Cite the dataset as Chen, D. (2015). *Online Retail* [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5BW33.
 
-The [τ-bench repository](https://github.com/sierra-research/tau-bench) identifies its original retail tasks as outdated and points to the maintained τ³-bench repository for corrected tasks. The original repository is distributed under the [MIT license](https://github.com/sierra-research/tau-bench/blob/main/LICENSE). No original τ-bench task text is included here.
+The original [tau-bench retail policy](https://github.com/sierra-research/tau-bench/blob/main/tau_bench/envs/retail/wiki.md) informed the order-status and cancellation concepts. Its policy requires customer confirmation and authentication. Still uses shorter original scenarios and policies, not benchmark tasks or scores. The original repository is licensed under the [MIT license](https://github.com/sierra-research/tau-bench/blob/main/LICENSE), copyright 2024 Sierra.
 
-## Online Retail dataset
-
-[Online Retail](https://archive.ics.uci.edu/dataset/352/online+retail) contains historical transactions from a UK retailer. Its creator is Daqing Chen. The dataset is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). UCI requests this citation:
-
-Chen, D. (2015). *Online Retail* [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5BW33.
-
-The current project does not import, transform or distribute this dataset. If it is used later, document the specific source version, transformations and attribution. Basket values would describe historical retail transactions, not PayPal payments or predicted real-world agent failure rates.
+A few selected scenarios cannot establish an agent's real-world failure rate. See [scenario sources](docs/scenario-sources.md) for details.

@@ -27,5 +27,5 @@ export async function listRuns() {
   try { files = await readdir(directory); }
   catch (error) { if (error.code === 'ENOENT') return []; throw error; }
   const runs = await Promise.all(files.filter(name => idPattern.test(name.replace(/\.json$/, '')) && name.endsWith('.json')).map(name => readRun(name.slice(0, -5))));
-  return runs.filter(Boolean).map(({ id, agent, status, createdAt }) => ({ id, agent, status, createdAt })).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return runs.filter(Boolean).map(({ id, agent, scenarioId, status, createdAt }) => ({ id, agent, scenarioId, status, createdAt })).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }

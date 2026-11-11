@@ -5,6 +5,7 @@ import { createPayPalSandbox } from './paypal.mjs';
 import { runScenario } from './runner.mjs';
 import { codexReady } from './codex-model.mjs';
 import { listRuns, readRun, saveRun } from './store.mjs';
+import { scenarioCatalog } from './catalog.mjs';
 
 try { process.loadEnvFile('.env'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const port = Number(process.env.PORT || 3000);
@@ -43,6 +44,7 @@ http.createServer(async (request, response) => {
       return response.end(content);
     }
     if (request.method === 'GET' && url.pathname === '/api/status') return send(response, 200, { ready: paypalReady && modelReady, paypalReady, modelReady, model: process.env.CODEX_MODEL || 'gpt-6.1-terra' });
+    if (request.method === 'GET' && url.pathname === '/api/scenarios') return send(response, 200, { scenarios: scenarioCatalog });
     if (request.method === 'GET' && url.pathname === '/api/runs') return send(response, 200, { runs: await listRuns() });
     const savedMatch = url.pathname.match(/^\/api\/runs\/([A-Za-z0-9-]+)$/);
     if (request.method === 'GET' && savedMatch) {
@@ -80,13 +82,17 @@ http.createServer(async (request, response) => {
       return send(response, 200, { captureId: capture.id, capture });
     }
     if (url.pathname === '/api/runs') {
-      if (!paypal || !modelReady) return send(response, 503, { error: 'PayPal sandbox and AI model credentials are required' });
       const input = await body(request);
-      if (!captures.has(input.captureId) || spent.has(input.captureId)) return send(response, 400, { error: 'Create a fresh captured payment for each run' });
-      if (!['buggy', 'safe'].includes(input.agent)) return send(response, 400, { error: 'Choose a valid agent' });
+      const scenario = scenarioCatalog.find(item => item.id === input.scenarioId);
+      if (!scenario) return send(response, 400, { error: 'Choose a valid scenario' });
+      if ((scenario.payment === 'captured' && !paypal) || (input.agent !== 'external' && !modelReady)) return send(response, 503, { error: 'The selected scenario needs PayPal sandbox and a configured agent' });
+      if (scenario.payment === 'captured' && (!captures.has(input.captureId) || spent.has(input.captureId))) return send(response, 400, { error: 'Create a fresh captured payment for each run' });
+      if (!['buggy', 'safe', 'external'].includes(input.agent)) return send(response, 400, { error: 'Choose a valid agent' });
+      if (input.agent === 'external' && (typeof input.agentEndpoint !== 'string' || input.agentEndpoint.length > 2048)) return send(response, 400, { error: 'Enter a local agent endpoint' });
       if (input.policy !== undefined && (typeof input.policy !== 'string' || input.policy.length > 2000)) return send(response, 400, { error: 'Policy must be text of at most 2000 characters' });
-      spent.add(input.captureId);
-      const result = await runScenario({ captureId: input.captureId, agent: input.agent, paypal, model: process.env.CODEX_MODEL || 'gpt-6.1-terra', policy: input.policy });
+      if (scenario.payment === 'captured') spent.add(input.captureId);
+      const result = await runScenario({ captureId: input.captureId, agent: input.agent, agentEndpoint: input.agentEndpoint, scenario, paypal, model: process.env.CODEX_MODEL || 'gpt-6.1-terra', policy: input.policy });
+      result.scenarioId = scenario.id;
       try { return send(response, 200, await saveRun(input.agent, result)); }
       catch { return send(response, 200, { ...result, agent: input.agent, storageWarning: 'The run could not be saved. Copy the trace before leaving this page.' }); }
     }

@@ -56,7 +56,7 @@ export async function codexChat({ messages, explain = false, model = 'gpt-6.1-te
     'Do not use any Codex tools, shell, filesystem, network, or browser. Output only the structured response.',
     explain
       ? 'Explain the supplied evidence. Set tool to none and put the explanation in content.'
-      : 'Choose exactly one next action. Use get_order to inspect the order and refund history; use refund_order to request a refund with amount and currency; use none when replying to the customer. Calls are proposals: the host executes them and returns the result in the next conversation. Do not invent results. Set unused string fields to empty strings.',
+      : 'Choose exactly one next action. Use get_order to inspect the order and refund history; use refund_order to request a refund with amount and currency; use propose_fulfillment to propose shipping; use none when replying to the customer. Calls are proposals: the host executes them and returns the result in the next conversation. Do not invent results. Set unused string fields to empty strings.',
     `Conversation: ${JSON.stringify(messages)}`
   ].join('\n');
   const args = ['exec', '--ephemeral', '--ignore-user-config', '--skip-git-repo-check', '--sandbox', 'read-only', '--disable', 'shell_tool', '--disable', 'unified_exec', '--disable', 'apps', '--disable', 'plugins', '--disable', 'browser_use', '--disable', 'code_mode_host', '--model', model, '--output-schema', schema, '--json', '-'];
@@ -71,7 +71,7 @@ export async function codexChat({ messages, explain = false, model = 'gpt-6.1-te
   if (!text) throw new Error('Codex did not return a model response.');
   let response;
   try { response = JSON.parse(text); } catch { throw new Error('Codex returned invalid structured output.'); }
-  if (typeof response.content !== 'string' || !['none', 'get_order', 'refund_order'].includes(response.tool) || typeof response.amount !== 'string' || typeof response.currency !== 'string') throw new Error('Codex returned an invalid action.');
+  if (typeof response.content !== 'string' || !['none', 'get_order', 'refund_order', 'propose_fulfillment'].includes(response.tool) || typeof response.amount !== 'string' || typeof response.currency !== 'string') throw new Error('Codex returned an invalid action.');
   if (explain && response.tool !== 'none') throw new Error('Codex requested a tool while explaining a result.');
   const message = { role: 'assistant', content: response.content || null };
   if (response.tool !== 'none') {
