@@ -1,5 +1,5 @@
 // Invoice number and [stock code, quantity, unit price in pence].
-// Source rows: https://huggingface.co/datasets/pavan-naik/Online-Retail
+// Source rows: https://archive.ics.uci.edu/static/public/352/online+retail.zip
 export const UCI_BASKETS = Object.freeze([
   ['536365', [['85123A', 6, 255], ['71053', 6, 339], ['84406B', 8, 275], ['84029G', 6, 339], ['84029E', 6, 339], ['22752', 2, 765], ['21730', 6, 425]]],
   ['536366', [['22633', 6, 185], ['22632', 6, 185]]],
