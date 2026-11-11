@@ -20,6 +20,7 @@ import { importVerifiedAccountPersonas } from './verified-account-personas.mjs';
 import { derivePermission, createGateway } from './gateway.mjs';
 import { createPayPalMock } from './paypal-mock.mjs';
 import { planSandboxReplays, reconcileSandboxReplays, executePlannedSandboxReplay, sandboxReplayPage } from './sandbox-replay.mjs';
+import { summarizeReplayFidelity } from './replay-fidelity.mjs';
 import { createReplayLedger } from './replay-ledger.mjs';
 import { createShadowSessions } from './shadow-sessions.mjs';
 import { createReplayCheckout } from './replay-checkout.mjs';
@@ -254,7 +255,7 @@ http.createServer(async (request, response) => {
         const ledger = await createReplayLedger({ directory: fileURLToPath(new URL('../.data/replay-ledger/', import.meta.url)) });
         const comparison = reconcileSandboxReplays({ plan, evidence: await ledger.evidence(), verifyReceipt: ledger.verifyReceipt });
         const clusterReplays = (batch.failureClusters || []).map(cluster => ({ clusterId: cluster.id, result: comparison.results.find(result => result.personaId === cluster.example?.personaId && result.trial === cluster.example?.trial) || { status: 'unverified', reason: 'Example not in the current replay window.' } }));
-        return send(response, 200, { clusterReplays, failureCount: plan.failureCount, sampledPassCount: plan.sampledPassCount, queueCount: plan.queueCount, readyCount: plan.readyCount, deferredCount: plan.deferredCount, agreement: comparison.agreement, compared: comparison.compared, agreed: comparison.agreed, disagreed: comparison.disagreed, status: comparison.unverified || !comparison.compared ? 'unverified' : 'compared', reason: comparison.unverified || !comparison.compared ? 'Remaining replays need fresh approved sandbox captures or support for their scenario. External and pending refunds cannot be excluded.' : undefined });
+        return send(response, 200, { clusterReplays, failureCount: plan.failureCount, sampledPassCount: plan.sampledPassCount, queueCount: plan.queueCount, readyCount: plan.readyCount, deferredCount: plan.deferredCount, agreement: comparison.agreement, compared: comparison.compared, agreed: comparison.agreed, disagreed: comparison.disagreed, unverified: comparison.unverified, fidelity: summarizeReplayFidelity(comparison), status: comparison.unverified || !comparison.compared ? 'unverified' : 'compared', reason: comparison.unverified || !comparison.compared ? 'Some cases have no comparable sandbox evidence, or have uncertain or incomplete provider responses. External refund history remains unestablished.' : undefined });
       } catch { return send(response, 400, { error: 'Replay plan could not be prepared.' }); }
     }
     if (url.pathname === '/api/upgrade/replay-page') {
