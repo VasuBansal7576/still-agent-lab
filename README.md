@@ -12,7 +12,7 @@ Use Node.js 22 or later and an installed Codex CLI signed in with ChatGPT. Copy 
 - `CODEX_MODEL` defaults to `gpt-6.1-terra`. The local runner uses the signed-in Codex CLI to propose agent actions. The application executes the PayPal sandbox calls itself.
 - `PORT` if port 3000 is unavailable.
 
-Start with `npm start` and open `http://127.0.0.1:3000`. Choose an agent, create a sandbox order, approve it using a PayPal sandbox buyer, return to capture it, and run the scenario. Create a new order for each agent. Only PayPal sandbox endpoints are used. Credentials remain on the server and `.env` is excluded from Git.
+Start with `npm start` and open `http://127.0.0.1:3000`. Alternatively, enter the PayPal sandbox credentials at `http://127.0.0.1:3000/setup` after starting the server; this keeps them in memory only until the server stops. Choose an agent, create a sandbox order, approve it using a PayPal sandbox buyer, return to capture it, and run the scenario. Create a new order for each agent. Only PayPal sandbox endpoints are used. Credentials remain on the server and `.env` is excluded from Git.
 
 The app binds to localhost. Pending orders stay in memory and are cleared on restart. Completed run traces are saved locally under `.data/runs/`, which is excluded from Git. Do not expose the app to the internet as-is. Codex usage is subject to your account's plan and limits.
 

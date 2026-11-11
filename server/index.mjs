@@ -8,13 +8,13 @@ import { listRuns, readRun, saveRun } from './store.mjs';
 
 try { process.loadEnvFile('.env'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const port = Number(process.env.PORT || 3000);
-const paypalReady = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
+let paypalReady = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
 const modelReady = await codexReady();
-const paypal = paypalReady ? createPayPalSandbox({ clientId: process.env.PAYPAL_CLIENT_ID, clientSecret: process.env.PAYPAL_CLIENT_SECRET }) : null;
+let paypal = paypalReady ? createPayPalSandbox({ clientId: process.env.PAYPAL_CLIENT_ID, clientSecret: process.env.PAYPAL_CLIENT_SECRET }) : null;
 const pending = new Map();
 const captures = new Set();
 const spent = new Set();
-const files = new Map([['/', ['public/index.html', 'text/html; charset=utf-8']], ['/app.js', ['public/app.js', 'text/javascript; charset=utf-8']]]);
+const files = new Map([['/', ['public/index.html', 'text/html; charset=utf-8']], ['/app.js', ['public/app.js', 'text/javascript; charset=utf-8']], ['/setup', ['public/setup.html', 'text/html; charset=utf-8']]]);
 
 function send(response, status, data) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
@@ -51,6 +51,14 @@ http.createServer(async (request, response) => {
     }
     if (request.method !== 'POST') return send(response, 404, { error: 'Not found' });
     if (request.headers['content-type']?.split(';')[0] !== 'application/json') return send(response, 415, { error: 'JSON required' });
+    if (url.pathname === '/api/setup/paypal') {
+      if (!origin || pending.size || captures.size) return send(response, 403, { error: 'Sandbox setup is unavailable during an active session' });
+      const input = await body(request);
+      if (!/^[A-Za-z0-9_-]{10,256}$/.test(input.clientId || '') || !/^[A-Za-z0-9_-]{10,256}$/.test(input.clientSecret || '')) return send(response, 400, { error: 'Enter a valid sandbox client ID and secret' });
+      paypal = createPayPalSandbox({ clientId: input.clientId, clientSecret: input.clientSecret });
+      paypalReady = true;
+      return send(response, 200, { connected: true, persistence: 'memory-only' });
+    }
     if (url.pathname === '/api/orders') {
       if (!paypal) return send(response, 503, { error: 'PayPal sandbox credentials are not configured' });
       await body(request);
