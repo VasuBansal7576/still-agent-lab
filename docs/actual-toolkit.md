@@ -25,7 +25,17 @@ STILL_TOOLKIT_INSTALL=/private/tmp/still-toolkit-check node examples/toolkit-sdk
 
 The example constructs PayPal's actual OpenAI toolkit and obtains its `get_dispute` and `create_refund` tool definitions. The reusable adapter routes scripted OpenAI-shaped tool calls through the official MCP SDK to Still's demo gateway. The gateway returned a clear mock dispute, then HTTP 201 and `MOCK-REFUND-toolkit-1` for a $50 mock refund. A repeated call returned that same mock refund ID. The script checks these results. It does not call an AI model or PayPal, and the toolkit's `handleToolCall` does not execute those calls.
 
-In the installed OpenAI integration, `handleToolCall` dispatches to its own PayPal API client. That client chooses a hard-coded sandbox or production PayPal base URL and exposes no supported Still gateway endpoint setting in its constructor. An existing direct SDK agent must replace its dispatch code with the adapter below. The bridge does not establish a one-line drop-in or full toolkit compatibility. The observed run covers two toolkit definitions and Still's disposable mock only. A real AI agent and live PayPal remain unverified.
+In the installed OpenAI integration, `handleToolCall` dispatches to its own PayPal API client. That client chooses a hard-coded sandbox or production PayPal base URL and exposes no supported Still gateway endpoint setting in its constructor. An existing direct SDK agent must replace its dispatch code with the adapter below. The bridge does not establish a one-line drop-in or full toolkit compatibility. The observed run covers two toolkit definitions and Still's disposable mock only. Live PayPal remains unverified.
+
+## Model-driven mock journey
+
+On November 11, 2026, a Codex subscription run with `gpt-6.1-terra` received the actual toolkit definitions and chose `get_dispute`, then `create_refund`, then a final response. The adapter sent its decisions through the official MCP SDK to Still's disposable mock. The mock returned `CLEAR` and HTTP 201 with `MOCK-REFUND-toolkit-1` for USD 50.00. The final response reported the mock refund. Run it with a logged-in Codex CLI and the pinned toolkit installation above:
+
+```sh
+STILL_TOOLKIT_INSTALL=/private/tmp/still-toolkit-check node examples/toolkit-model-codex.mjs
+```
+
+The runner uses Codex structured output to propose one action at a time and converts each proposal to an OpenAI-shaped call for the adapter. This is model-generated tool selection, not a native OpenAI function-calling API session. Model choices can vary; the command exits unsuccessfully if the ordered mock journey does not complete. It uses no PayPal credentials and does not prove a live PayPal refund, native toolkit dispatch, or compatibility with every toolkit agent. The Codex CLI needs access to its local app-server and subscription; a restrictive execution sandbox may prevent startup.
 
 ## Connect an OpenAI toolkit agent
 
@@ -50,7 +60,7 @@ for (let turn = 0; turn < 10; turn++) {
 
 The adapter preserves the toolkit's actual OpenAI tool definitions. It validates all calls in a response before dispatching any of them, rejects unsupported or malformed calls, and sends supported calls sequentially through MCP. It returns OpenAI tool messages with the MCP result encoded as JSON, including `isError`, so the model can see gateway denials. The gateway enforces its own narrower arguments and permissions. Transport errors reject the dispatch; handle them in the agent instead of falling back to the PayPal client. Repeated calls represent the same decision only within the binding's documented process lifetime.
 
-The example uses scripted assistant messages. It verifies the adapter with the actual toolkit's definitions and the official MCP client, but does not establish a model-generated roundtrip. Tool schemas and behavior may change in other toolkit versions.
+The pinned bridge uses scripted assistant messages. The separate model-driven mock journey above exercises the same adapter with model-generated decisions. Tool schemas and behavior may change in other toolkit versions.
 
 ## Request IDs
 
