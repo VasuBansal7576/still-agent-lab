@@ -1,0 +1,58 @@
+{
+  "key": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-13a8a240a8fc30855514\",4]",
+  "source": "paypal-sandbox",
+  "status": "disagreed",
+  "timing": "delayed-continuation",
+  "comparisons": [
+    {
+      "mock": {
+        "status": null,
+        "outcome": "COMPLETED",
+        "amount": {
+          "value": "215.24",
+          "currency_code": "GBP"
+        },
+        "id": "MOCK-REFUND-887-4-1",
+        "timeoutInjected": true
+      },
+      "provider": {
+        "http": 201,
+        "ok": true,
+        "id": "25087208AE229942C",
+        "status": "PENDING",
+        "amount": {
+          "value": "215.24",
+          "currency_code": "GBP"
+        },
+        "name": null
+      },
+      "match": false
+    },
+    {
+      "mock": {
+        "status": 201,
+        "outcome": "COMPLETED",
+        "amount": {
+          "value": "215.24",
+          "currency_code": "GBP"
+        },
+        "id": "MOCK-REFUND-887-4-2",
+        "timeoutInjected": false
+      },
+      "provider": {
+        "http": 201,
+        "ok": true,
+        "id": "8MM89717LX5553259",
+        "status": "PENDING",
+        "amount": {
+          "value": "215.24",
+          "currency_code": "GBP"
+        },
+        "name": null
+      },
+      "match": false,
+      "sameRefundIdentityMatches": true
+    }
+  ],
+  "limitation": "The second call occurred later than the recorded mock. Pending refunds are not completed. This separate report does not replace the immutable original receipt or enter the aggregate agreement score."
+}

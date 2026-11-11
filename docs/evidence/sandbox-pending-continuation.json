@@ -1,0 +1,79 @@
+{
+  "records": [
+    {
+      "state": "reserved",
+      "key": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-13a8a240a8fc30855514\",4]",
+      "firstRefundId": "25087208AE229942C",
+      "request": {
+        "captureId": "7HR537055H1543917",
+        "amount": "215.24",
+        "currency": "GBP",
+        "requestId": "still-c37e57baddc5b7a3167d5410853ba4b29994aa72"
+      },
+      "firstObserved": "PENDING",
+      "note": "Delayed continuation; timing differs from the original mock. No unknown provider response was retried."
+    },
+    {
+      "state": "observed",
+      "key": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-13a8a240a8fc30855514\",4]",
+      "source": "paypal-sandbox",
+      "timing": "delayed-continuation",
+      "first": {
+        "id": "25087208AE229942C",
+        "recordedStatus": "PENDING",
+        "latestStatus": "PENDING"
+      },
+      "request": {
+        "captureId": "7HR537055H1543917",
+        "amount": "215.24",
+        "currency": "GBP",
+        "requestId": "still-c37e57baddc5b7a3167d5410853ba4b29994aa72"
+      },
+      "response": {
+        "ok": true,
+        "status": 201,
+        "body": {
+          "id": "8MM89717LX5553259",
+          "status": "PENDING",
+          "amount": {
+            "value": "215.24",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "limitation": "This is a delayed second scripted call. It does not establish a continuous or immediate replay, exclusive access, or complete refund history."
+    }
+  ],
+  "final": {
+    "capture": {
+      "id": "7HR537055H1543917",
+      "http": 200,
+      "status": "REFUNDED",
+      "amount": {
+        "value": "430.48",
+        "currency_code": "GBP"
+      }
+    },
+    "refunds": [
+      {
+        "id": "25087208AE229942C",
+        "http": 200,
+        "status": "PENDING",
+        "amount": {
+          "value": "215.24",
+          "currency_code": "GBP"
+        }
+      },
+      {
+        "id": "8MM89717LX5553259",
+        "http": 200,
+        "status": "PENDING",
+        "amount": {
+          "value": "215.24",
+          "currency_code": "GBP"
+        }
+      }
+    ]
+  },
+  "note": "Delayed sandbox-only continuation. PayPal showed both refunds PENDING; neither is proven completed."
+}
