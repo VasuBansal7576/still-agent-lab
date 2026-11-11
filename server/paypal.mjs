@@ -1,0 +1,139 @@
+const SANDBOX_API = 'https://api-m.sandbox.paypal.com';
+
+function identifier(value, label) {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{1,127}$/.test(value)) {
+    throw new TypeError(`${label} is invalid`);
+  }
+  return value;
+}
+
+function money(value, currency) {
+  if (typeof value !== 'string' || !/^(?:0|[1-9]\d{0,8})\.\d{2}$/.test(value) || value === '0.00') {
+    throw new TypeError('Amount must be a positive decimal string with two decimal places');
+  }
+  if (typeof currency !== 'string' || !/^[A-Z]{3}$/.test(currency)) {
+    throw new TypeError('Currency must be a three-letter uppercase code');
+  }
+  return { value, currency_code: currency };
+}
+
+function publicAmount(amount) {
+  if (!amount || typeof amount !== 'object') return undefined;
+  return { value: amount.value, currency_code: amount.currency_code };
+}
+
+function publicCapture(capture) {
+  if (!capture || typeof capture !== 'object') return undefined;
+  return {
+    id: capture.id,
+    status: capture.status,
+    amount: publicAmount(capture.amount),
+    final_capture: capture.final_capture,
+  };
+}
+
+function sandboxApprovalLink(links) {
+  for (const link of Array.isArray(links) ? links : []) {
+    if (link.rel !== 'payer-action' && link.rel !== 'approve') continue;
+    try {
+      const url = new URL(link.href);
+      if (url.protocol === 'https:' && url.hostname === 'www.sandbox.paypal.com') return url.href;
+    } catch {
+      continue;
+    }
+  }
+  return undefined;
+}
+
+function publicBody(body) {
+  if (!body || typeof body !== 'object') return {};
+  const captures = Array.isArray(body.purchase_units)
+    ? body.purchase_units.flatMap((unit) => (Array.isArray(unit?.payments?.captures) ? unit.payments.captures : [])).map(publicCapture)
+    : undefined;
+  const details = Array.isArray(body.details)
+    ? body.details.map((detail) => ({ issue: detail.issue, description: detail.description }))
+    : undefined;
+  return {
+    id: body.id,
+    status: body.status,
+    amount: publicAmount(body.amount),
+    final_capture: body.final_capture,
+    name: body.name,
+    message: body.message,
+    details,
+    captures,
+    approvalUrl: sandboxApprovalLink(body.links),
+  };
+}
+
+export function createPayPalSandbox({ clientId, clientSecret } = {}) {
+  if (typeof clientId !== 'string' || !clientId || typeof clientSecret !== 'string' || !clientSecret) {
+    throw new Error('PayPal sandbox client ID and secret are required');
+  }
+
+  let token;
+  let expiresAt = 0;
+
+  async function accessToken() {
+    if (token && Date.now() < expiresAt) return token;
+    const authorization = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const response = await fetch(`${SANDBOX_API}/v1/oauth2/token`, {
+      method: 'POST',
+      redirect: 'error',
+      headers: { Authorization: `Basic ${authorization}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=client_credentials',
+      signal: AbortSignal.timeout(15000),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || typeof result.access_token !== 'string') {
+      throw new Error(`PayPal sandbox authentication failed (HTTP ${response.status})`);
+    }
+    token = result.access_token;
+    expiresAt = Date.now() + Math.max(0, (Number(result.expires_in) || 0) - 60) * 1000;
+    return token;
+  }
+
+  async function request(method, path, body, requestId) {
+    const headers = { Authorization: `Bearer ${await accessToken()}`, Accept: 'application/json', Prefer: 'return=representation' };
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    if (requestId !== undefined) headers['PayPal-Request-Id'] = identifier(requestId, 'Request ID');
+    const response = await fetch(`${SANDBOX_API}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      redirect: 'error',
+      signal: AbortSignal.timeout(30000),
+    });
+    const data = await response.json().catch(() => ({}));
+    return { ok: response.ok, status: response.status, body: publicBody(data), debugId: data.debug_id };
+  }
+
+  return {
+    createOrder({ amount = '50.00', currency = 'USD', requestId } = {}) {
+      identifier(requestId, 'Request ID');
+      return request('POST', '/v2/checkout/orders', {
+        intent: 'CAPTURE',
+        purchase_units: [{ amount: money(amount, currency) }],
+      }, requestId);
+    },
+    getOrder(orderId) {
+      return request('GET', `/v2/checkout/orders/${identifier(orderId, 'Order ID')}`);
+    },
+    captureOrder(orderId, { requestId } = {}) {
+      identifier(requestId, 'Request ID');
+      return request('POST', `/v2/checkout/orders/${identifier(orderId, 'Order ID')}/capture`, {}, requestId);
+    },
+    getCapture(captureId) {
+      return request('GET', `/v2/payments/captures/${identifier(captureId, 'Capture ID')}`);
+    },
+    refundCapture(captureId, { amount, currency = 'USD', requestId } = {}) {
+      identifier(requestId, 'Request ID');
+      return request('POST', `/v2/payments/captures/${identifier(captureId, 'Capture ID')}/refund`, {
+        amount: money(amount, currency),
+      }, requestId);
+    },
+    getRefund(refundId) {
+      return request('GET', `/v2/payments/refunds/${identifier(refundId, 'Refund ID')}`);
+    },
+  };
+}
