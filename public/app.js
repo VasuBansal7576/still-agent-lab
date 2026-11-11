@@ -66,8 +66,8 @@ function displayResults(data) {
   }).join('');
   const checkRows = checks.map(check => `<div class="row"><span class="n">•</span><div><strong>${escapeHtml(check.label || check.name || check.rule || check.id || 'Policy check')}</strong><p>${escapeHtml(displayText(check.reason || check.evidence || check.message))}</p></div><span class="status">${escapeHtml(String(check.status ?? check.result ?? 'inconclusive').toUpperCase())}</span></div>`).join('');
   const agent = data.agent || state.agent;
-  const agentName = agent === 'safe' ? 'Corrected agent' : agent === 'external' ? `Your agent${data.metadata?.agent?.origin ? ` (${data.metadata.agent.origin})` : ''}` : 'Buggy agent';
-  const scenarioName = state.scenarios.find(item => item.id === data.scenarioId)?.title || 'Repeated cancellation request';
+  const agentName = agent === 'sandbox-earned-permission' ? 'Sandbox permission demo' : agent === 'safe' ? 'Corrected agent' : agent === 'external' ? `Your agent${data.metadata?.agent?.origin ? ` (${data.metadata.agent.origin})` : ''}` : 'Buggy agent';
+  const scenarioName = data.scenarioId === 'sandbox-earned-permission' ? 'Earned sandbox permission' : state.scenarios.find(item => item.id === data.scenarioId)?.title || 'Repeated cancellation request';
   result.innerHTML = `<div class="result-head"><div><div class="mono" style="color:#85857b">02 / TEST RUN · ${escapeHtml(scenarioName)}</div><h3>${escapeHtml(agentName)}</h3></div><span class="result-tag ${pass ? 'pass' : ''}">${escapeHtml(label)}</span></div>${data.storageWarning ? `<div class="storage-warning" role="alert"><strong>Run was not saved.</strong> ${escapeHtml(data.storageWarning)}</div>` : ''}<div class="rows">${eventRows || '<p>No events were recorded.</p>'}</div><div class="mono" style="margin-top:22px;color:#85857b">POLICY CHECKS</div><div class="rows">${checkRows || '<p>No policy checks were returned. The run cannot be verified.</p>'}</div>${data.explanation ? `<div class="notice"><strong>${data.metadata ? 'AI explanation' : 'AI explanation from an older run (verify against the trace)'}</strong><p>${escapeHtml(typeof data.explanation === 'string' ? data.explanation : JSON.stringify(data.explanation))}</p></div>` : ''}${data.metadata ? `<details class="details"><summary>RUN CONFIGURATION +</summary><pre>${escapeHtml(JSON.stringify(data.metadata, null, 2))}</pre></details>` : '<p class="notice">Configuration details were not recorded for this older run.</p>'}<div class="notice mono">TEST RUN / PROVIDER RESPONSES</div>`;
 }
 
@@ -84,8 +84,8 @@ async function loadHistory() {
     historyList.innerHTML = state.history.map(run => {
       const when = new Date(run.createdAt);
       const date = Number.isNaN(when.valueOf()) ? 'Date unavailable' : when.toLocaleString();
-      const name = run.agent === 'safe' ? 'Corrected agent' : run.agent === 'buggy' ? 'Buggy agent' : `Your agent${run.agentOrigin ? ` (${run.agentOrigin})` : ''}`;
-      const scenarioName = state.scenarios.find(item => item.id === run.scenarioId)?.title || 'Repeated cancellation request';
+      const name = run.agent === 'sandbox-earned-permission' ? 'Sandbox permission demo' : run.agent === 'safe' ? 'Corrected agent' : run.agent === 'buggy' ? 'Buggy agent' : `Your agent${run.agentOrigin ? ` (${run.agentOrigin})` : ''}`;
+      const scenarioName = run.scenarioId === 'sandbox-earned-permission' ? 'Earned sandbox permission' : state.scenarios.find(item => item.id === run.scenarioId)?.title || 'Repeated cancellation request';
       return `<button class="history-item" data-run-id="${escapeHtml(run.id)}"><span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(scenarioName)} · ${escapeHtml(date)}</small></span><span class="mono">${escapeHtml(String(run.status || 'inconclusive').toUpperCase())} &nbsp; ↗</span></button>`;
     }).join('');
     setPhase(state.phase);
