@@ -30,3 +30,15 @@ const replay = await store.replay(session.id);
 The store allows 200 sessions and 100 calls per session. It writes one JSON file per session with private file permissions and restores mock state from the recorded calls after a restart. Calls are serialized within one store instance. Multiple processes must not write to the same directory. The gateway blocks unsafe refunds in shadow mode; shadow mode does not bypass enforcement. Only generated mock identifiers and constrained arguments are accepted. Do not put credentials or customer data in decision IDs. Hashing is not encryption. Protect the directory because amounts and mock traces remain visible.
 
 The driving-test page creates a local-agent mock session and promotes it with one click. The same-origin HTTP endpoint `/api/upgrade/shadow-session` accepts `create`, `call`, `get`, and `promote` actions. The caller retains the browser session cookie and uses the returned session ID. Calls from a different browser session are denied. Both original and replay results have `deterministic-mock` provenance and are not live PayPal evidence.
+
+## Run an external local agent
+
+Start Still and a version 2 local HTTP agent, then use the shadow driver:
+
+```sh
+PORT=3001 npm start
+AGENT_PORT=8787 node examples/trial-agent.mjs
+STILL_URL=http://127.0.0.1:3001 STILL_AGENT_URL=http://127.0.0.1:8787/agent node examples/shadow-agent.mjs
+```
+
+The driver creates an isolated mock session and sends the customer request to the separately running agent. The agent chooses each next tool. The driver submits those calls through the gateway using the current session's mock identifiers, returns the tool results to the agent, and promotes and replays the recorded calls. Set `STILL_SHADOW_RECEIPT` to a private file path to save the resulting receipt. Its refund status comes from the mock, not PayPal sandbox. The regression replays recorded calls against a fresh mock; it does not rerun the agent or capture a real customer conversation. Browser promotion is scoped to the browser session that created the recording; this command promotes its own session.

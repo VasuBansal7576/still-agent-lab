@@ -4,6 +4,7 @@ const safeId = (value) => typeof value === 'string' && /^[A-Za-z0-9_-]{1,127}$/.
 const safeCode = (value) => typeof value === 'string' && /^[A-Z0-9_]{1,50}$/.test(value) ? value : null;
 const reportAmount = (amount) => amount && typeof amount.value === 'string' && /^-?\d{1,8}\.\d{2}$/.test(amount.value) && /^[A-Z]{3}$/.test(amount.currency_code) ? { value: amount.value, currency_code: amount.currency_code } : null;
 const refundCodes = new Set(['T1107', 'T1120']);
+const retailPaymentCodes = new Set(['T0000', 'T0005', 'T0006', 'T0007', 'T0011', 'T0012', 'T0018', 'T0019']);
 
 // Account facts are separated from synthetic scenario assumptions.
 export async function importSandboxAccountPersonas({ paypal, startDate, endDate, count, seed = 'still-account' } = {}) {
@@ -55,7 +56,7 @@ export async function importSandboxAccountPersonas({ paypal, startDate, endDate,
     evidence.disputes.reason = 'Dispute retrieval failed';
   }
 
-  const eligible = evidence.transactions.status === 'retrieved' ? transactions.filter((entry) => safeId(entry.id) && !refundCodes.has(entry.eventCode) && entry.amount && /^[A-Z]{3}$/.test(entry.amount.currency_code) && /^\d{1,8}\.\d{2}$/.test(entry.amount.value) && Number(entry.amount.value) >= 0.02) : [];
+  const eligible = evidence.transactions.status === 'retrieved' ? transactions.filter((entry) => safeId(entry.id) && retailPaymentCodes.has(entry.eventCode) && entry.status === 'S' && entry.amount && /^[A-Z]{3}$/.test(entry.amount.currency_code) && /^\d{1,8}\.\d{2}$/.test(entry.amount.value) && Number(entry.amount.value) >= 0.02) : [];
   const records = eligible.map((entry) => {
     const amountCents = Math.round(Number(entry.amount.value) * 100);
     return { recordId: entry.id, amount: entry.amount.value, currency: entry.amount.currency_code, approvedReturn: (Math.floor(amountCents / 2) / 100).toFixed(2), disputeOpen: false };

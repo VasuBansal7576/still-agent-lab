@@ -1,3 +1,4 @@
+import { failureReplaySpec } from './replay-failure-spec.mjs';
 import { randomUUID } from 'node:crypto';
 import { parseMoney } from './paypal-mock.mjs';
 
@@ -14,6 +15,7 @@ function approvalUrl(value) {
 // The item must come from a plan built from a server-owned batch, never from the request body.
 export function replayCheckoutAmount(item) {
   if (!item || item.queueState !== 'ready' || typeof item.key !== 'string' || !item.key || !Array.isArray(item.events)) return null;
+  if (item.status === 'fail') { const spec = failureReplaySpec(item); return spec.reason ? null : { amount: spec.captureAmount, currency: spec.currency }; }
   const calls = item.events.filter(event => event.type === 'tool_call' && event.tool === 'create_refund');
   const disputes = item.events.filter(event => event.type === 'tool_result' && event.tool === 'get_dispute');
   if (calls.length !== 1 || disputes.length !== 1 || disputes[0].response?.status !== 'NONE') return null;

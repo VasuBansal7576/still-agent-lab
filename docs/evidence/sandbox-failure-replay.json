@@ -1,0 +1,70 @@
+{
+  "batchId": "49ac3157-0abb-476e-a021-0152b6b67720",
+  "syntheticApproval": {
+    "currency": "USD",
+    "value": "89.93"
+  },
+  "receipt": {
+    "key": "[\"49ac3157-0abb-476e-a021-0152b6b67720\",\"persona-389cfa3de313733151ec\",1]",
+    "capture": {
+      "ok": true,
+      "status": 200,
+      "body": {
+        "id": "4LV05766VU354094L",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "179.86",
+          "currency_code": "USD"
+        }
+      }
+    },
+    "attempts": [
+      {
+        "request": {
+          "captureId": "4LV05766VU354094L",
+          "amount": "179.86",
+          "currency": "USD",
+          "requestId": "still-884b1846fd1a657f909a8b98cc930d2bc0c309cc"
+        },
+        "refund": {
+          "ok": true,
+          "status": 201,
+          "body": {
+            "id": "8DL108061N316324N",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "179.86",
+              "currency_code": "USD"
+            }
+          }
+        }
+      }
+    ],
+    "refundHistory": "not-established",
+    "status": "completed",
+    "source": "paypal-sandbox",
+    "simulated": false,
+    "executor": "trusted-local",
+    "buyerApprovedFreshCapture": true
+  },
+  "final": {
+    "capture": {
+      "http": 200,
+      "id": "4LV05766VU354094L",
+      "status": "REFUNDED",
+      "amount": {
+        "value": "179.86",
+        "currency_code": "USD"
+      }
+    },
+    "refund": {
+      "http": 200,
+      "id": "8DL108061N316324N",
+      "status": "COMPLETED",
+      "amount": {
+        "value": "179.86",
+        "currency_code": "USD"
+      }
+    }
+  }
+}

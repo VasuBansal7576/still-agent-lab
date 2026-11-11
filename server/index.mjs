@@ -235,12 +235,11 @@ http.createServer(async (request, response) => {
     if (url.pathname === '/api/upgrade/account-personas') {
       const input = await body(request);
       if (!session.paypal) return send(response, 503, { error: 'Connect a PayPal sandbox account first.' });
-      const result = await importSandboxAccountPersonas({ paypal: session.paypal, startDate: input.startDate, endDate: input.endDate, count: 30 });
-      if (!result.personas.length) {
-        const saved = await importVerifiedAccountPersonas({ paypal: session.paypal });
-        return send(response, 200, { ...result, personas: saved.personas, savedRunEvidence: { records: saved.records, coverage: saved.coverage } });
-      }
-      return send(response, 200, result);
+      const [result, saved] = await Promise.all([
+        importSandboxAccountPersonas({ paypal: session.paypal, startDate: input.startDate, endDate: input.endDate, count: 30 }),
+        importVerifiedAccountPersonas({ paypal: session.paypal }),
+      ]);
+      return send(response, 200, { ...result, personas: [...result.personas, ...saved.personas], savedRunEvidence: { records: saved.records, coverage: saved.coverage } });
     }
     if (url.pathname === '/api/upgrade/replay-plan') {
       const input = await body(request);
@@ -250,7 +249,8 @@ http.createServer(async (request, response) => {
         const plan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 10, samplePasses: 10 });
         const ledger = await createReplayLedger({ directory: fileURLToPath(new URL('../.data/replay-ledger/', import.meta.url)) });
         const comparison = reconcileSandboxReplays({ plan, evidence: await ledger.evidence(), verifyReceipt: ledger.verifyReceipt });
-        return send(response, 200, { failureCount: plan.failureCount, sampledPassCount: plan.sampledPassCount, queueCount: plan.queueCount, readyCount: plan.readyCount, deferredCount: plan.deferredCount, agreement: comparison.agreement, compared: comparison.compared, agreed: comparison.agreed, disagreed: comparison.disagreed, status: comparison.unverified || !comparison.compared ? 'unverified' : 'compared', reason: comparison.unverified || !comparison.compared ? 'Replays require fresh approved sandbox captures and trusted complete refund histories.' : undefined });
+        const clusterReplays = (batch.failureClusters || []).map(cluster => ({ clusterId: cluster.id, result: comparison.results.find(result => result.personaId === cluster.example?.personaId && result.trial === cluster.example?.trial) || { status: 'unverified', reason: 'Example not in the current replay window.' } }));
+        return send(response, 200, { clusterReplays, failureCount: plan.failureCount, sampledPassCount: plan.sampledPassCount, queueCount: plan.queueCount, readyCount: plan.readyCount, deferredCount: plan.deferredCount, agreement: comparison.agreement, compared: comparison.compared, agreed: comparison.agreed, disagreed: comparison.disagreed, status: comparison.unverified || !comparison.compared ? 'unverified' : 'compared', reason: comparison.unverified || !comparison.compared ? 'Remaining replays need fresh approved sandbox captures or support for their scenario. External and pending refunds cannot be excluded.' : undefined });
       } catch { return send(response, 400, { error: 'Replay plan could not be prepared.' }); }
     }
     if (url.pathname === '/api/upgrade/replay-prepare') {

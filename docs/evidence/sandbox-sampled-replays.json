@@ -1,0 +1,128 @@
+{
+  "batchId": "d0c88817-eae0-471a-93d1-571fdd77f8ca",
+  "note": "Two selected mock passes replayed in PayPal sandbox. Buyer approval was performed by the operator agent. Eight planned samples and all failure replay coverage remain unverified. Refund history and exclusive access are not established.",
+  "cases": [
+    {
+      "receipt": {
+        "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-ec0b086975ca96da7f2f\",1]",
+        "capture": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "24G311290V927541J",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "175.24",
+              "currency_code": "USD"
+            }
+          }
+        },
+        "request": {
+          "captureId": "24G311290V927541J",
+          "amount": "87.62",
+          "currency": "USD",
+          "requestId": "still-79e6c2678f963c5a5cb05abb3a610cb865554b77"
+        },
+        "refund": {
+          "ok": true,
+          "status": 201,
+          "body": {
+            "id": "0XM193637C962890L",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "87.62",
+              "currency_code": "USD"
+            }
+          }
+        },
+        "refundHistory": "not-established",
+        "status": "completed",
+        "source": "paypal-sandbox",
+        "simulated": false,
+        "executor": "trusted-local",
+        "buyerApprovedFreshCapture": true
+      },
+      "final": {
+        "capture": {
+          "http": 200,
+          "id": "24G311290V927541J",
+          "status": "PARTIALLY_REFUNDED",
+          "amount": {
+            "value": "175.24",
+            "currency_code": "USD"
+          }
+        },
+        "refund": {
+          "http": 200,
+          "id": "0XM193637C962890L",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "87.62",
+            "currency_code": "USD"
+          }
+        }
+      }
+    },
+    {
+      "receipt": {
+        "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-3f59bc4336b9ea3a8cf4\",1]",
+        "capture": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "5SR16703F0179293L",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "638.40",
+              "currency_code": "GBP"
+            }
+          }
+        },
+        "request": {
+          "captureId": "5SR16703F0179293L",
+          "amount": "319.20",
+          "currency": "GBP",
+          "requestId": "still-af2ecdd45aaf6104e1157671eed0022da3fadae4"
+        },
+        "refund": {
+          "ok": true,
+          "status": 201,
+          "body": {
+            "id": "5VR23496AA2748204",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "319.20",
+              "currency_code": "GBP"
+            }
+          }
+        },
+        "refundHistory": "not-established",
+        "status": "completed",
+        "source": "paypal-sandbox",
+        "simulated": false,
+        "executor": "trusted-local",
+        "buyerApprovedFreshCapture": true
+      },
+      "final": {
+        "capture": {
+          "http": 200,
+          "id": "5SR16703F0179293L",
+          "status": "PARTIALLY_REFUNDED",
+          "amount": {
+            "value": "638.40",
+            "currency_code": "GBP"
+          }
+        },
+        "refund": {
+          "http": 200,
+          "id": "5VR23496AA2748204",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "319.20",
+            "currency_code": "GBP"
+          }
+        }
+      }
+    }
+  ]
+}

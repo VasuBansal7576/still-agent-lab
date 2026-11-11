@@ -1,0 +1,194 @@
+{
+  "provenance": "deterministic-mock",
+  "agent": "http://127.0.0.1:8798",
+  "sessionId": "shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+  "observed": [
+    {
+      "proposal": {
+        "name": "get_order",
+        "arguments": {}
+      },
+      "gatewayResult": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "MOCK-ORDER-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "100.00",
+            "currency_code": "USD"
+          }
+        }
+      }
+    },
+    {
+      "proposal": {
+        "name": "get_dispute",
+        "arguments": {}
+      },
+      "gatewayResult": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "MOCK-DISPUTE-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+          "status": "CLEAR"
+        }
+      }
+    },
+    {
+      "proposal": {
+        "name": "refund_order",
+        "arguments": {
+          "amount": "50.00",
+          "currency": "USD",
+          "requestId": "refund-MOCK-ORDER-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+          "orderId": "MOCK-ORDER-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+          "customerId": "MOCK-CUSTOMER-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+          "captureId": "MOCK-CAPTURE-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d"
+        }
+      },
+      "gatewayResult": {
+        "ok": true,
+        "status": 201,
+        "body": {
+          "id": "MOCK-REFUND-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d-1",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "50.00",
+            "currency_code": "USD"
+          }
+        }
+      }
+    }
+  ],
+  "regression": {
+    "version": 1,
+    "kind": "gateway-regression",
+    "sourceSessionId": "shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+    "source": "local-agent",
+    "provenance": "deterministic-mock",
+    "promotedAt": "2026-11-11T18:04:33.324Z",
+    "calls": [
+      {
+        "name": "get_order",
+        "arguments": {
+          "order_id": "MOCK-ORDER-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d"
+        }
+      },
+      {
+        "name": "get_dispute",
+        "arguments": {
+          "dispute_id": "MOCK-DISPUTE-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d"
+        }
+      },
+      {
+        "name": "create_refund",
+        "arguments": {
+          "capture_id": "MOCK-CAPTURE-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+          "amount": {
+            "value": "50.00",
+            "currency_code": "USD"
+          }
+        },
+        "decisionId": "decision-dfd36c97a8cf52ba911cfe0a82a4ff933f66b9d6b5295d61c04c1a74099a1a2f"
+      }
+    ]
+  },
+  "replay": {
+    "provenance": "deterministic-mock",
+    "sourceSessionId": "shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+    "sessionId": "replay-711cc22f-0f7d-41de-a137-78d2909a456b",
+    "results": [
+      {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "MOCK-ORDER-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "100.00",
+            "currency_code": "USD"
+          }
+        }
+      },
+      {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "MOCK-DISPUTE-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+          "status": "CLEAR"
+        }
+      },
+      {
+        "ok": true,
+        "status": 201,
+        "body": {
+          "id": "MOCK-REFUND-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d-1",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "50.00",
+            "currency_code": "USD"
+          }
+        }
+      }
+    ],
+    "events": [
+      {
+        "name": "get_order",
+        "arguments": {
+          "order_id": "MOCK-ORDER-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d"
+        },
+        "result": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "MOCK-ORDER-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "100.00",
+              "currency_code": "USD"
+            }
+          }
+        }
+      },
+      {
+        "name": "get_dispute",
+        "arguments": {
+          "dispute_id": "MOCK-DISPUTE-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d"
+        },
+        "result": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "MOCK-DISPUTE-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+            "status": "CLEAR"
+          }
+        }
+      },
+      {
+        "name": "create_refund",
+        "arguments": {
+          "capture_id": "MOCK-CAPTURE-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d",
+          "amount": {
+            "value": "50.00",
+            "currency_code": "USD"
+          }
+        },
+        "decisionId": "decision-dfd36c97a8cf52ba911cfe0a82a4ff933f66b9d6b5295d61c04c1a74099a1a2f",
+        "requestId": "29071b1f20a4e70ced3d6586e226a316",
+        "result": {
+          "ok": true,
+          "status": 201,
+          "body": {
+            "id": "MOCK-REFUND-shadow-ad780315-f4aa-48a1-81b6-31c9b7a5b99d-1",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "50.00",
+              "currency_code": "USD"
+            }
+          }
+        }
+      }
+    ]
+  }
+}
