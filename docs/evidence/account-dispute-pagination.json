@@ -1,0 +1,15 @@
+{
+  "observedAt": "2026-11-11T19:47:05Z",
+  "source": "PayPal sandbox, read-only account import",
+  "importedTransactions": 23,
+  "importedDisputes": 424,
+  "evidence": {
+    "transactions": { "status": "retrieved", "reason": "Report retrieved; recent transactions may not yet be reported" },
+    "disputes": { "status": "unverified", "pagesRetrieved": 9, "listed": 424, "detailsRetrieved": 424, "reason": "Listing retrieved; account-wide absence and provider visibility remain unverified" }
+  },
+  "linkedExample": {
+    "recordId": "5BL31462HS946980L",
+    "recordIds": ["5BL31462HS946980L", "07S79917R7949050A", "PP-R-FZC-10199004"],
+    "dispute": { "id": "PP-R-FZC-10199004", "status": "RESOLVED", "amount": { "value": "50.00", "currency_code": "USD" }, "relationship": "dispute detail references seller transaction ID" }
+  }
+}

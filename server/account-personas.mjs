@@ -39,19 +39,34 @@ export async function importSandboxAccountPersonas({ paypal, startDate, endDate,
     evidence.transactions.reason = 'Report retrieval failed or the date range is invalid';
   }
   try {
-    const response = await paypal.listAccountDisputes();
-    if (!response.ok) evidence.disputes.reason = `PayPal disputes unavailable (HTTP ${response.status})`;
-    else if (!response.body || !Array.isArray(response.body.disputes) || typeof response.body.hasNext !== 'boolean') evidence.disputes.reason = 'Dispute listing shape or pagination is unknown';
-    else {
-      let incomplete = response.body.hasNext;
-      for (const item of response.body.disputes) {
+    const listed = [], seenIds = new Set(), seenTokens = new Set();
+    let token, pages = 0, incomplete = false, reason = null;
+    do {
+      const response = await paypal.listAccountDisputes(token ? { nextPageToken: token } : undefined);
+      if (!response.ok) { incomplete = true; reason = `PayPal disputes unavailable (HTTP ${response.status})`; break; }
+      const body = response.body;
+      if (!body || !Array.isArray(body.disputes) || typeof body.hasNext !== 'boolean' || (body.hasNext && (typeof body.nextPageToken !== 'string' || !body.nextPageToken || seenTokens.has(body.nextPageToken)))) { incomplete = true; reason = 'Dispute listing shape or pagination is invalid'; break; }
+      pages++;
+      for (const item of body.disputes) {
         if (!item || !safeId(item.id)) { incomplete = true; continue; }
-        const detail = await paypal.getAccountDispute(item.id);
-        if (!detail.ok || !detail.body || detail.body.id !== item.id || !Array.isArray(detail.body.sellerTransactionIds) || detail.body.sellerTransactionIds.some((id) => !safeId(id))) { incomplete = true; continue; }
-        disputes.push({ id: item.id, status: safeCode(detail.body.status), amount: reportAmount(detail.body.amount), sellerTransactionIds: detail.body.sellerTransactionIds.filter(safeId) });
+        if (!seenIds.has(item.id)) { seenIds.add(item.id); listed.push(item.id); }
       }
-      evidence.disputes = { status: 'unverified', reason: incomplete ? 'Dispute listing or details incomplete' : 'No absence of a dispute can be established from this import' };
-    }
+      if (!body.hasNext) { token = undefined; break; }
+      token = body.nextPageToken; seenTokens.add(token);
+      if (pages >= 10) { incomplete = true; reason = 'Dispute listing exceeds the 10-page import limit'; break; }
+    } while (token);
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(4, listed.length) }, async () => {
+      while (next < listed.length) {
+        const id = listed[next++];
+        try {
+          const detail = await paypal.getAccountDispute(id);
+          if (!detail.ok || !detail.body || detail.body.id !== id || !Array.isArray(detail.body.sellerTransactionIds) || detail.body.sellerTransactionIds.some((value) => !safeId(value))) { incomplete = true; continue; }
+          disputes.push({ id, status: safeCode(detail.body.status), amount: reportAmount(detail.body.amount), sellerTransactionIds: detail.body.sellerTransactionIds.filter(safeId) });
+        } catch { incomplete = true; }
+      }
+    }));
+    evidence.disputes = { status: 'unverified', pagesRetrieved: pages, listed: listed.length, detailsRetrieved: disputes.length, reason: reason || (incomplete ? 'Dispute listing or details incomplete' : 'Listing retrieved; account-wide absence and provider visibility remain unverified') };
   } catch {
     evidence.disputes.reason = 'Dispute retrieval failed';
   }

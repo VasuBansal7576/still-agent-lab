@@ -134,11 +134,27 @@ export function createPayPalSandbox({ clientId, clientSecret } = {}) {
         }; }) : null,
       }));
     },
-    listAccountDisputes() {
-      return readAccount('/v1/customer/disputes?page_size=50', (data) => ({
-        disputes: Array.isArray(data.items) ? data.items.map((item) => ({ id: item?.dispute_id, status: item?.status })) : null,
-        hasNext: Array.isArray(data.links) ? data.links.some((link) => link?.rel === 'next') : null,
-      }));
+    listAccountDisputes({ nextPageToken } = {}) {
+      if (nextPageToken !== undefined && (typeof nextPageToken !== 'string' || nextPageToken.length < 1 || nextPageToken.length > 2048)) throw new TypeError('Invalid dispute page token');
+      const query = new URLSearchParams({ page_size: '50' });
+      if (nextPageToken !== undefined) query.set('next_page_token', nextPageToken);
+      return readAccount(`/v1/customer/disputes?${query}`, (data) => {
+        const links = Array.isArray(data.links) ? data.links.filter(link => link?.rel === 'next') : null;
+        let next = null, paginationValid = !!links && links.length <= 1;
+        if (paginationValid && links.length) {
+          try {
+            const url = new URL(links[0].href);
+            const tokens = url.searchParams.getAll('next_page_token');
+            if (url.origin !== SANDBOX_API || url.pathname !== '/v1/customer/disputes' || tokens.length !== 1 || !tokens[0] || tokens[0].length > 2048) paginationValid = false;
+            else next = tokens[0];
+          } catch { paginationValid = false; }
+        }
+        return {
+          disputes: Array.isArray(data.items) ? data.items.map((item) => ({ id: item?.dispute_id, status: item?.status })) : null,
+          hasNext: paginationValid ? !!next : null,
+          nextPageToken: paginationValid ? next : null,
+        };
+      });
     },
     getAccountDispute(disputeId) {
       return readAccount(`/v1/customer/disputes/${identifier(disputeId, 'Dispute ID')}`, (data) => ({
