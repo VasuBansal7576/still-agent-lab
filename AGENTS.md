@@ -14,6 +14,8 @@ The user's instructions override skill defaults. In this project, unit tests, ir
 
 Build a tool that tests online-store support agents using PayPal sandbox. Read [PRODUCT.md](PRODUCT.md) before planning or implementing product behavior. It defines the intended experience, demo and acceptance criteria.
 
+When the user authorizes the whole product, continue through the full intended experience in PRODUCT.md, not just the first demo. The first demo is an early proof point, not a stopping condition. Keep an acceptance record for agent connection, policies, scenarios and data provenance, sandbox actions, deterministic checks, explanations, result inspection, reruns, and the requested delivery destination. Mark each item passed only with evidence from the integrated product. Continue implementation and verification until all authorized requirements pass or a concrete permission or external blocker prevents further progress. A progress or status question does not stop the work. Preserve the user's bans on unit tests, irrelevant tests, code review, and PR review.
+
 ## Factory workflow
 
 1. **Route.** Use `/poteto-mode` for the requested work. For a multi-phase build, use `/figure-it-out` to define acceptance criteria, sequence and evidence. Keep the original product goal visible throughout.
