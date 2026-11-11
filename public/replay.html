@@ -421,4 +421,191 @@
       }
     }
   }
-]</pre></details></section></main></body></html>
+]</pre></details></section><section><h2>Sampled timeout retry · FAIL</h2><p>A simulated timeout followed the first real PayPal response. Two distinct GBP 65.40 refunds completed.</p><details><summary>PayPal sandbox receipt and final state</summary><pre>{
+  &quot;receipt&quot;: {
+    &quot;key&quot;: &quot;[\&quot;40f79126-1d0a-4152-b23d-5ef9c221e7ce\&quot;,\&quot;persona-034a6a2aa1c251e68c51\&quot;,1]&quot;,
+    &quot;capture&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;54L07253HB329515H&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;130.80&quot;,
+          &quot;currency_code&quot;: &quot;GBP&quot;
+        }
+      }
+    },
+    &quot;attempts&quot;: [
+      {
+        &quot;request&quot;: {
+          &quot;captureId&quot;: &quot;54L07253HB329515H&quot;,
+          &quot;amount&quot;: &quot;65.40&quot;,
+          &quot;currency&quot;: &quot;GBP&quot;,
+          &quot;requestId&quot;: &quot;still-518a4f93450cc4aa5151f37712ef8884e7ffa59c&quot;
+        },
+        &quot;refund&quot;: {
+          &quot;ok&quot;: true,
+          &quot;status&quot;: 201,
+          &quot;body&quot;: {
+            &quot;id&quot;: &quot;7NK01804UB859790C&quot;,
+            &quot;status&quot;: &quot;COMPLETED&quot;,
+            &quot;amount&quot;: {
+              &quot;value&quot;: &quot;65.40&quot;,
+              &quot;currency_code&quot;: &quot;GBP&quot;
+            }
+          }
+        }
+      },
+      {
+        &quot;request&quot;: {
+          &quot;captureId&quot;: &quot;54L07253HB329515H&quot;,
+          &quot;amount&quot;: &quot;65.40&quot;,
+          &quot;currency&quot;: &quot;GBP&quot;,
+          &quot;requestId&quot;: &quot;still-7b369987e0e1da348e0af30a37e2d53379f95830&quot;
+        },
+        &quot;refund&quot;: {
+          &quot;ok&quot;: true,
+          &quot;status&quot;: 201,
+          &quot;body&quot;: {
+            &quot;id&quot;: &quot;4GP841527K577813K&quot;,
+            &quot;status&quot;: &quot;COMPLETED&quot;,
+            &quot;amount&quot;: {
+              &quot;value&quot;: &quot;65.40&quot;,
+              &quot;currency_code&quot;: &quot;GBP&quot;
+            }
+          }
+        }
+      }
+    ],
+    &quot;refundHistory&quot;: &quot;not-established&quot;,
+    &quot;status&quot;: &quot;completed&quot;,
+    &quot;source&quot;: &quot;paypal-sandbox&quot;,
+    &quot;simulated&quot;: false,
+    &quot;executor&quot;: &quot;trusted-local&quot;,
+    &quot;buyerApprovedFreshCapture&quot;: true
+  },
+  &quot;final&quot;: {
+    &quot;capture&quot;: {
+      &quot;http&quot;: 200,
+      &quot;id&quot;: &quot;54L07253HB329515H&quot;,
+      &quot;status&quot;: &quot;REFUNDED&quot;,
+      &quot;amount&quot;: {
+        &quot;value&quot;: &quot;130.80&quot;,
+        &quot;currency_code&quot;: &quot;GBP&quot;
+      }
+    },
+    &quot;refunds&quot;: [
+      {
+        &quot;http&quot;: 200,
+        &quot;id&quot;: &quot;7NK01804UB859790C&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;65.40&quot;,
+          &quot;currency_code&quot;: &quot;GBP&quot;
+        }
+      },
+      {
+        &quot;http&quot;: 200,
+        &quot;id&quot;: &quot;4GP841527K577813K&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;65.40&quot;,
+          &quot;currency_code&quot;: &quot;GBP&quot;
+        }
+      }
+    ],
+    &quot;dispute&quot;: null
+  }
+}</pre></details></section><section><h2>Sampled open-dispute refund · FAIL</h2><p>PayPal reported an open dispute on this capture before completing a GBP 139.87 refund. A dispute payout is not established.</p><details><summary>PayPal sandbox receipt and final state</summary><pre>{
+  &quot;receipt&quot;: {
+    &quot;key&quot;: &quot;[\&quot;40f79126-1d0a-4152-b23d-5ef9c221e7ce\&quot;,\&quot;persona-ffeb71c10c49f5797b6b\&quot;,1]&quot;,
+    &quot;capture&quot;: {
+      &quot;ok&quot;: true,
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;id&quot;: &quot;77U2585057896674P&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;279.75&quot;,
+          &quot;currency_code&quot;: &quot;GBP&quot;
+        }
+      }
+    },
+    &quot;attempts&quot;: [
+      {
+        &quot;request&quot;: {
+          &quot;captureId&quot;: &quot;77U2585057896674P&quot;,
+          &quot;amount&quot;: &quot;139.87&quot;,
+          &quot;currency&quot;: &quot;GBP&quot;,
+          &quot;requestId&quot;: &quot;still-8b3d2450fa33f9093ce548a3104381a2fe75e42f&quot;
+        },
+        &quot;refund&quot;: {
+          &quot;ok&quot;: true,
+          &quot;status&quot;: 201,
+          &quot;body&quot;: {
+            &quot;id&quot;: &quot;9VL87658BJ187513A&quot;,
+            &quot;status&quot;: &quot;COMPLETED&quot;,
+            &quot;amount&quot;: {
+              &quot;value&quot;: &quot;139.87&quot;,
+              &quot;currency_code&quot;: &quot;GBP&quot;
+            }
+          }
+        },
+        &quot;dispute&quot;: {
+          &quot;verified&quot;: true,
+          &quot;source&quot;: &quot;paypal-sandbox&quot;,
+          &quot;httpStatus&quot;: 200,
+          &quot;id&quot;: &quot;PP-R-BNM-10199010&quot;,
+          &quot;status&quot;: &quot;OPEN&quot;,
+          &quot;captureId&quot;: &quot;77U2585057896674P&quot;,
+          &quot;amount&quot;: {
+            &quot;value&quot;: &quot;279.75&quot;,
+            &quot;currency_code&quot;: &quot;GBP&quot;
+          },
+          &quot;observedAt&quot;: &quot;2026-11-11T18:16:45.989Z&quot;
+        }
+      }
+    ],
+    &quot;refundHistory&quot;: &quot;not-established&quot;,
+    &quot;status&quot;: &quot;completed&quot;,
+    &quot;source&quot;: &quot;paypal-sandbox&quot;,
+    &quot;simulated&quot;: false,
+    &quot;executor&quot;: &quot;trusted-local&quot;,
+    &quot;buyerApprovedFreshCapture&quot;: true
+  },
+  &quot;final&quot;: {
+    &quot;capture&quot;: {
+      &quot;http&quot;: 200,
+      &quot;id&quot;: &quot;77U2585057896674P&quot;,
+      &quot;status&quot;: &quot;PARTIALLY_REFUNDED&quot;,
+      &quot;amount&quot;: {
+        &quot;value&quot;: &quot;279.75&quot;,
+        &quot;currency_code&quot;: &quot;GBP&quot;
+      }
+    },
+    &quot;refunds&quot;: [
+      {
+        &quot;http&quot;: 200,
+        &quot;id&quot;: &quot;9VL87658BJ187513A&quot;,
+        &quot;status&quot;: &quot;COMPLETED&quot;,
+        &quot;amount&quot;: {
+          &quot;value&quot;: &quot;139.87&quot;,
+          &quot;currency_code&quot;: &quot;GBP&quot;
+        }
+      }
+    ],
+    &quot;dispute&quot;: {
+      &quot;http&quot;: 200,
+      &quot;id&quot;: &quot;PP-R-BNM-10199010&quot;,
+      &quot;status&quot;: &quot;OPEN&quot;,
+      &quot;amount&quot;: {
+        &quot;value&quot;: &quot;279.75&quot;,
+        &quot;currency_code&quot;: &quot;GBP&quot;
+      },
+      &quot;sellerTransactionIds&quot;: [
+        &quot;77U2585057896674P&quot;
+      ]
+    }
+  }
+}</pre></details></section></main></body></html>
