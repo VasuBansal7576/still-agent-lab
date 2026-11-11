@@ -194,7 +194,7 @@ function chooseScenario() {
   document.querySelector('.scenario h2').textContent = state.scenario.title;
   const items = state.scenario.basket.map(item => `${item.quantity} × ${item.item}`).join(', ');
   document.querySelector('.scenario p').textContent = `${state.scenario.description} Basket: ${items}. ${state.scenario.provenance}`;
-  document.querySelector('.facts').innerHTML = `<div class="fact"><span class="mono">ORDER</span> <strong>${escapeHtml(state.scenario.amount)} ${escapeHtml(state.scenario.currency)}</strong></div><div class="fact"><span class="mono">PAYMENT</span> <strong>${state.scenario.payment === 'captured' ? 'PayPal sandbox' : 'Simulated failure'}</strong></div>`;
+  document.querySelector('.facts').innerHTML = `<div class="fact"><span class="mono">ORDER</span> <strong>${escapeHtml(state.scenario.amount)} ${escapeHtml(state.scenario.currency)}</strong></div> <div class="fact"><span class="mono">PAYMENT</span> <strong>${state.scenario.payment === 'captured' ? 'PayPal sandbox' : 'Simulated failure'}</strong></div>`;
   setPhase('idle');
   runButton.innerHTML = state.scenario.payment === 'captured' ? 'Create sandbox order <span>↗</span>' : 'Run the agent <span>↗</span>';
   message('Ready to run', state.scenario.payment === 'captured' ? 'Create and approve a fresh sandbox payment for this scenario.' : 'This scenario uses a synthetic failed payment. No PayPal transaction is created.');
