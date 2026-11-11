@@ -6,3 +6,6 @@ node_modules/
 .audit/
 .data/
 .DS_Store
+
+# The independently deployed read-only replay has its own repository metadata.
+replay-site/

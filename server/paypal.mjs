@@ -108,7 +108,41 @@ export function createPayPalSandbox({ clientId, clientSecret } = {}) {
     return { ok: response.ok, status: response.status, body: publicBody(data), debugId: data.debug_id };
   }
 
+  async function readAccount(path, sanitize) {
+    const response = await fetch(`${SANDBOX_API}${path}`, {
+      method: 'GET', redirect: 'error', signal: AbortSignal.timeout(30000),
+      headers: { Authorization: `Bearer ${await accessToken()}`, Accept: 'application/json' },
+    });
+    const data = await response.json().catch(() => ({}));
+    return { ok: response.ok, status: response.status, body: response.ok ? sanitize(data) : {} };
+  }
+
   return {
+    listAccountTransactions({ startDate, endDate, page = 1 } = {}) {
+      const start = Date.parse(startDate), end = Date.parse(endDate);
+      if (typeof startDate !== 'string' || typeof endDate !== 'string' || !Number.isFinite(start) || !Number.isFinite(end) || end <= start || end - start > 31 * 86400000) throw new TypeError('Transaction range must be valid and no longer than 31 days');
+      if (!Number.isSafeInteger(page) || page < 1 || page > 100) throw new RangeError('Invalid transaction page');
+      const query = new URLSearchParams({ start_date: new Date(start).toISOString(), end_date: new Date(end).toISOString(), fields: 'transaction_info', page_size: '100', page: String(page) });
+      return readAccount(`/v1/reporting/transactions?${query}`, (data) => ({
+        totalPages: Number.isSafeInteger(data.total_pages) ? data.total_pages : null,
+        transactions: Array.isArray(data.transaction_details) ? data.transaction_details.map(({ transaction_info: info = {} }) => ({
+          id: info.transaction_id, referenceId: info.paypal_reference_id, referenceType: info.paypal_reference_id_type,
+          eventCode: info.transaction_event_code, status: info.transaction_status, amount: publicAmount(info.transaction_amount),
+        })) : [],
+      }));
+    },
+    listAccountDisputes() {
+      return readAccount('/v1/customer/disputes?page_size=50', (data) => ({
+        disputes: Array.isArray(data.items) ? data.items.map((item) => ({ id: item.dispute_id, status: item.status })) : [],
+        hasNext: Array.isArray(data.links) && data.links.some((link) => link.rel === 'next'),
+      }));
+    },
+    getAccountDispute(disputeId) {
+      return readAccount(`/v1/customer/disputes/${identifier(disputeId, 'Dispute ID')}`, (data) => ({
+        id: data.dispute_id, status: data.status, amount: publicAmount(data.dispute_amount),
+        sellerTransactionIds: Array.isArray(data.disputed_transactions) ? data.disputed_transactions.map((item) => item.seller_transaction_id).filter((id) => typeof id === 'string') : [],
+      }));
+    },
     createOrder({ amount = '50.00', currency = 'USD', requestId } = {}) {
       identifier(requestId, 'Request ID');
       return request('POST', '/v2/checkout/orders', {

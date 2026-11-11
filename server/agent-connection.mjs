@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 const maxBytes = 1_000_000;
 const allowedTools = ['get_order', 'cancel_order', 'refund_order', 'propose_fulfillment'];
+const trialTools = ['get_order', 'get_dispute', 'refund_order'];
 
 export function endpointUrl(endpoint) {
   let url;
@@ -38,7 +39,7 @@ async function readLimited(response) {
   catch { throw new Error('External agent returned invalid JSON.'); }
 }
 
-function parseAction(value) {
+function parseAction(value, version) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || typeof value.content !== 'string' || value.content.length > 5000 || !Object.hasOwn(value, 'tool')) {
     throw new Error('External agent returned an invalid action.');
   }
@@ -48,26 +49,28 @@ function parseAction(value) {
     return message;
   }
   const tool = value.tool;
-  if (!tool || typeof tool !== 'object' || Array.isArray(tool) || !allowedTools.includes(tool.name) || !tool.arguments || typeof tool.arguments !== 'object' || Array.isArray(tool.arguments)) {
+  if (!tool || typeof tool !== 'object' || Array.isArray(tool) || !(version === 2 ? trialTools : allowedTools).includes(tool.name) || !tool.arguments || typeof tool.arguments !== 'object' || Array.isArray(tool.arguments)) {
     throw new Error('External agent returned an invalid tool proposal.');
   }
   const keys = Object.keys(tool.arguments);
-  if (tool.name !== 'refund_order' ? keys.length !== 0 : keys.length !== 2 || !keys.includes('amount') || !keys.includes('currency') || typeof tool.arguments.amount !== 'string' || typeof tool.arguments.currency !== 'string' || tool.arguments.amount.length > 100 || tool.arguments.currency.length > 100) {
+  const refundKeys = version === 2 ? ['amount', 'currency', 'requestId', 'orderId', 'customerId', 'captureId'] : ['amount', 'currency'];
+  if (tool.name !== 'refund_order' ? keys.length !== 0 : keys.some(key => !refundKeys.includes(key) || typeof tool.arguments[key] !== 'string' || tool.arguments[key].length > 100) || (version === 1 && (keys.length !== 2 || !keys.includes('amount') || !keys.includes('currency')))) {
     throw new Error('External agent returned invalid tool arguments.');
   }
   message.tool_calls = [{ id: randomUUID(), type: 'function', function: { name: tool.name, arguments: JSON.stringify(tool.arguments) } }];
   return message;
 }
 
-export async function externalAgentChat({ endpoint, messages } = {}) {
+export async function externalAgentChat({ endpoint, messages, version = 1 } = {}) {
   const url = endpointUrl(endpoint);
+  if (![1, 2].includes(version)) throw new Error('Unsupported external agent protocol version.');
   if (!Array.isArray(messages) || !messages.length) throw new Error('A conversation is required.');
-  const body = JSON.stringify({ version: 1, messages, tools: allowedTools });
+  const body = JSON.stringify({ version, messages, tools: version === 2 ? trialTools : allowedTools });
   if (Buffer.byteLength(body) > maxBytes) throw new Error('External agent request exceeded the limit.');
   let response;
   try {
     response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body, redirect: 'error', signal: AbortSignal.timeout(60000) });
   } catch { throw new Error('External agent request failed or timed out.'); }
   if (!response.ok) throw new Error(`External agent returned HTTP ${response.status}.`);
-  return parseAction(await readLimited(response));
+  return parseAction(await readLimited(response), version);
 }

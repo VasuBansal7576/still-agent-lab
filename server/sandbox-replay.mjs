@@ -1,0 +1,81 @@
+import { createHash } from 'node:crypto';
+import { parseMoney } from './paypal-mock.mjs';
+
+const keyFor = (batchId, result) => JSON.stringify([batchId, String(result.personaId), result.trial]);
+const digest = value => createHash('sha256').update(value).digest('hex');
+
+/** Build a deterministic queue. maxRuns limits the ready slice, not the failure queue. */
+export function planSandboxReplays({ batchId, batch, maxRuns, offset = 0, samplePasses = 0, seed = 'still-replay-v1' } = {}) {
+  if (typeof batchId !== 'string' || !batchId || !Array.isArray(batch?.results) || batch.provenance !== 'deterministic-mock') throw new TypeError('Provide a batch ID and a deterministic-mock trial batch.');
+  if (!Number.isSafeInteger(maxRuns) || maxRuns < 0 || !Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(samplePasses) || samplePasses < 0 || typeof seed !== 'string') throw new TypeError('maxRuns and samplePasses must be nonnegative integers and seed must be a string.');
+  const seen = new Set();
+  const failures = [], passes = [];
+  for (const result of batch.results) {
+    if (!result || result.personaId == null || !Number.isSafeInteger(result.trial) || result.trial < 1 || !['pass', 'fail', 'unverified'].includes(result.status) || !Array.isArray(result.events)) throw new TypeError('Each trial needs a persona ID, trial number, status and events.');
+    const key = keyFor(batchId, result);
+    if (seen.has(key)) throw new Error('Duplicate persona and trial identity in batch.');
+    seen.add(key);
+    const item = { key, personaId: String(result.personaId), trial: result.trial, status: result.status, events: result.events, finalPayment: result.finalPayment };
+    if (result.status === 'fail') failures.push(item);
+    if (result.status === 'pass') passes.push(item);
+  }
+  const order = (a, b) => a.key.localeCompare(b.key);
+  failures.sort(order);
+  passes.sort((a, b) => digest(JSON.stringify([seed, a.key])).localeCompare(digest(JSON.stringify([seed, b.key]))) || order(a, b));
+  const queue = [...failures.map(item => ({ ...item, reason: 'failure' })), ...passes.slice(0, samplePasses).map(item => ({ ...item, reason: 'sampled-pass' }))];
+  return { batchId, seed, maxRuns, offset, samplePassesRequested: samplePasses, failureCount: failures.length, sampledPassCount: Math.min(samplePasses, passes.length), excludedUnverifiedCount: batch.results.filter(item => item.status === 'unverified').length, queueCount: queue.length, readyCount: Math.min(maxRuns, Math.max(0, queue.length - offset)), deferredCount: queue.length - Math.min(maxRuns, Math.max(0, queue.length - offset)), queue: queue.map((item, index) => ({ ...item, queueState: index >= offset && index < offset + maxRuns ? 'ready' : 'deferred' })) };
+}
+
+function comparable(item) {
+  const calls = item.events.filter(event => event.type === 'tool_call' && event.tool === 'create_refund');
+  if (calls.length !== 1) return { reason: 'Only a single explicit refund on a fresh capture is comparable; retries and no-call traces need a separate executor.' };
+  const disputes = item.events.filter(event => event.type === 'tool_result' && event.tool === 'get_dispute');
+  if (disputes.length !== 1 || disputes[0].response?.status !== 'NONE') return { reason: 'Only a trace with a clear mock dispute state is comparable; dispute scenarios require real dispute evidence.' };
+  const call = calls[0], args = call.arguments || {};
+  const responses = item.events.filter(event => event.type === 'tool_result' && event.tool === 'create_refund' && event.callId === call.id);
+  if (responses.length !== 1 || !responses[0].response || responses[0].response.status == null) return { reason: 'The mock response is missing or ambiguous.' };
+  const payment = item.finalPayment;
+  if (!payment || payment.status !== 'COMPLETED' || !payment.amount || parseMoney(payment.amount.value) === null || !/^[A-Z]{3}$/.test(payment.amount.currency_code || '')) return { reason: 'The mock capture is not a completed payment with a known amount and currency.' };
+  if (typeof args.amount !== 'string' || parseMoney(args.amount) === null || parseMoney(args.amount) <= 0 || args.currency !== payment.amount.currency_code || args.captureId || args.customerId || args.orderId) return { reason: 'The refund must specify an amount and currency on the scenario capture; identity-changing and omitted-amount requests are unsupported.' };
+  const response = responses[0].response;
+  if (response.status !== 201 || response.body?.status !== 'COMPLETED' || parseMoney(response.body?.amount?.value) !== parseMoney(args.amount) || response.body?.amount?.currency_code !== args.currency) return { reason: 'Only confirmed mock refund successes are comparable.' };
+  return { amount: args.amount, currency: args.currency, captureAmount: payment.amount.value, mockResponse: response };
+}
+
+function unverified(item, reason) {
+  return { key: item.key, personaId: item.personaId, trial: item.trial, status: 'unverified', reason };
+}
+
+/** Compare trusted local executor receipts. This function never invokes an adapter or sends a payment. */
+export function reconcileSandboxReplays({ plan, evidence = [] } = {}) {
+  if (!plan || !Array.isArray(plan.queue) || !Array.isArray(evidence)) throw new TypeError('Provide a replay plan and evidence array.');
+  const byKey = new Map(), captureKeys = new Map();
+  for (const receipt of evidence) {
+    if (!receipt || typeof receipt.key !== 'string' || byKey.has(receipt.key)) throw new Error('Evidence must have a unique replay key.');
+    byKey.set(receipt.key, receipt);
+    const captureId = receipt.capture?.body?.id;
+    if (captureId) captureKeys.set(captureId, (captureKeys.get(captureId) || 0) + 1);
+  }
+  const results = plan.queue.map(item => {
+    if (item.queueState !== 'ready') return unverified(item, 'Deferred by the execution limit.');
+    const expected = comparable(item);
+    if (expected.reason) return unverified(item, expected.reason);
+    const receipt = byKey.get(item.key);
+    if (!receipt) return unverified(item, 'No executor receipt was supplied.');
+    const simulated = receipt.source === 'simulated-provider-fixture' && receipt.simulated === true;
+    if (!simulated && (receipt.source !== 'paypal-sandbox' || receipt.executor !== 'trusted-local' || receipt.simulated !== false || receipt.humanApprovedFreshCapture !== true)) return unverified(item, 'A trusted local executor must attest to a real sandbox response and a human-approved fresh capture.');
+    const capture = receipt.capture, refund = receipt.refund, request = receipt.request;
+    const captureId = capture?.body?.id;
+    if (!capture?.ok || capture.status !== 200 || capture.body?.status !== 'COMPLETED' || typeof captureId !== 'string' || !captureId || /^MOCK-/i.test(captureId) || captureKeys.get(captureId) !== 1 || parseMoney(capture.body?.amount?.value) !== parseMoney(expected.captureAmount) || capture.body?.amount?.currency_code !== expected.currency || receipt.refundedBefore !== '0.00') return unverified(item, 'The capture evidence is missing, reused, not fresh, or differs from the mock capture.');
+    if (request?.captureId !== captureId || parseMoney(request?.amount) !== parseMoney(expected.amount) || request?.currency !== expected.currency || typeof request?.requestId !== 'string' || !request.requestId) return unverified(item, 'The executed refund request does not match the mock action and approved capture.');
+    if (!refund || !Number.isInteger(refund.status) || typeof refund.ok !== 'boolean' || !refund.body || typeof refund.body !== 'object') return unverified(item, 'A complete PayPal refund response is required.');
+    if (refund.ok && (refund.status !== 201 || refund.body.status !== 'COMPLETED' || typeof refund.body.id !== 'string' || !refund.body.id || /^MOCK-/i.test(refund.body.id) || parseMoney(refund.body.amount?.value) !== parseMoney(expected.amount) || refund.body.amount?.currency_code !== expected.currency)) return unverified(item, 'The provider success response does not confirm the requested completed refund.');
+    if (!refund.ok && (!refund.body.name || !Array.isArray(refund.body.details) || !refund.body.details.some(detail => detail?.issue))) return unverified(item, 'The provider error lacks an identifiable issue.');
+    const agreement = refund.ok && refund.status === expected.mockResponse.status;
+    return { key: item.key, personaId: item.personaId, trial: item.trial, status: simulated ? (agreement ? 'simulated-agreed' : 'simulated-disagreed') : (agreement ? 'agreed' : 'disagreed'), source: simulated ? 'simulated-provider-fixture' : 'paypal-sandbox', comparison: 'HTTP status and completed refund amount and currency', mock: { status: expected.mockResponse.status, outcome: expected.mockResponse.body.status, amount: expected.mockResponse.body.amount }, provider: { captureId, status: refund.status, ok: refund.ok, refundId: refund.body.id, outcome: refund.body.status, amount: refund.body.amount, name: refund.body.name, issues: refund.body.details?.map(detail => detail.issue).filter(Boolean), debugId: refund.debugId } };
+  });
+  const agreed = results.filter(result => result.status === 'agreed').length;
+  const disagreed = results.filter(result => result.status === 'disagreed').length;
+  const compared = agreed + disagreed;
+  return { source: 'replay-reconciliation', agreed, disagreed, compared, simulated: results.filter(result => result.status.startsWith('simulated-')).length, unverified: results.filter(result => result.status === 'unverified').length, agreement: compared ? agreed / compared : null, results };
+}

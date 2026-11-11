@@ -1,8 +1,16 @@
 import http from 'node:http';
-import { readFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { randomUUID, createHash } from 'node:crypto';
 import { createPayPalSandbox } from './paypal.mjs';
 import { runScenario, normalizeRuleSettings } from './runner.mjs';
+import { runRetryDemo } from './retry-demo.mjs';
+import { generatePersonas } from './personas.mjs';
+import { runTrials } from './trials.mjs';
+import { createExternalTrialAgent } from './trial-agent.mjs';
+import { importSandboxAccountPersonas } from './account-personas.mjs';
+import { derivePermission, createGateway } from './gateway.mjs';
+import { createPayPalMock } from './paypal-mock.mjs';
+import { planSandboxReplays } from './sandbox-replay.mjs';
 import { codexReady } from './codex-model.mjs';
 import { listRuns, readRun, saveRun } from './store.mjs';
 import { scenarioCatalog } from './catalog.mjs';
@@ -27,12 +35,12 @@ function sessionFor(request, response) {
 
 function publicCheckout(checkout) {
   if (!checkout) return null;
-  const { state, orderId, approvalUrl, captureId, capture, error, providerStatus } = checkout;
-  return { state, orderId, approvalUrl, captureId, capture, error, providerStatus };
+  const { state, orderId, approvalUrl, captureId, capture, error, providerStatus, amount } = checkout;
+  return { state, orderId, approvalUrl, captureId, capture, error, providerStatus, amount };
 }
 
-function completedCapture(result) {
-  return result.ok && result.body?.captures?.find(item => item.status === 'COMPLETED' && item.id && item.amount?.value === '50.00' && item.amount?.currency_code === 'USD');
+function completedCapture(result, amount = '50.00') {
+  return result.ok && result.body?.captures?.find(item => item.status === 'COMPLETED' && item.id && item.amount?.value === amount && item.amount?.currency_code === 'USD');
 }
 
 function recordCapture(session, checkout, capture) {
@@ -42,7 +50,7 @@ function recordCapture(session, checkout, capture) {
   delete checkout.error;
   session.captures.add(capture.id);
 }
-const files = new Map([['/', ['public/index.html', 'text/html; charset=utf-8']], ['/app.js', ['public/app.js', 'text/javascript; charset=utf-8']], ['/setup', ['public/setup.html', 'text/html; charset=utf-8']]]);
+const files = new Map([['/', ['public/index.html', 'text/html; charset=utf-8']], ['/app.js', ['public/app.js', 'text/javascript; charset=utf-8']], ['/setup', ['public/setup.html', 'text/html; charset=utf-8']], ['/upgrade', ['public/upgrade.html', 'text/html; charset=utf-8']], ['/upgrade.js', ['public/upgrade.js', 'text/javascript; charset=utf-8']], ['/replay', ['public/replay.html', 'text/html; charset=utf-8']]]);
 
 function send(response, status, data) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
@@ -68,7 +76,7 @@ http.createServer(async (request, response) => {
       response.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
       return response.end(content);
     }
-    if (request.method === 'GET' && url.pathname === '/api/status') return send(response, 200, { ready: Boolean(session.paypal) && modelReady, paypalReady: Boolean(session.paypal), modelReady, model: process.env.CODEX_MODEL || 'gpt-6.1-terra' });
+    if (request.method === 'GET' && url.pathname === '/api/status') return send(response, 200, { ready: Boolean(session.paypal) && modelReady, paypalReady: Boolean(session.paypal), modelReady, model: process.env.CODEX_MODEL || 'gpt-6.1-terra', provider: process.env.STILL_SYNTHETIC_PROVIDER === '1' ? 'synthetic-provider-fixture' : 'paypal-sandbox' });
     if (request.method === 'GET' && url.pathname === '/api/checkout') return send(response, 200, { checkout: publicCheckout(session.checkout) });
     if (request.method === 'GET' && url.pathname === '/api/scenarios') return send(response, 200, { scenarios: scenarioCatalog });
     if (request.method === 'GET' && url.pathname === '/api/runs') return send(response, 200, { runs: await listRuns() });
@@ -88,12 +96,14 @@ http.createServer(async (request, response) => {
     }
     if (url.pathname === '/api/orders') {
       if (!session.paypal) return send(response, 503, { error: 'PayPal sandbox credentials are not configured' });
-      await body(request);
+      const input = await body(request);
+      const amount = input.amount ?? '50.00';
+      if (!['50.00', '100.00'].includes(amount)) return send(response, 400, { error: 'Choose a supported sandbox amount' });
       if (session.checkout && session.checkout.state !== 'spent') return send(response, 409, { error: 'An existing checkout must be resolved first', checkout: publicCheckout(session.checkout) });
-      const checkout = { state: 'creating' };
+      const checkout = { state: 'creating', amount };
       session.checkout = checkout;
       try {
-        const result = await session.paypal.createOrder({ amount: '50.00', currency: 'USD', requestId: randomUUID() });
+        const result = await session.paypal.createOrder({ amount, currency: 'USD', requestId: randomUUID() });
         if (result.body?.id) checkout.orderId = result.body.id;
         if (result.ok && result.body.id && result.body.approvalUrl) {
           checkout.state = 'approval_required';
@@ -122,7 +132,7 @@ http.createServer(async (request, response) => {
         checkout.state = 'checking';
         try {
           const result = await session.paypal.getOrder(checkout.orderId);
-          const capture = completedCapture(result);
+          const capture = completedCapture(result, checkout.amount);
           if (capture) recordCapture(session, checkout, capture);
           else if (previous === 'approval_required' && result.ok && ['CREATED', 'PAYER_ACTION_REQUIRED', 'APPROVED'].includes(result.body.status)) {
             checkout.state = 'approval_required';
@@ -142,7 +152,7 @@ http.createServer(async (request, response) => {
         checkout.state = 'checking';
         try {
           const result = await session.paypal.getOrder(checkout.orderId);
-          const capture = completedCapture(result);
+          const capture = completedCapture(result, checkout.amount);
           if (capture) {
             recordCapture(session, checkout, capture);
             return send(response, 409, { error: 'PayPal shows a captured payment. Use it for a run before creating another checkout.', checkout: publicCheckout(checkout) });
@@ -162,7 +172,7 @@ http.createServer(async (request, response) => {
         checkout.state = 'approval_required';
         return send(response, 502, { error: 'Could not check PayPal approval. No capture was attempted.', checkout: publicCheckout(checkout) });
       }
-      const existingCapture = completedCapture(order);
+      const existingCapture = completedCapture(order, checkout.amount);
       if (existingCapture) {
         recordCapture(session, checkout, existingCapture);
         return send(response, 200, { captureId: existingCapture.id, capture: existingCapture, checkout: publicCheckout(checkout) });
@@ -179,7 +189,7 @@ http.createServer(async (request, response) => {
       checkout.state = 'capturing';
       try {
         const result = await session.paypal.captureOrder(checkout.orderId, { requestId: checkout.requestId });
-        const capture = completedCapture(result);
+        const capture = completedCapture(result, checkout.amount);
         if (capture) {
           recordCapture(session, checkout, capture);
           return send(response, 200, { captureId: capture.id, capture, checkout: publicCheckout(checkout) });
@@ -189,11 +199,90 @@ http.createServer(async (request, response) => {
       checkout.error = 'Capture outcome is unknown. Check PayPal status before proceeding; do not retry capture.';
       return send(response, 502, { error: checkout.error, checkout: publicCheckout(checkout) });
     }
+    if (url.pathname === '/api/upgrade/account-personas') {
+      const input = await body(request);
+      if (!session.paypal) return send(response, 503, { error: 'Connect a PayPal sandbox account first.' });
+      const result = await importSandboxAccountPersonas({ paypal: session.paypal, startDate: input.startDate, endDate: input.endDate, count: 30 });
+      return send(response, 200, result);
+    }
+    if (url.pathname === '/api/upgrade/replay-plan') {
+      const input = await body(request);
+      if (!/^[0-9a-f-]{36}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid batch.' });
+      try {
+        const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        const plan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 10, samplePasses: 10 });
+        return send(response, 200, { failureCount: plan.failureCount, sampledPassCount: plan.sampledPassCount, queueCount: plan.queueCount, readyCount: plan.readyCount, deferredCount: plan.deferredCount, agreement: null, status: 'unverified', reason: 'Every replay needs a fresh approved sandbox capture and a supported executor.' });
+      } catch { return send(response, 400, { error: 'Replay plan could not be prepared.' }); }
+    }
+    if (url.pathname === '/api/upgrade/permission') {
+      const input = await body(request);
+      if (!/^[0-9a-f-]{36}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid batch.' });
+      try {
+        const summary = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary });
+        return send(response, 200, { permission });
+      } catch { return send(response, 404, { error: 'Batch not found.' }); }
+    }
+    if (url.pathname === '/api/upgrade/shadow') {
+      const input = await body(request);
+      if (input.action === 'record') {
+        const mock = createPayPalMock({ amount: '100.00', currency: 'USD', kind: 'partial-return', approvedReturn: '50.00', customerId: 'demo-customer', orderId: 'demo-order', disputeOpen: false }, 'shadow');
+        const adapter = { replaySafe: true, inspect: async captureId => ({ captureId, paymentStatus: 'COMPLETED', currency: 'USD', disputeState: 'CLEAR', identityMatches: true, cancellationComplete: false, remaining: '100.00', approvedAmount: '50.00', refundedToDate: '0.00' }), refund: async (captureId, args) => mock.refund({ ...args, captureId }), get_order: async () => ({ ok: true, status: 200, body: { id: 'demo-order', status: 'COMPLETED' } }) };
+        const permission = { version: 1, agentId: 'scripted-agent', create_refund: { allowed: false }, reason: 'No verified sandbox evidence for an earned grant.' };
+        session.shadowGateway = createGateway({ agentId: 'scripted-agent', permission, adapter, mode: 'shadow' });
+        session.shadowId = `shadow-${randomUUID()}`;
+        await session.shadowGateway.call({ sessionId: session.shadowId, name: 'get_order', arguments: { order_id: 'demo-order' } });
+        await session.shadowGateway.call({ sessionId: session.shadowId, decisionId: 'demo-decision', name: 'create_refund', arguments: { capture_id: 'MOCK-CAPTURE-shadow', amount: { value: '50.00', currency_code: 'USD' } } });
+        return send(response, 200, { mode: 'mock-shadow', sessionId: session.shadowId, events: session.shadowGateway.events(session.shadowId) });
+      }
+      if (input.action === 'promote' && session.shadowGateway && session.shadowId) {
+        const regression = session.shadowGateway.promote(session.shadowId);
+        const replay = await session.shadowGateway.replay(regression);
+        const directory = new URL('../.data/regressions/', import.meta.url);
+        await mkdir(directory, { recursive: true, mode: 0o700 });
+        const id = randomUUID();
+        await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, regression, replay }), { mode: 0o600, flag: 'wx' });
+        return send(response, 200, { mode: 'mock-regression', id, regression, replay });
+      }
+      return send(response, 400, { error: 'Record a shadow session first.' });
+    }
+    if (url.pathname === '/api/upgrade/batch') {
+      const input = await body(request);
+      const count = Number(input.personas ?? 1000), trials = Number(input.trials ?? 5), concurrency = Number(input.concurrency ?? 20);
+      if (!Number.isInteger(count) || count < 1 || count > 5000 || !Number.isInteger(trials) || trials < 1 || trials > 10 || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100 || !['safe', 'buggy', 'external'].includes(input.agent)) return send(response, 400, { error: 'Choose valid trial settings and an agent.' });
+      const personas = generatePersonas({ count, seed: 'still-upgrade' });
+      let agent = input.agent, agentId;
+      if (agent === 'external') {
+        try { agent = createExternalTrialAgent({ endpoint: input.endpoint }); agentId = `local-${createHash('sha256').update(input.endpoint).digest('hex').slice(0, 24)}`; }
+        catch { return send(response, 400, { error: 'Provide a valid loopback agent endpoint.' }); }
+      }
+      const result = await runTrials({ personas, trials, concurrency, agent, agentId });
+      const id = randomUUID();
+      const directory = new URL('../.data/batches/', import.meta.url);
+      await mkdir(directory, { recursive: true, mode: 0o700 });
+      await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
+      const { results, ...summary } = result;
+      return send(response, 200, { id, agent: input.agent, ...summary, examplePersonas: personas.slice(0, 3) });
+    }
+    if (url.pathname === '/api/retry-demo') {
+      const input = await body(request);
+      if (!['buggy', 'fixed'].includes(input.variant)) return send(response, 400, { error: 'Choose a scripted retry variant' });
+      const checkout = session.checkout;
+      if (!session.paypal || !checkout || checkout.state !== 'captured' || checkout.captureId !== input.captureId || checkout.capture?.amount?.value !== '100.00' || session.spent.has(input.captureId)) return send(response, 400, { error: 'A fresh $100 sandbox capture is required' });
+      session.spent.add(input.captureId);
+      checkout.state = 'spent';
+      const provider = process.env.STILL_SYNTHETIC_PROVIDER === '1' ? 'synthetic-provider-fixture' : 'paypal-sandbox';
+      const result = await runRetryDemo({ paypal: session.paypal, captureId: input.captureId, variant: input.variant, provider });
+      if (provider === 'synthetic-provider-fixture') return send(response, 200, { ...result, metadata: { ...result.metadata, provider } });
+      try { return send(response, 200, await saveRun(`scripted-${input.variant}`, result)); }
+      catch { return send(response, 200, { ...result, storageWarning: 'The run could not be saved. Copy the trace before leaving.' }); }
+    }
     if (url.pathname === '/api/runs') {
       const input = await body(request);
       const scenario = scenarioCatalog.find(item => item.id === input.scenarioId);
       if (!scenario) return send(response, 400, { error: 'Choose a valid scenario' });
       if ((scenario.payment === 'captured' && !session.paypal) || (input.agent !== 'external' && !modelReady)) return send(response, 503, { error: 'The selected scenario needs PayPal sandbox and a configured agent' });
+      if (scenario.payment === 'captured' && session.checkout?.capture?.amount?.value !== scenario.amount) return send(response, 400, { error: 'The sandbox capture amount does not match this scenario' });
       if (scenario.payment === 'captured' && (!session.captures.has(input.captureId) || session.spent.has(input.captureId))) return send(response, 400, { error: 'Create a fresh captured payment for each run' });
       if (!['buggy', 'safe', 'external'].includes(input.agent)) return send(response, 400, { error: 'Choose a valid agent' });
       if (input.agent === 'external' && (typeof input.agentEndpoint !== 'string' || input.agentEndpoint.length > 2048)) return send(response, 400, { error: 'Enter a local agent endpoint' });

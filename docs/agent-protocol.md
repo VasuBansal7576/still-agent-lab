@@ -53,3 +53,11 @@ Set `AGENT_PORT` to use another port for the example, then configure the host en
 ## Codex-backed example
 
 Run `node examples/codex-agent.mjs` to start a local agent backed by the signed-in Codex CLI and `gpt-6.1-terra`. Set `AGENT_PORT` to choose a port. Point the host at `http://127.0.0.1:8787/agent`, or the port you chose. The example forwards the supplied conversation to Codex for each decision and returns one proposed action or a final reply. The host executes the tools and owns the PayPal credentials. This example requires a working signed-in Codex CLI. It binds to loopback and has no authentication, so run it only on a trusted machine. Stop it with Ctrl+C.
+
+## Repeated-trial protocol version 2
+
+Repeated trials use the same request and response envelope with `version` set to `2`. The `tools` array contains `get_order`, `get_dispute`, and `refund_order`. Version 1 is unchanged. The trial adapter is available through `createExternalTrialAgent` as described in [Connect a local agent to repeated trials](trial-agent.md).
+
+`get_order` and `get_dispute` take empty arguments. `refund_order` accepts the optional string fields `amount`, `currency`, `requestId`, `orderId`, `customerId`, and `captureId`. A missing amount requests the remaining balance in the mock. A missing currency uses the scenario currency. A missing request ID provides no idempotency protection. The agent must reuse the same request ID and arguments to retry an uncertain operation. The host does not generate a request ID or target identity for the agent. Each argument is limited to 100 characters. Unknown fields are rejected.
+
+The agent receives the full conversation for each action, including mock tool results. It must propose a dispute check itself. The mock and its responses are not evidence of a live PayPal operation.

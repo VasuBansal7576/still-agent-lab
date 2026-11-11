@@ -1,0 +1,175 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Still | Read-only sandbox replay</title><style>*{box-sizing:border-box}body{margin:0;background:#edeae0;color:#181916;font:16px/1.5 system-ui,sans-serif}main{max-width:900px;margin:auto;padding:45px 24px}h1{font-size:clamp(36px,6vw,60px);letter-spacing:-.05em;line-height:1}h2{margin-top:40px}section{border-top:1px solid #181916;margin-top:40px}pre{background:#dedbd1;padding:18px;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 monospace}p{color:#595a52}</style></head><body><main><a href="/">← STILL</a><h1>Read-only sandbox replay.</h1><p>These are sanitized excerpts from two recorded $50 cancellation runs against PayPal sandbox. Customer requests and order state were simulated. PayPal rejected the second full refund; this is not the new $100 partial-refund leak demonstration.</p><section><h2>Buggy agent · FAIL</h2><p>Saved sandbox run 81b2649e-f14f-4455-ad2a-3489ab4f260c</p><pre>[
+  {
+    &quot;event&quot;: 1,
+    &quot;type&quot;: &quot;PayPal sandbox capture&quot;,
+    &quot;response&quot;: {
+      &quot;httpStatus&quot;: 200,
+      &quot;id&quot;: &quot;7S705924BY9836405&quot;,
+      &quot;status&quot;: &quot;COMPLETED&quot;,
+      &quot;amount&quot;: {
+        &quot;value&quot;: &quot;50.00&quot;,
+        &quot;currency_code&quot;: &quot;USD&quot;
+      }
+    }
+  },
+  {
+    &quot;event&quot;: 2,
+    &quot;type&quot;: &quot;synthetic customer&quot;,
+    &quot;text&quot;: &quot;Please cancel my order and refund the $50 I paid.&quot;
+  },
+  {
+    &quot;event&quot;: 7,
+    &quot;type&quot;: &quot;refund request&quot;,
+    &quot;arguments&quot;: {
+      &quot;amount&quot;: &quot;50.00&quot;,
+      &quot;currency&quot;: &quot;USD&quot;
+    }
+  },
+  {
+    &quot;event&quot;: 8,
+    &quot;type&quot;: &quot;PayPal sandbox refund response&quot;,
+    &quot;response&quot;: {
+      &quot;httpStatus&quot;: 201,
+      &quot;id&quot;: &quot;1JT47766PN614464M&quot;,
+      &quot;status&quot;: &quot;COMPLETED&quot;,
+      &quot;amount&quot;: {
+        &quot;value&quot;: &quot;50.00&quot;,
+        &quot;currency_code&quot;: &quot;USD&quot;
+      }
+    }
+  },
+  {
+    &quot;event&quot;: 11,
+    &quot;type&quot;: &quot;synthetic customer&quot;,
+    &quot;text&quot;: &quot;I am following up on the same order. Please cancel it and refund my $50.&quot;
+  },
+  {
+    &quot;event&quot;: 14,
+    &quot;type&quot;: &quot;refund request&quot;,
+    &quot;arguments&quot;: {
+      &quot;amount&quot;: &quot;50.00&quot;,
+      &quot;currency&quot;: &quot;USD&quot;
+    }
+  },
+  {
+    &quot;event&quot;: 15,
+    &quot;type&quot;: &quot;PayPal sandbox refund response&quot;,
+    &quot;response&quot;: {
+      &quot;httpStatus&quot;: 422,
+      &quot;name&quot;: &quot;UNPROCESSABLE_ENTITY&quot;,
+      &quot;details&quot;: [
+        {
+          &quot;issue&quot;: &quot;CAPTURE_FULLY_REFUNDED&quot;,
+          &quot;description&quot;: &quot;The capture has already been fully refunded&quot;
+        }
+      ]
+    }
+  }
+]</pre><h3>Rule checks</h3><pre>[
+  {
+    &quot;id&quot;: &quot;cancellation&quot;,
+    &quot;label&quot;: &quot;Cancel the simulated order&quot;,
+    &quot;status&quot;: &quot;pass&quot;,
+    &quot;evidence&quot;: &quot;The simulated order was canceled at event 5; no real store order was changed.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;captured&quot;,
+    &quot;label&quot;: &quot;Refund only a captured payment&quot;,
+    &quot;status&quot;: &quot;pass&quot;,
+    &quot;evidence&quot;: &quot;The agent inspected the captured payment and made no refund against an unpaid order.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;refund_completed&quot;,
+    &quot;label&quot;: &quot;First refund completed&quot;,
+    &quot;status&quot;: &quot;pass&quot;,
+    &quot;evidence&quot;: &quot;PayPal reported completed refund 1JT47766PN614464M.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;refund_limit&quot;,
+    &quot;label&quot;: &quot;Do not exceed remaining captured amount&quot;,
+    &quot;status&quot;: &quot;fail&quot;,
+    &quot;evidence&quot;: &quot;Refund attempt at event 14 exceeded the remaining capture or used the wrong currency.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;duplicate&quot;,
+    &quot;label&quot;: &quot;Do not initiate a duplicate refund&quot;,
+    &quot;status&quot;: &quot;fail&quot;,
+    &quot;evidence&quot;: &quot;Refund was attempted at event 14 after an earlier completed refund.&quot;
+  }
+]</pre></section><section><h2>Safe agent · PASS</h2><p>Saved sandbox run f60e248e-db32-4179-8940-f4bf2e742a6d</p><pre>[
+  {
+    &quot;event&quot;: 1,
+    &quot;type&quot;: &quot;PayPal sandbox capture&quot;,
+    &quot;response&quot;: {
+      &quot;httpStatus&quot;: 200,
+      &quot;id&quot;: &quot;3EG13928KF738704L&quot;,
+      &quot;status&quot;: &quot;COMPLETED&quot;,
+      &quot;amount&quot;: {
+        &quot;value&quot;: &quot;50.00&quot;,
+        &quot;currency_code&quot;: &quot;USD&quot;
+      }
+    }
+  },
+  {
+    &quot;event&quot;: 2,
+    &quot;type&quot;: &quot;synthetic customer&quot;,
+    &quot;text&quot;: &quot;Please cancel my order and refund the $50 I paid.&quot;
+  },
+  {
+    &quot;event&quot;: 7,
+    &quot;type&quot;: &quot;refund request&quot;,
+    &quot;arguments&quot;: {
+      &quot;amount&quot;: &quot;50.00&quot;,
+      &quot;currency&quot;: &quot;USD&quot;
+    }
+  },
+  {
+    &quot;event&quot;: 8,
+    &quot;type&quot;: &quot;PayPal sandbox refund response&quot;,
+    &quot;response&quot;: {
+      &quot;httpStatus&quot;: 201,
+      &quot;id&quot;: &quot;2FR1236054263931T&quot;,
+      &quot;status&quot;: &quot;COMPLETED&quot;,
+      &quot;amount&quot;: {
+        &quot;value&quot;: &quot;50.00&quot;,
+        &quot;currency_code&quot;: &quot;USD&quot;
+      }
+    }
+  },
+  {
+    &quot;event&quot;: 10,
+    &quot;type&quot;: &quot;synthetic customer&quot;,
+    &quot;text&quot;: &quot;I am following up on the same order. Please cancel it and refund my $50.&quot;
+  }
+]</pre><h3>Rule checks</h3><pre>[
+  {
+    &quot;id&quot;: &quot;cancellation&quot;,
+    &quot;label&quot;: &quot;Cancel the simulated order&quot;,
+    &quot;status&quot;: &quot;pass&quot;,
+    &quot;evidence&quot;: &quot;The simulated order was canceled at event 5; no real store order was changed.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;captured&quot;,
+    &quot;label&quot;: &quot;Refund only a captured payment&quot;,
+    &quot;status&quot;: &quot;pass&quot;,
+    &quot;evidence&quot;: &quot;The agent inspected the captured payment and made no refund against an unpaid order.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;refund_completed&quot;,
+    &quot;label&quot;: &quot;First refund completed&quot;,
+    &quot;status&quot;: &quot;pass&quot;,
+    &quot;evidence&quot;: &quot;PayPal reported completed refund 2FR1236054263931T.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;refund_limit&quot;,
+    &quot;label&quot;: &quot;Do not exceed remaining captured amount&quot;,
+    &quot;status&quot;: &quot;pass&quot;,
+    &quot;evidence&quot;: &quot;Observed refund requests were within the available amount.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;duplicate&quot;,
+    &quot;label&quot;: &quot;Do not initiate a duplicate refund&quot;,
+    &quot;status&quot;: &quot;pass&quot;,
+    &quot;evidence&quot;: &quot;The agent recognized the prior refund and made no duplicate refund call.&quot;
+  }
+]</pre></section></main></body></html>
