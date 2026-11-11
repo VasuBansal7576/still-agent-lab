@@ -13,6 +13,8 @@ const result = await runTrials({ personas: generatePersonas({ count: 10 }), tria
 
 Start the included example with `node examples/trial-agent.mjs`, then enter `http://127.0.0.1:8787/agent` on the driving-test page. It is a scripted demonstration agent, not an AI model.
 
+For a model-backed agent, sign in to the Codex CLI and start `node examples/codex-agent.mjs`. Use the same endpoint on the driving-test page, or run `node bin/still.mjs test --agent external --agent-url http://127.0.0.1:8787/agent --personas 1 --trials 1 --concurrency 1`. The example requests `gpt-6.1-terra` for each decision. Model access and response time depend on your Codex account and environment. Each decision starts a separate CLI process, so large runs can be slow or exceed account limits. The example binds to loopback without authentication; use it only on a trusted machine. Stop it with Ctrl+C.
+
 The endpoint must implement [protocol version 2](agent-protocol.md#repeated-trial-protocol-version-2). Each trial gets a separate conversation and mock payment. The runner may invoke the endpoint concurrently. The endpoint must keep decisions independent across conversations. `policy` overrides the default store instructions, and `maxSteps` controls the action limit, which defaults to 16.
 
 The agent chooses its refund request ID. A retry of the same uncertain operation must reuse the ID and the same arguments. The adapter does not invent an ID or infer customer, order, or capture identities. The tool result can report an unknown outcome after a timeout. A missing ID is passed through to the mock without an idempotency key. A missing amount requests the remaining balance and is checked as an unsafe proposal.

@@ -1,8 +1,53 @@
 import http from 'node:http';
 import { codexChat } from '../server/codex-model.mjs';
+import { spawn } from 'node:child_process';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const maxBytes = 1_000_000;
 const supportedTools = new Set(['get_order', 'cancel_order', 'refund_order', 'propose_fulfillment']);
+const trialTools = new Set(['get_order', 'get_dispute', 'refund_order']);
+const refundFields = ['amount', 'currency', 'requestId', 'orderId', 'customerId', 'captureId'];
+const schemaDir = await mkdtemp(join(tmpdir(), 'still-codex-agent-'));
+const schemaPath = join(schemaDir, 'schema.json');
+const properties = Object.fromEntries(refundFields.map(key => [key, { type: 'string' }]));
+await writeFile(schemaPath, JSON.stringify({ type: 'object', properties: { content: { type: 'string' }, tool: { type: 'string', enum: ['none', ...trialTools] }, ...properties }, required: ['content', 'tool', ...refundFields], additionalProperties: false }));
+process.on('exit', () => rmSync(schemaDir, { recursive: true, force: true }));
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => process.exit(0));
+
+function trialChat(messages) {
+  const prompt = [
+    'Act as the support agent in the supplied conversation. Choose one next action or reply to the customer.',
+    'Do not use Codex tools, shell, filesystem, network, or browser. Output only the structured response.',
+    'Tool calls are proposals. The host executes them and provides the result in the next conversation. Do not invent results.',
+    'For a refund, set the fields you intend to supply. Use an empty string for omitted fields. Keep the same requestId and arguments for a retry of the same uncertain refund.',
+    `Conversation: ${JSON.stringify(messages)}`
+  ].join('\n');
+  return new Promise((resolve, reject) => {
+    const child = spawn('codex', ['exec', '--ephemeral', '--ignore-user-config', '--skip-git-repo-check', '--sandbox', 'read-only', '--disable', 'shell_tool', '--disable', 'unified_exec', '--disable', 'apps', '--disable', 'plugins', '--disable', 'browser_use', '--disable', 'code_mode_host', '--model', 'gpt-6.1-terra', '--output-schema', schemaPath, '--json', '-'], { cwd: tmpdir(), stdio: ['pipe', 'pipe', 'ignore'] });
+    let output = '';
+    const timer = setTimeout(() => child.kill('SIGKILL'), 55000);
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', chunk => { output += chunk; if (output.length > maxBytes) child.kill('SIGKILL'); });
+    child.on('error', reject);
+    child.on('close', code => {
+      clearTimeout(timer);
+      if (code !== 0 || output.length > maxBytes) return reject(new Error('Codex request failed.'));
+      try {
+        const events = output.split('\n').filter(Boolean).map(line => JSON.parse(line));
+        const text = events.filter(event => event.type === 'item.completed' && event.item?.type === 'agent_message').at(-1)?.item.text;
+        const value = JSON.parse(text);
+        if (typeof value.content !== 'string' || !['none', ...trialTools].includes(value.tool) || refundFields.some(key => typeof value[key] !== 'string' || value[key].length > 100)) throw new Error('Invalid response.');
+        const args = value.tool === 'refund_order' ? Object.fromEntries(refundFields.filter(key => value[key] !== '').map(key => [key, value[key]])) : {};
+        resolve({ content: value.content, tool: value.tool === 'none' ? null : { name: value.tool, arguments: args } });
+      } catch { reject(new Error('Invalid Codex response.')); }
+    });
+    child.stdin.on('error', () => {});
+    child.stdin.end(prompt);
+  });
+}
 const port = Number(process.env.AGENT_PORT || 8787);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('AGENT_PORT must be a valid port number.');
 
@@ -25,8 +70,15 @@ const server = http.createServer(async (request, response) => {
     let input;
     try { input = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks))); }
     catch { return send(400, { error: 'Invalid JSON.' }); }
-    if (!input || input.version !== 1 || !Array.isArray(input.messages) || !input.messages.length || !input.messages.every(message => message && typeof message === 'object' && ['system', 'user', 'assistant', 'tool'].includes(message.role)) || !Array.isArray(input.tools) || input.tools.some(tool => !supportedTools.has(tool))) {
+    if (!input || ![1, 2].includes(input.version) || !Array.isArray(input.messages) || !input.messages.length || !input.messages.every(message => message && typeof message === 'object' && ['system', 'user', 'assistant', 'tool'].includes(message.role)) || !Array.isArray(input.tools) || input.tools.some(tool => !(input.version === 2 ? trialTools : supportedTools).has(tool))) {
       return send(400, { error: 'Invalid agent request.' });
+    }
+    if (input.version === 2) {
+      try {
+        const result = await trialChat(input.messages);
+        if ((result.tool && !input.tools.includes(result.tool.name)) || (!result.tool && !result.content.trim())) throw new Error('Invalid action.');
+        return send(200, result);
+      } catch { return send(502, { error: 'Codex model request failed.' }); }
     }
     let message;
     try { message = await codexChat({ messages: input.messages, model: 'gpt-6.1-terra' }); }

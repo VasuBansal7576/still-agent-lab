@@ -313,7 +313,7 @@ http.createServer(async (request, response) => {
       await mkdir(directory, { recursive: true, mode: 0o700 });
       await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
       const { results, ...summary } = result;
-      return send(response, 200, { id, agent: input.agent, ...summary, examplePersonas: personas.slice(0, 3) });
+      return send(response, 200, { id, agent: input.agent, ...summary, examplePersonas: personas.slice(0, 3), exampleTrial: results[0] });
     }
     if (url.pathname === '/api/retry-demo') {
       const input = await body(request);
