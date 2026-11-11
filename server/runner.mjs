@@ -204,7 +204,7 @@ export async function runScenario({ captureId, agent, agentEndpoint, paypal, api
     if (scenario.expected === 'duplicate') checks.push(check('refund_completed', 'First refund completed', firstRefund ? 'pass' : 'inconclusive', firstRefund ? `PayPal reported completed refund ${firstRefund.id}.` : `A completed ${scenario.amount} ${scenario.currency} refund was not observed.`));
     if (scenario.expected === 'partial_return') {
       const total = completed.reduce((sum, item) => sum + (cents(item.amount?.value) ?? 0), 0);
-      const wrongAmount = state.requests.find(item => item.amountCents !== null && item.amountCents > cents(scenario.expectedRefund));
+      const wrongAmount = state.requests.find(item => item.amountCents !== null && item.amountCents > cents(scenario.expectedRefund) - item.alreadyRefunded);
       const returned = total === cents(scenario.expectedRefund) && complete && readPayment;
       checks.push(check('return_amount', 'Refund the approved return amount', wrongAmount || total > cents(scenario.expectedRefund) ? 'fail' : returned ? 'pass' : 'inconclusive', wrongAmount ? `Refund request at event ${wrongAmount.eventId} exceeded the ${scenario.expectedRefund} ${scenario.currency} approved return.` : returned ? `PayPal reported ${scenario.expectedRefund} ${scenario.currency} in completed refunds for the return.` : 'A completed refund for the approved return amount was not observed.'));
     }
