@@ -3,8 +3,9 @@ const workspace = document.querySelector('#workspace');
 const result = document.querySelector('#result');
 const runButton = document.querySelector('#run');
 const policyInput = document.querySelector('#policy');
+const historyList = document.querySelector('#history-list');
 const choiceButtons = [...document.querySelectorAll('[data-agent]')];
-const state = { agent: 'buggy', phase: 'idle', orderId: null, captureId: null, response: null };
+const state = { agent: 'buggy', phase: 'idle', orderId: null, captureId: null, response: null, history: [] };
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
@@ -30,6 +31,7 @@ function setPhase(phase) {
   runButton.disabled = busy;
   policyInput.disabled = busy;
   choiceButtons.forEach(button => { button.disabled = busy || phase === 'approval' || phase === 'capturing' || phase === 'captured'; });
+  historyList.querySelectorAll('button').forEach(button => { button.disabled = busy || phase === 'approval' || phase === 'captured'; });
 }
 
 function message(title, body, action = '') {
@@ -55,11 +57,60 @@ function displayResults(data) {
     return `<div class="row"><span class="n">${String(index + 1).padStart(2, '0')}</span><div><strong>${escapeHtml(typeof title === 'string' ? title : JSON.stringify(title))}</strong>${detail ? `<p>${escapeHtml(typeof detail === 'string' ? detail : JSON.stringify(detail))}</p>` : ''}${Object.keys(extras).length ? `<details class="details"><summary>VIEW EVENT DATA +</summary><pre>${escapeHtml(JSON.stringify(extras, null, 2))}</pre></details>` : ''}</div><span class="status">${escapeHtml(String(type).toUpperCase())}</span></div>`;
   }).join('');
   const checkRows = checks.map(check => `<div class="row"><span class="n">•</span><div><strong>${escapeHtml(check.label || check.name || check.rule || check.id || 'Policy check')}</strong><p>${escapeHtml(displayText(check.reason || check.evidence || check.message))}</p></div><span class="status">${escapeHtml(String(check.status ?? check.result ?? 'inconclusive').toUpperCase())}</span></div>`).join('');
-  result.innerHTML = `<div class="result-head"><div><div class="mono" style="color:#85857b">02 / LIVE RUN</div><h3>${state.agent === 'safe' ? 'Corrected agent' : 'Buggy agent'}</h3></div><span class="result-tag ${pass ? 'pass' : ''}">${escapeHtml(label)}</span></div><div class="rows">${eventRows || '<p>No events were recorded.</p>'}</div><div class="mono" style="margin-top:22px;color:#85857b">POLICY CHECKS</div><div class="rows">${checkRows || '<p>No policy checks were returned. The run cannot be verified.</p>'}</div>${data.explanation ? `<div class="notice"><strong>Explanation</strong><p>${escapeHtml(typeof data.explanation === 'string' ? data.explanation : JSON.stringify(data.explanation))}</p></div>` : ''}<div class="notice mono">ACTUAL RUN / SANDBOX PROVIDER RESPONSES</div>`;
+  const agent = data.agent || state.agent;
+  result.innerHTML = `<div class="result-head"><div><div class="mono" style="color:#85857b">02 / SANDBOX RUN</div><h3>${agent === 'safe' ? 'Corrected agent' : 'Buggy agent'}</h3></div><span class="result-tag ${pass ? 'pass' : ''}">${escapeHtml(label)}</span></div>${data.storageWarning ? `<div class="storage-warning" role="alert"><strong>Run was not saved.</strong> ${escapeHtml(data.storageWarning)}</div>` : ''}<div class="rows">${eventRows || '<p>No events were recorded.</p>'}</div><div class="mono" style="margin-top:22px;color:#85857b">POLICY CHECKS</div><div class="rows">${checkRows || '<p>No policy checks were returned. The run cannot be verified.</p>'}</div>${data.explanation ? `<div class="notice"><strong>Explanation</strong><p>${escapeHtml(typeof data.explanation === 'string' ? data.explanation : JSON.stringify(data.explanation))}</p></div>` : ''}<div class="notice mono">SANDBOX RUN / PROVIDER RESPONSES</div>`;
 }
+
+async function loadHistory() {
+  historyList.textContent = 'Loading saved runs…';
+  try {
+    const data = await request('/api/runs');
+    if (!Array.isArray(data.runs)) throw new Error('Run history response was incomplete.');
+    state.history = data.runs;
+    if (!state.history.length) {
+      historyList.textContent = 'No saved runs yet. Completed runs will appear here.';
+      return;
+    }
+    historyList.innerHTML = state.history.map(run => {
+      const when = new Date(run.createdAt);
+      const date = Number.isNaN(when.valueOf()) ? 'Date unavailable' : when.toLocaleString();
+      const name = run.agent === 'safe' ? 'Corrected agent' : run.agent === 'buggy' ? 'Buggy agent' : 'Agent';
+      return `<button class="history-item" data-run-id="${escapeHtml(run.id)}"><span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(date)}</small></span><span class="mono">${escapeHtml(String(run.status || 'inconclusive').toUpperCase())} &nbsp; ↗</span></button>`;
+    }).join('');
+    setPhase(state.phase);
+  } catch (error) {
+    historyList.textContent = `Could not load saved runs. ${error.message}`;
+  }
+}
+
+historyList.addEventListener('click', async event => {
+  const button = event.target.closest('[data-run-id]');
+  if (!button || button.disabled) return;
+  const id = button.dataset.runId;
+  const status = document.querySelector('#history-status');
+  button.disabled = true;
+  status.textContent = 'Loading run…';
+  try {
+    const data = await request(`/api/runs/${encodeURIComponent(id)}`);
+    if (['creating', 'approval', 'capturing', 'captured', 'running'].includes(state.phase)) {
+      status.textContent = 'Finish the current payment before opening a saved run.';
+      return;
+    }
+    status.textContent = '';
+    displayResults(data);
+    result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (error) {
+    status.textContent = `Could not open the saved run. ${error.message}`;
+  } finally {
+    setPhase(state.phase);
+  }
+});
+
+document.querySelector('#history-refresh').onclick = loadHistory;
 
 document.querySelectorAll('.open-app').forEach(button => button.onclick = () => {
   landing.hidden = true; workspace.hidden = false; window.scrollTo(0, 0);
+  loadHistory();
 });
 document.querySelector('#back').onclick = () => { workspace.hidden = true; landing.hidden = false; window.scrollTo(0, 0); };
 choiceButtons.forEach(button => button.onclick = () => {
@@ -100,6 +151,7 @@ runButton.onclick = async () => {
       setPhase('complete');
       runButton.innerHTML = 'Create another order <span>↗</span>';
       displayResults(data);
+      loadHistory();
     } catch (error) {
       setPhase('failed');
       runButton.innerHTML = 'Create another order <span>↗</span>';
