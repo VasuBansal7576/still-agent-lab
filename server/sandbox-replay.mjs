@@ -1,6 +1,7 @@
 import { replayFailureSpec } from './replay-dispute.mjs';
 import { createHash } from 'node:crypto';
 import { parseMoney } from './paypal-mock.mjs';
+import { passingReplaySpec } from './replay-passing-spec.mjs';
 
 const keyFor = (batchId, result) => JSON.stringify([batchId, String(result.personaId), result.trial]);
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -29,6 +30,8 @@ export function planSandboxReplays({ batchId, batch, maxRuns, offset = 0, sample
 
 function comparable(item) {
   if (item.status === 'fail') return replayFailureSpec(item);
+  const special = passingReplaySpec(item);
+  if (special.kind) return special;
   const calls = item.events.filter(event => event.type === 'tool_call' && event.tool === 'create_refund');
   if (calls.length !== 1) return { reason: 'Only a single explicit refund on a fresh capture is comparable; retries and no-call traces need a separate executor.' };
   const disputes = item.events.filter(event => event.type === 'tool_result' && event.tool === 'get_dispute');
@@ -97,7 +100,13 @@ export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } =
       try { verified = verifyReceipt?.(receipt, item) === true; } catch { /* A failed verifier cannot establish provenance. */ }
       if (!verified) return unverified(item, 'A server-owned verifier has not authenticated this executor receipt.');
     }
-    if (item.status === 'fail') {
+    if (expected.kind === 'no-refund') {
+      const capture = receipt.capture, captureId = capture?.body?.id;
+      if (!capture?.ok || capture.status !== 200 || capture.body?.status !== 'COMPLETED' || !captureId || /^MOCK-/i.test(captureId) || captureKeys.get(captureId) !== 1 || parseMoney(capture.body.amount?.value) !== parseMoney(expected.captureAmount) || capture.body.amount?.currency_code !== expected.currency || receipt.refundHistory !== 'not-established' || !Array.isArray(receipt.attempts) || receipt.attempts.length !== 0) return unverified(item, 'A matching sandbox capture and recorded absence of replay refund calls are required.');
+      if (expected.disputeRequired && (receipt.dispute?.verified !== true || receipt.dispute.source !== 'paypal-sandbox' || receipt.dispute.captureId !== captureId)) return unverified(item, 'A PayPal-confirmed linked open dispute is required.');
+      return { key: item.key, personaId: item.personaId, trial: item.trial, status: simulated ? 'simulated-agreed' : 'agreed', source: simulated ? 'simulated-provider-fixture' : 'paypal-sandbox', comparison: 'Recorded no-refund decision and matching sandbox capture', limitation: 'The agent decision and store identity facts are from the recorded mock trace. This does not establish complete external refund history or real customer identity.', provider: { captureId, status: capture.body.status, dispute: receipt.dispute }, refundCalls: 0 };
+    }
+    if (item.status === 'fail' || expected.kind === 'stable-retry') {
       const capture = receipt.capture, captureId = capture?.body?.id;
       if (!capture?.ok || capture.status !== 200 || capture.body?.status !== 'COMPLETED' || !captureId || /^MOCK-/i.test(captureId) || captureKeys.get(captureId) !== 1 || parseMoney(capture.body.amount?.value) !== parseMoney(expected.captureAmount) || capture.body.amount?.currency_code !== expected.currency || receipt.refundHistory !== 'not-established') return unverified(item, 'The sandbox capture evidence does not match.');
       if (!Array.isArray(receipt.attempts) || receipt.attempts.length !== expected.steps.length) return unverified(item, 'Not all refund calls have a verified provider response.');
@@ -126,10 +135,10 @@ export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } =
     if (!capture?.ok || capture.status !== 200 || capture.body?.status !== 'COMPLETED' || typeof captureId !== 'string' || !captureId || /^MOCK-/i.test(captureId) || captureKeys.get(captureId) !== 1 || parseMoney(capture.body?.amount?.value) !== parseMoney(expected.captureAmount) || capture.body?.amount?.currency_code !== expected.currency || receipt.refundHistory !== 'not-established') return unverified(item, 'The capture evidence is missing, reused, not fresh, or differs from the mock capture.');
     if (request?.captureId !== captureId || parseMoney(request?.amount) !== parseMoney(expected.amount) || request?.currency !== expected.currency || typeof request?.requestId !== 'string' || !request.requestId) return unverified(item, 'The executed refund request does not match the mock action and approved capture.');
     if (!refund || !Number.isInteger(refund.status) || typeof refund.ok !== 'boolean' || !refund.body || typeof refund.body !== 'object') return unverified(item, 'A complete PayPal refund response is required.');
-    if (refund.ok && (refund.status !== 201 || refund.body.status !== 'COMPLETED' || typeof refund.body.id !== 'string' || !refund.body.id || /^MOCK-/i.test(refund.body.id) || parseMoney(refund.body.amount?.value) !== parseMoney(expected.amount) || refund.body.amount?.currency_code !== expected.currency)) return unverified(item, 'The provider success response does not confirm the requested completed refund.');
+    if (refund.ok && (refund.status !== 201 || !['COMPLETED', 'PENDING'].includes(refund.body.status) || typeof refund.body.id !== 'string' || !refund.body.id || /^MOCK-/i.test(refund.body.id) || parseMoney(refund.body.amount?.value) !== parseMoney(expected.amount) || refund.body.amount?.currency_code !== expected.currency)) return unverified(item, 'The provider success response does not confirm the requested refund.');
     if (!refund.ok && (refund.status < 400 || refund.status >= 500 || typeof refund.body.name !== 'string' || !refund.body.name || !Array.isArray(refund.body.details) || !refund.body.details.some(detail => typeof detail?.issue === 'string' && detail.issue))) return unverified(item, 'A comparable provider rejection needs a 4xx response and an identifiable issue.');
-    const agreement = refund.ok && refund.status === expected.mockResponse.status;
-    return { key: item.key, personaId: item.personaId, trial: item.trial, status: simulated ? (agreement ? 'simulated-agreed' : 'simulated-disagreed') : (agreement ? 'agreed' : 'disagreed'), source: simulated ? 'simulated-provider-fixture' : 'paypal-sandbox', comparison: 'HTTP status and completed refund amount and currency', limitation: 'Provider refund history and exclusive access are not established; this is a sandbox-only comparison.', mock: { status: expected.mockResponse.status, outcome: expected.mockResponse.body.status, amount: expected.mockResponse.body.amount }, provider: { captureId, status: refund.status, ok: refund.ok, refundId: refund.body.id, outcome: refund.body.status, amount: refund.body.amount, name: refund.body.name, issues: refund.body.details?.map(detail => detail.issue).filter(Boolean), debugId: refund.debugId } };
+    const agreement = refund.ok && refund.status === expected.mockResponse.status && refund.body.status === expected.mockResponse.body.status;
+    return { key: item.key, personaId: item.personaId, trial: item.trial, status: simulated ? (agreement ? 'simulated-agreed' : 'simulated-disagreed') : (agreement ? 'agreed' : 'disagreed'), source: simulated ? 'simulated-provider-fixture' : 'paypal-sandbox', comparison: 'HTTP status, refund outcome, amount and currency', limitation: 'Provider refund history and exclusive access are not established; this is a sandbox-only comparison.', mock: { status: expected.mockResponse.status, outcome: expected.mockResponse.body.status, amount: expected.mockResponse.body.amount }, provider: { captureId, status: refund.status, ok: refund.ok, refundId: refund.body.id, outcome: refund.body.status, amount: refund.body.amount, name: refund.body.name, issues: refund.body.details?.map(detail => detail.issue).filter(Boolean), debugId: refund.debugId } };
   });
   const agreed = results.filter(result => result.status === 'agreed').length;
   const disagreed = results.filter(result => result.status === 'disagreed').length;

@@ -6,6 +6,7 @@ import { createPayPalSandbox } from './paypal.mjs';
 import { createReplayLedger } from './replay-ledger.mjs';
 import { planSandboxReplays, reconcileSandboxReplays } from './sandbox-replay.mjs';
 import { replayFailureSpec, verifyReplayDispute } from './replay-dispute.mjs';
+import { passingReplaySpec } from './replay-passing-spec.mjs';
 
 const base = 'https://api-m.sandbox.paypal.com';
 const validId = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,127}$/.test(value);
@@ -19,7 +20,7 @@ async function tokenFor(credentials) {
 }
 
 async function main() {
-  const [batchId, limitArg = '5000', roundsArg = '2', mode = 'observe'] = process.argv.slice(2);
+  const [batchId, limitArg = '5000', roundsArg = '2', mode = 'observe', personaId] = process.argv.slice(2);
   const limit = Number(limitArg), rounds = Number(roundsArg);
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(batchId || '') || !Number.isSafeInteger(limit) || limit < 1 || limit > 5000 || !Number.isSafeInteger(rounds) || rounds < 1 || rounds > 10 || !['observe', 'execute'].includes(mode)) throw new Error('Usage: node server/resume-chargeback-queue.mjs BATCH-ID [limit 1..5000] [rounds 1..10] [observe|execute]');
   const batch = JSON.parse(await readFile(new URL(`../.data/batches/${batchId}.json`, import.meta.url), 'utf8'));
@@ -36,8 +37,8 @@ async function main() {
     let raw, lines;
     try { raw = await readFile(file, 'utf8'); lines = raw.trim().split('\n').map(JSON.parse); } catch { continue; }
     const key = lines[0]?.key, captured = lines.find(line => line.state === 'captured'), last = lines.at(-1), item = items.get(key);
-    if (!item || prior.has(key) || hash(key) !== name.slice(0, 64) || last?.state !== 'chargeback-unverified' || last.http !== 201 || !captured?.ok || !validId(captured.captureId)) continue;
-    const spec = replayFailureSpec(item);
+    if (!item || (personaId && item.personaId !== personaId) || prior.has(key) || hash(key) !== name.slice(0, 64) || last?.state !== 'chargeback-unverified' || last.http !== 201 || !captured?.ok || !validId(captured.captureId)) continue;
+    const spec = item.status === 'fail' ? replayFailureSpec(item) : passingReplaySpec(item);
     if (spec.reason || !spec.disputeRequired || captured.amount?.value !== spec.captureAmount || captured.amount?.currency_code !== spec.currency) continue;
     pending.set(key, { file, raw, item, captured, spec });
     if (pending.size >= limit) break;

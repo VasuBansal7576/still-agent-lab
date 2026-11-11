@@ -1,0 +1,460 @@
+{
+  "batchId": "d0c88817-eae0-471a-93d1-571fdd77f8ca",
+  "results": [
+    {
+      "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-9ba8a835470d09e274cb\",1]",
+      "personaId": "persona-9ba8a835470d09e274cb",
+      "trial": 1,
+      "status": "agreed",
+      "source": "paypal-sandbox",
+      "comparison": "Recorded no-refund decision and matching sandbox capture",
+      "limitation": "The agent decision and store identity facts are from the recorded mock trace. This does not establish complete external refund history or real customer identity.",
+      "provider": {
+        "captureId": "1N291070HM111204P",
+        "status": "COMPLETED"
+      },
+      "refundCalls": 0
+    },
+    {
+      "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-fc631efc79bd02ca2c31\",1]",
+      "personaId": "persona-fc631efc79bd02ca2c31",
+      "trial": 1,
+      "status": "disagreed",
+      "source": "paypal-sandbox",
+      "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+      "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+      "comparisons": [
+        {
+          "mock": {
+            "status": null,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "80.00",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-14-1-1",
+            "timeoutInjected": true
+          },
+          "provider": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "0CA41086VC353353C",
+              "status": "PENDING",
+              "amount": {
+                "value": "80.00",
+                "currency_code": "GBP"
+              }
+            }
+          },
+          "match": false
+        },
+        {
+          "mock": {
+            "status": 200,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "80.00",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-14-1-1",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "0CA41086VC353353C",
+              "status": "PENDING",
+              "amount": {
+                "value": "80.00",
+                "currency_code": "GBP"
+              }
+            }
+          },
+          "match": false
+        }
+      ]
+    },
+    {
+      "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-a75f39dc2b1a1b58f7be\",1]",
+      "personaId": "persona-a75f39dc2b1a1b58f7be",
+      "trial": 1,
+      "status": "disagreed",
+      "source": "paypal-sandbox",
+      "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+      "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+      "comparisons": [
+        {
+          "mock": {
+            "status": null,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "212.60",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-5-1-1",
+            "timeoutInjected": true
+          },
+          "provider": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "6U779911RV982491S",
+              "status": "PENDING",
+              "amount": {
+                "value": "212.60",
+                "currency_code": "GBP"
+              }
+            }
+          },
+          "match": false
+        },
+        {
+          "mock": {
+            "status": 200,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "212.60",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-5-1-1",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "6U779911RV982491S",
+              "status": "PENDING",
+              "amount": {
+                "value": "212.60",
+                "currency_code": "GBP"
+              }
+            }
+          },
+          "match": false
+        }
+      ]
+    },
+    {
+      "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-a21b496bc20f105bd430\",1]",
+      "personaId": "persona-a21b496bc20f105bd430",
+      "trial": 1,
+      "status": "agreed",
+      "source": "paypal-sandbox",
+      "comparison": "Recorded no-refund decision and matching sandbox capture",
+      "limitation": "The agent decision and store identity facts are from the recorded mock trace. This does not establish complete external refund history or real customer identity.",
+      "provider": {
+        "captureId": "4VJ491754X260240N",
+        "status": "COMPLETED",
+        "dispute": {
+          "verified": true,
+          "source": "paypal-sandbox",
+          "httpStatus": 200,
+          "id": "PP-R-AIY-10199429",
+          "status": "OPEN",
+          "captureId": "4VJ491754X260240N",
+          "amount": {
+            "value": "369.17",
+            "currency_code": "GBP"
+          },
+          "observedAt": "2026-11-11T19:38:21.847Z"
+        }
+      },
+      "refundCalls": 0
+    }
+  ],
+  "receipts": [
+    {
+      "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-a21b496bc20f105bd430\",1]",
+      "capture": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "4VJ491754X260240N",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "369.17",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "dispute": {
+        "verified": true,
+        "source": "paypal-sandbox",
+        "httpStatus": 200,
+        "id": "PP-R-AIY-10199429",
+        "status": "OPEN",
+        "captureId": "4VJ491754X260240N",
+        "amount": {
+          "value": "369.17",
+          "currency_code": "GBP"
+        },
+        "observedAt": "2026-11-11T19:38:21.847Z"
+      },
+      "attempts": [],
+      "status": "no-refund",
+      "source": "paypal-sandbox",
+      "simulated": false,
+      "executor": "trusted-local",
+      "buyerApprovedFreshCapture": false,
+      "funding": "paypal-sandbox-test-card",
+      "refundHistory": "not-established"
+    },
+    {
+      "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-a75f39dc2b1a1b58f7be\",1]",
+      "capture": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "30K41741N23346603",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "425.20",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "30K41741N23346603",
+            "amount": "212.60",
+            "currency": "GBP",
+            "requestId": "still-f0a5dda23fcd8af2835ae42f835739038d5d9a84"
+          },
+          "refund": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "6U779911RV982491S",
+              "status": "PENDING",
+              "amount": {
+                "value": "212.60",
+                "currency_code": "GBP"
+              }
+            }
+          }
+        },
+        {
+          "request": {
+            "captureId": "30K41741N23346603",
+            "amount": "212.60",
+            "currency": "GBP",
+            "requestId": "still-f0a5dda23fcd8af2835ae42f835739038d5d9a84"
+          },
+          "refund": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "6U779911RV982491S",
+              "status": "PENDING",
+              "amount": {
+                "value": "212.60",
+                "currency_code": "GBP"
+              }
+            }
+          }
+        }
+      ],
+      "refundHistory": "not-established",
+      "status": "pending",
+      "source": "paypal-sandbox",
+      "simulated": false,
+      "executor": "trusted-local",
+      "buyerApprovedFreshCapture": false,
+      "funding": "paypal-sandbox-test-card"
+    },
+    {
+      "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-9ba8a835470d09e274cb\",1]",
+      "capture": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "1N291070HM111204P",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "229.27",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "attempts": [],
+      "status": "no-refund",
+      "source": "paypal-sandbox",
+      "simulated": false,
+      "executor": "trusted-local",
+      "buyerApprovedFreshCapture": false,
+      "funding": "paypal-sandbox-test-card",
+      "refundHistory": "not-established"
+    },
+    {
+      "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-fc631efc79bd02ca2c31\",1]",
+      "capture": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "68M79407A2986871V",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "160.00",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "68M79407A2986871V",
+            "amount": "80.00",
+            "currency": "GBP",
+            "requestId": "still-476246a823840d8178f3eda402302f5068983d0b"
+          },
+          "refund": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "0CA41086VC353353C",
+              "status": "PENDING",
+              "amount": {
+                "value": "80.00",
+                "currency_code": "GBP"
+              }
+            }
+          }
+        },
+        {
+          "request": {
+            "captureId": "68M79407A2986871V",
+            "amount": "80.00",
+            "currency": "GBP",
+            "requestId": "still-476246a823840d8178f3eda402302f5068983d0b"
+          },
+          "refund": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "0CA41086VC353353C",
+              "status": "PENDING",
+              "amount": {
+                "value": "80.00",
+                "currency_code": "GBP"
+              }
+            }
+          }
+        }
+      ],
+      "refundHistory": "not-established",
+      "status": "pending",
+      "source": "paypal-sandbox",
+      "simulated": false,
+      "executor": "trusted-local",
+      "buyerApprovedFreshCapture": false,
+      "funding": "paypal-sandbox-test-card"
+    }
+  ],
+  "observed": [
+    {
+      "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-a21b496bc20f105bd430\",1]",
+      "capture": {
+        "http": 200,
+        "ok": true,
+        "body": {
+          "id": "4VJ491754X260240N",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "369.17",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "refunds": [],
+      "dispute": {
+        "http": 200,
+        "ok": true,
+        "body": {
+          "id": "PP-R-AIY-10199429",
+          "status": "UNDER_REVIEW",
+          "sellerTransactionIds": [
+            "4VJ491754X260240N"
+          ]
+        }
+      }
+    },
+    {
+      "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-a75f39dc2b1a1b58f7be\",1]",
+      "capture": {
+        "http": 200,
+        "ok": true,
+        "body": {
+          "id": "30K41741N23346603",
+          "status": "PARTIALLY_REFUNDED",
+          "amount": {
+            "value": "425.20",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "refunds": [
+        {
+          "http": 200,
+          "ok": true,
+          "body": {
+            "id": "6U779911RV982491S",
+            "status": "PENDING",
+            "amount": {
+              "value": "212.60",
+              "currency_code": "GBP"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-9ba8a835470d09e274cb\",1]",
+      "capture": {
+        "http": 200,
+        "ok": true,
+        "body": {
+          "id": "1N291070HM111204P",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "229.27",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "refunds": []
+    },
+    {
+      "key": "[\"d0c88817-eae0-471a-93d1-571fdd77f8ca\",\"persona-fc631efc79bd02ca2c31\",1]",
+      "capture": {
+        "http": 200,
+        "ok": true,
+        "body": {
+          "id": "68M79407A2986871V",
+          "status": "PARTIALLY_REFUNDED",
+          "amount": {
+            "value": "160.00",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "refunds": [
+        {
+          "http": 200,
+          "ok": true,
+          "body": {
+            "id": "0CA41086VC353353C",
+            "status": "PENDING",
+            "amount": {
+              "value": "80.00",
+              "currency_code": "GBP"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import { replayCheckoutAmount } from './replay-checkout.mjs';
 import { replayFailureSpec } from './replay-dispute.mjs';
 import { createReplayLedger } from './replay-ledger.mjs';
 import { planSandboxReplays, reconcileSandboxReplays } from './sandbox-replay.mjs';
+import { passingReplaySpec } from './replay-passing-spec.mjs';
 
 const base = 'https://api-m.sandbox.paypal.com';
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -165,7 +166,7 @@ export async function runSandboxReplayBatch({ batchId, limit = 1, concurrency = 
       await addClaim(file, { state: order.ok ? 'captured' : 'capture-unverified', ...order });
       if (!order.ok) { summary.unverified++; if (order.http === 429 || order.http >= 500 || order.http === 401 || order.http === 403) stopped = true; continue; }
       let disputeId;
-      if (item.status === 'fail' && replayFailureSpec(item).disputeRequired) {
+      if ((item.status === 'fail' ? replayFailureSpec(item) : passingReplaySpec(item)).disputeRequired) {
         await addClaim(file, { state: 'chargeback-requested', captureId: order.captureId });
         let dispute;
         try { dispute = await createSandboxChargeback(token, adapter, order.captureId, expected.amount, expected.currency); }

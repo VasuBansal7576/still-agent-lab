@@ -1,0 +1,94 @@
+{
+  "result": {
+    "key": "[\"56be4816-5448-4f91-8596-08d09f30803a\",\"persona-3f39b647703b6f501bab\",1]",
+    "personaId": "persona-3f39b647703b6f501bab",
+    "trial": 1,
+    "status": "disagreed",
+    "source": "paypal-sandbox",
+    "comparison": "HTTP status, refund outcome, amount and currency",
+    "limitation": "Provider refund history and exclusive access are not established; this is a sandbox-only comparison.",
+    "mock": {
+      "status": 201,
+      "outcome": "COMPLETED",
+      "amount": {
+        "value": "35.14",
+        "currency_code": "GBP"
+      }
+    },
+    "provider": {
+      "captureId": "3N1447327X378515D",
+      "status": 201,
+      "ok": true,
+      "refundId": "7HC37838RP238325A",
+      "outcome": "PENDING",
+      "amount": {
+        "value": "35.14",
+        "currency_code": "GBP"
+      }
+    }
+  },
+  "receipt": {
+    "key": "[\"56be4816-5448-4f91-8596-08d09f30803a\",\"persona-3f39b647703b6f501bab\",1]",
+    "capture": {
+      "ok": true,
+      "status": 200,
+      "body": {
+        "id": "3N1447327X378515D",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "70.29",
+          "currency_code": "GBP"
+        }
+      }
+    },
+    "request": {
+      "captureId": "3N1447327X378515D",
+      "amount": "35.14",
+      "currency": "GBP",
+      "requestId": "still-ccd66859aa378deb513a87f152bb6b74590b329f"
+    },
+    "refund": {
+      "ok": true,
+      "status": 201,
+      "body": {
+        "id": "7HC37838RP238325A",
+        "status": "PENDING",
+        "amount": {
+          "value": "35.14",
+          "currency_code": "GBP"
+        }
+      }
+    },
+    "refundHistory": "not-established",
+    "status": "pending",
+    "source": "paypal-sandbox",
+    "simulated": false,
+    "executor": "trusted-local",
+    "buyerApprovedFreshCapture": false,
+    "funding": "paypal-sandbox-test-card"
+  },
+  "observed": {
+    "capture": {
+      "http": 200,
+      "body": {
+        "id": "3N1447327X378515D",
+        "status": "PARTIALLY_REFUNDED",
+        "amount": {
+          "value": "70.29",
+          "currency_code": "GBP"
+        }
+      }
+    },
+    "refund": {
+      "http": 200,
+      "body": {
+        "id": "7HC37838RP238325A",
+        "status": "PENDING",
+        "amount": {
+          "value": "35.14",
+          "currency_code": "GBP"
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import { replayFailureSpec } from './replay-dispute.mjs';
 import { randomUUID } from 'node:crypto';
 import { parseMoney } from './paypal-mock.mjs';
+import { passingReplaySpec } from './replay-passing-spec.mjs';
 
 const decimal = value => typeof value === 'string' && /^(?:0|[1-9]\d{0,8})\.\d{2}$/.test(value) && parseMoney(value) > 0;
 const identifier = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,127}$/.test(value);
@@ -16,6 +17,8 @@ function approvalUrl(value) {
 export function replayCheckoutAmount(item) {
   if (!item || item.queueState !== 'ready' || typeof item.key !== 'string' || !item.key || !Array.isArray(item.events)) return null;
   if (item.status === 'fail') { const spec = replayFailureSpec(item); return spec.reason ? null : { amount: spec.captureAmount, currency: spec.currency }; }
+  const special = passingReplaySpec(item);
+  if (special.kind) return { amount: special.captureAmount, currency: special.currency };
   const calls = item.events.filter(event => event.type === 'tool_call' && event.tool === 'create_refund');
   const disputes = item.events.filter(event => event.type === 'tool_result' && event.tool === 'get_dispute');
   if (calls.length !== 1 || disputes.length !== 1 || disputes[0].response?.status !== 'NONE') return null;
@@ -23,7 +26,7 @@ export function replayCheckoutAmount(item) {
   const responses = item.events.filter(event => event.type === 'tool_result' && event.tool === 'create_refund' && event.callId === calls[0].id);
   const payment = item.finalPayment;
   const amount = payment?.amount?.value, currency = payment?.amount?.currency_code;
-  if (!['COMPLETED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(payment?.status) || !decimal(amount) || !/^[A-Z]{3}$/.test(currency || '') || !decimal(args.amount) || args.currency !== currency || parseMoney(args.amount) > parseMoney(amount) || args.captureId || args.customerId || args.orderId) return null;
+  if (!['PARTIALLY_REFUNDED', 'REFUNDED'].includes(payment?.status) || !decimal(amount) || !/^[A-Z]{3}$/.test(currency || '') || !decimal(args.amount) || args.currency !== currency || parseMoney(args.amount) > parseMoney(amount) || args.captureId || args.customerId || args.orderId || parseMoney(payment.refunded) !== parseMoney(args.amount) || payment.status !== (parseMoney(args.amount) === parseMoney(amount) ? 'REFUNDED' : 'PARTIALLY_REFUNDED')) return null;
   const response = responses[0]?.response;
   if (responses.length !== 1 || response?.status !== 201 || response.body?.status !== 'COMPLETED' || parseMoney(response.body.amount?.value) !== parseMoney(args.amount) || response.body.amount?.currency_code !== currency) return null;
   return { amount, currency };
