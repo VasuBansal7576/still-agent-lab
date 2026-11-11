@@ -23,9 +23,34 @@ npm install --prefix /private/tmp/still-toolkit-check @paypal/agent-toolkit@1.11
 STILL_TOOLKIT_INSTALL=/private/tmp/still-toolkit-check node examples/toolkit-sdk-bridge.mjs
 ```
 
-The example constructs PayPal's actual OpenAI toolkit and obtains its `get_dispute` and `create_refund` tool definitions. An explicit bridge routes scripted OpenAI-shaped tool calls through the official MCP SDK to Still's demo gateway. The gateway returned a clear mock dispute, then HTTP 201 and `MOCK-REFUND-toolkit-1` for a $50 mock refund. A repeated call returned that same mock refund ID. The script checks these results. It does not call an AI model or PayPal, and the toolkit's `handleToolCall` does not execute those calls.
+The example constructs PayPal's actual OpenAI toolkit and obtains its `get_dispute` and `create_refund` tool definitions. The reusable adapter routes scripted OpenAI-shaped tool calls through the official MCP SDK to Still's demo gateway. The gateway returned a clear mock dispute, then HTTP 201 and `MOCK-REFUND-toolkit-1` for a $50 mock refund. A repeated call returned that same mock refund ID. The script checks these results. It does not call an AI model or PayPal, and the toolkit's `handleToolCall` does not execute those calls.
 
-In the installed OpenAI integration, `handleToolCall` dispatches to its own PayPal API client. That client chooses a hard-coded sandbox or production PayPal base URL and exposes no supported Still gateway endpoint setting in its constructor. An existing direct SDK agent must change its dispatch code to use a bridge like this example. The bridge does not establish a one-line drop-in or full toolkit compatibility. It covers two toolkit definitions and Still's disposable mock only. A real AI agent and live PayPal remain unverified.
+In the installed OpenAI integration, `handleToolCall` dispatches to its own PayPal API client. That client chooses a hard-coded sandbox or production PayPal base URL and exposes no supported Still gateway endpoint setting in its constructor. An existing direct SDK agent must replace its dispatch code with the adapter below. The bridge does not establish a one-line drop-in or full toolkit compatibility. The observed run covers two toolkit definitions and Still's disposable mock only. A real AI agent and live PayPal remain unverified.
+
+## Connect an OpenAI toolkit agent
+
+Import `createStillToolkitAdapter` from `examples/toolkit-openai-adapter.mjs` and pass it an actual OpenAI toolkit instance and an already connected MCP SDK client. Select only toolkit actions exposed by Still. Binding fails if any configured toolkit tool is unavailable. The adapter does not call the toolkit's `handleToolCall`, which would bypass Still.
+
+For an OpenAI Chat Completions agent, replace its toolkit dispatcher with this pattern. `openai` is an existing OpenAI client, `toolkit` is a configured `PayPalAgentToolkit`, and `client` is connected to the batch binding described in [the batch guide](mcp-batch-binding.md). The caller owns the model choice, initial messages, client lifecycle, and iteration limit.
+
+```js
+import { createStillToolkitAdapter } from './examples/toolkit-openai-adapter.mjs';
+
+const adapter = await createStillToolkitAdapter({ toolkit, client });
+for (let turn = 0; turn < 10; turn++) {
+  const completion = await openai.chat.completions.create({
+    model, messages, tools: adapter.tools
+  });
+  const message = completion.choices[0].message;
+  messages.push(message);
+  if (!message.tool_calls?.length) break;
+  messages.push(...await adapter.dispatch(message.tool_calls));
+}
+```
+
+The adapter preserves the toolkit's actual OpenAI tool definitions. It validates all calls in a response before dispatching any of them, rejects unsupported or malformed calls, and sends supported calls sequentially through MCP. It returns OpenAI tool messages with the MCP result encoded as JSON, including `isError`, so the model can see gateway denials. The gateway enforces its own narrower arguments and permissions. Transport errors reject the dispatch; handle them in the agent instead of falling back to the PayPal client. Repeated calls represent the same decision only within the binding's documented process lifetime.
+
+The example uses scripted assistant messages. It verifies the adapter with the actual toolkit's definitions and the official MCP client, but does not establish a model-generated roundtrip. Tool schemas and behavior may change in other toolkit versions.
 
 ## Request IDs
 

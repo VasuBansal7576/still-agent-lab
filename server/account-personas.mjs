@@ -2,6 +2,8 @@ import { generateAccountPersonas } from './personas.mjs';
 
 const safeId = (value) => typeof value === 'string' && /^[A-Za-z0-9_-]{1,127}$/.test(value);
 const safeCode = (value) => typeof value === 'string' && /^[A-Z0-9_]{1,50}$/.test(value) ? value : null;
+const reportAmount = (amount) => amount && typeof amount.value === 'string' && /^-?\d{1,8}\.\d{2}$/.test(amount.value) && /^[A-Z]{3}$/.test(amount.currency_code) ? { value: amount.value, currency_code: amount.currency_code } : null;
+const refundCodes = new Set(['T1107', 'T1120']);
 
 // Account facts are separated from synthetic scenario assumptions.
 export async function importSandboxAccountPersonas({ paypal, startDate, endDate, count, seed = 'still-account' } = {}) {
@@ -45,7 +47,7 @@ export async function importSandboxAccountPersonas({ paypal, startDate, endDate,
         if (!item || !safeId(item.id)) { incomplete = true; continue; }
         const detail = await paypal.getAccountDispute(item.id);
         if (!detail.ok || !detail.body || detail.body.id !== item.id || !Array.isArray(detail.body.sellerTransactionIds) || detail.body.sellerTransactionIds.some((id) => !safeId(id))) { incomplete = true; continue; }
-        disputes.push({ id: item.id, status: safeCode(detail.body.status), sellerTransactionIds: detail.body.sellerTransactionIds.filter(safeId) });
+        disputes.push({ id: item.id, status: safeCode(detail.body.status), amount: reportAmount(detail.body.amount), sellerTransactionIds: detail.body.sellerTransactionIds.filter(safeId) });
       }
       evidence.disputes = { status: 'unverified', reason: incomplete ? 'Dispute listing or details incomplete' : 'No absence of a dispute can be established from this import' };
     }
@@ -53,7 +55,7 @@ export async function importSandboxAccountPersonas({ paypal, startDate, endDate,
     evidence.disputes.reason = 'Dispute retrieval failed';
   }
 
-  const eligible = evidence.transactions.status === 'retrieved' ? transactions.filter((entry) => safeId(entry.id) && entry.amount && /^[A-Z]{3}$/.test(entry.amount.currency_code) && /^\d{1,8}\.\d{2}$/.test(entry.amount.value) && Number(entry.amount.value) >= 0.02) : [];
+  const eligible = evidence.transactions.status === 'retrieved' ? transactions.filter((entry) => safeId(entry.id) && !refundCodes.has(entry.eventCode) && entry.amount && /^[A-Z]{3}$/.test(entry.amount.currency_code) && /^\d{1,8}\.\d{2}$/.test(entry.amount.value) && Number(entry.amount.value) >= 0.02) : [];
   const records = eligible.map((entry) => {
     const amountCents = Math.round(Number(entry.amount.value) * 100);
     return { recordId: entry.id, amount: entry.amount.value, currency: entry.amount.currency_code, approvedReturn: (Math.floor(amountCents / 2) / 100).toFixed(2), disputeOpen: false };
@@ -74,8 +76,8 @@ export async function importSandboxAccountPersonas({ paypal, startDate, endDate,
     };
     personas[i].accountEvidence = {
       transaction: { id: entry.id, status: safeCode(entry.status), eventCode: safeCode(entry.eventCode), amount: entry.amount, orderId, initiatedAt: typeof entry.initiatedAt === 'string' && Number.isFinite(Date.parse(entry.initiatedAt)) ? entry.initiatedAt : null, reportPage: entry.reportPage, reportRow: entry.reportRow },
-      relatedTransactions: related.map((item) => ({ id: item.id, eventCode: safeCode(item.eventCode), status: safeCode(item.status), amount: item.amount && typeof item.amount.value === 'string' && /^-?\d{1,8}\.\d{2}$/.test(item.amount.value) && /^[A-Z]{3}$/.test(item.amount.currency_code) ? item.amount : null })),
-      disputes: linkedDisputes.map(({ id, status }) => ({ id, status })),
+      relatedTransactions: related.map((item) => ({ id: item.id, eventCode: safeCode(item.eventCode), status: safeCode(item.status), amount: reportAmount(item.amount), reportPage: item.reportPage, reportRow: item.reportRow, relationship: 'report references transaction ID', classification: refundCodes.has(item.eventCode) ? 'payment refund event' : 'other or unknown event' })),
+      disputes: linkedDisputes.map(({ id, status, amount }) => ({ id, status, amount, relationship: 'dispute detail references seller transaction ID' })),
       disputeState: linkedDisputes.length ? 'linked records retrieved; inspect statuses' : 'unverified',
     };
     personas[i].scenarioAssumptions = 'Synthetic request, mutation, customer and order identifiers, approved return and dispute state; these are not account facts.';

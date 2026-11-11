@@ -46,6 +46,36 @@ function unverified(item, reason) {
   return { key: item.key, personaId: item.personaId, trial: item.trial, status: 'unverified', reason };
 }
 
+/** Trusted server-only integration. Never bind checkout, adapter, ledger, or history lookup to request data. */
+export async function executePlannedSandboxReplay({ plan, key, sessionId, checkout, adapter, ledger, getRefundHistory } = {}) {
+  const blocked = reason => ({ status: 'unverified', reason });
+  const item = Array.isArray(plan?.queue) ? plan.queue.find(entry => entry.key === key) : undefined;
+  if (!item || item.queueState !== 'ready') return blocked('Choose a ready replay from the server-owned plan.');
+  const expected = comparable(item);
+  if (expected.reason) return blocked(expected.reason);
+  if (typeof sessionId !== 'string' || !sessionId || !adapter || typeof ledger?.execute !== 'function') return blocked('A server-owned sandbox session and replay ledger are required.');
+  if (checkout?.state !== 'captured' || checkout.buyerApprovalConfirmed !== true || !checkout.captureId || checkout.capture?.id !== checkout.captureId || checkout.capture?.status !== 'COMPLETED' || parseMoney(checkout.capture?.amount?.value) !== parseMoney(expected.captureAmount) || checkout.capture?.amount?.currency_code !== expected.currency) return blocked('A matching captured checkout with provider-confirmed buyer approval is required.');
+  if (typeof getRefundHistory !== 'function') return blocked('Complete provider-backed refund history and exclusive capture use are not available.');
+
+  // Lock the server-owned checkout before any asynchronous provider work.
+  checkout.state = 'replaying';
+  let history;
+  try { history = await getRefundHistory({ sessionId, captureId: checkout.captureId, adapter }); }
+  catch { checkout.state = 'captured'; return blocked('Refund history could not be established. No refund was attempted.'); }
+  if (history?.sessionId !== sessionId || history?.captureId !== checkout.captureId || history?.complete !== true || history?.exclusiveCaptureUse !== true || history?.refundedAmount !== '0.00' || history?.currency !== expected.currency || typeof history?.source !== 'string' || !history.source || typeof history?.observedAt !== 'string' || !Number.isFinite(Date.parse(history.observedAt))) {
+    checkout.state = 'captured';
+    return blocked('Complete provider-backed zero-refund history and exclusive capture use are required. No refund was attempted.');
+  }
+  // Treat the capture as spent even when a reservation or provider outcome is uncertain.
+  checkout.state = 'spent';
+  try {
+    const receipt = await ledger.execute({ item, sessionId, adapter, approval: { sessionId, captureId: checkout.captureId, humanApprovedFreshCapture: true }, refundHistory: history });
+    return { status: receipt.source === 'paypal-sandbox' ? 'executed' : 'unverified', receipt };
+  } catch {
+    return blocked('The replay outcome could not be recorded. Do not retry this capture automatically.');
+  }
+}
+
 /** Compare trusted local executor receipts. This function never invokes an adapter or sends a payment. */
 export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } = {}) {
   if (!plan || !Array.isArray(plan.queue) || !Array.isArray(evidence)) throw new TypeError('Provide a replay plan and evidence array.');
