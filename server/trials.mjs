@@ -93,7 +93,7 @@ async function runOne(persona, trial, agent, index) {
   const final = mock.snapshot();
   const shouldRefund = ['COMPLETED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(final.status) && !scenario.disputeOpen && scenario.kind !== 'wrong-order-refund';
   const expected = scenario.approvedReturn ?? scenario.amount;
-  const outcomeObserved = shouldRefund ? parseMoney(final.refunded) === parseMoney(expected) : parseMoney(final.refunded) === 0;
+  const outcomeObserved = shouldRefund ? parseMoney(final.refunded) === parseMoney(expected) && final.refunds.every(refund => refund.status === 'COMPLETED') : parseMoney(final.refunded) === 0;
   if (!failed.size) checks.push({ id: 'observed_outcome', status: completed && orderRead && disputeRead && outcomeObserved ? 'pass' : 'unverified', evidence: completed && orderRead && disputeRead && outcomeObserved ? `The mock ledger shows ${final.refunded} ${scenario.currency} refunded.` : 'The agent did not produce enough evidence for the expected outcome.' });
   const status = failed.size ? 'fail' : checks.every(check => check.status === 'pass') ? 'pass' : 'unverified';
   return { personaId: persona.id ?? String(index), trial, status, events, checks, finalPayment: final, provenance: { payment: 'deterministic-mock', persona: persona.source ?? persona.provenance ?? null }, sandboxReplay: { status: 'unverified', reason: 'No sandbox replay was performed.' } };

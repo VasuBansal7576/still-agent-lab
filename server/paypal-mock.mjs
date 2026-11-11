@@ -10,6 +10,8 @@ const format = cents => (cents / 100).toFixed(2);
 export function createPayPalMock(scenario, runId = 'run') {
   const total = money(scenario.amount);
   if (total === null || total <= 0 || !/^[A-Z]{3}$/.test(scenario.currency || '')) throw new Error('Scenario needs a positive amount and a three-letter currency.');
+  const outcome = scenario.mockRefundOutcome ?? 'completed';
+  if (!['completed', 'pending-echeck', 'refund-not-allowed'].includes(outcome)) throw new Error('Unknown mock refund outcome.');
   const captureId = `MOCK-CAPTURE-${runId}`;
   const state = { captureId, paid: !/failed|unpaid/i.test(scenario.kind || ''), total, refunded: 0, refunds: [], requests: new Map(), timeoutUsed: false };
   const provenance = { source: 'deterministic-mock', sandboxVerified: false };
@@ -30,8 +32,9 @@ export function createPayPalMock(scenario, runId = 'run') {
     else if (state.refunded === total) response = error('CAPTURE_FULLY_REFUNDED');
     else if (requested === null || requested <= 0 || currency !== scenario.currency) response = error('INVALID_AMOUNT_OR_CURRENCY');
     else if (requested > total - state.refunded) response = error('REFUND_AMOUNT_EXCEEDED');
+    else if (outcome === 'refund-not-allowed') response = error('REFUND_NOT_ALLOWED');
     else {
-      const body = { id: `MOCK-REFUND-${runId}-${state.refunds.length + 1}`, status: 'COMPLETED', amount: { value: format(requested), currency_code: currency } };
+      const body = { id: `MOCK-REFUND-${runId}-${state.refunds.length + 1}`, status: outcome === 'pending-echeck' ? 'PENDING' : 'COMPLETED', amount: { value: format(requested), currency_code: currency }, ...(outcome === 'pending-echeck' ? { status_details: { reason: 'ECHECK' } } : {}) };
       state.refunded += requested;
       state.refunds.push(body);
       response = { ok: true, status: 201, body, provenance };
