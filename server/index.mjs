@@ -14,6 +14,7 @@ import { createPayPalMock } from './paypal-mock.mjs';
 import { planSandboxReplays, reconcileSandboxReplays, executePlannedSandboxReplay } from './sandbox-replay.mjs';
 import { createReplayLedger } from './replay-ledger.mjs';
 import { createShadowSessions } from './shadow-sessions.mjs';
+import { createReplayCheckout } from './replay-checkout.mjs';
 import { codexReady, codexChat } from './codex-model.mjs';
 import { listRuns, readRun, saveRun } from './store.mjs';
 import { scenarioCatalog } from './catalog.mjs';
@@ -45,12 +46,12 @@ function sessionFor(request, response) {
 
 function publicCheckout(checkout) {
   if (!checkout) return null;
-  const { state, orderId, approvalUrl, captureId, capture, error, providerStatus, amount } = checkout;
-  return { state, orderId, approvalUrl, captureId, capture, error, providerStatus, amount };
+  const { state, orderId, approvalUrl, captureId, capture, error, providerStatus, amount, currency, replayKey } = checkout;
+  return { state, orderId, approvalUrl, captureId, capture, error, providerStatus, amount, currency, replayKey };
 }
 
-function completedCapture(result, amount = '50.00') {
-  return result.ok && result.body?.captures?.find(item => item.status === 'COMPLETED' && item.id && item.amount?.value === amount && item.amount?.currency_code === 'USD');
+function completedCapture(result, amount = '50.00', currency = 'USD') {
+  return result.ok && result.body?.captures?.find(item => item.status === 'COMPLETED' && item.id && item.amount?.value === amount && item.amount?.currency_code === currency);
 }
 
 function recordCapture(session, checkout, capture) {
@@ -142,7 +143,7 @@ http.createServer(async (request, response) => {
         checkout.state = 'checking';
         try {
           const result = await session.paypal.getOrder(checkout.orderId);
-          const capture = completedCapture(result, checkout.amount);
+          const capture = completedCapture(result, checkout.amount, checkout.currency || 'USD');
           if (capture) recordCapture(session, checkout, capture);
           else if (previous === 'approval_required' && result.ok && ['CREATED', 'PAYER_ACTION_REQUIRED', 'APPROVED'].includes(result.body.status)) {
             checkout.state = 'approval_required';
@@ -162,7 +163,7 @@ http.createServer(async (request, response) => {
         checkout.state = 'checking';
         try {
           const result = await session.paypal.getOrder(checkout.orderId);
-          const capture = completedCapture(result, checkout.amount);
+          const capture = completedCapture(result, checkout.amount, checkout.currency || 'USD');
           if (capture) {
             recordCapture(session, checkout, capture);
             return send(response, 409, { error: 'PayPal shows a captured payment. Use it for a run before creating another checkout.', checkout: publicCheckout(checkout) });
@@ -182,7 +183,7 @@ http.createServer(async (request, response) => {
         checkout.state = 'approval_required';
         return send(response, 502, { error: 'Could not check PayPal approval. No capture was attempted.', checkout: publicCheckout(checkout) });
       }
-      const existingCapture = completedCapture(order, checkout.amount);
+      const existingCapture = completedCapture(order, checkout.amount, checkout.currency || 'USD');
       if (existingCapture) {
         recordCapture(session, checkout, existingCapture);
         return send(response, 200, { captureId: existingCapture.id, capture: existingCapture, checkout: publicCheckout(checkout) });
@@ -200,7 +201,7 @@ http.createServer(async (request, response) => {
       checkout.state = 'capturing';
       try {
         const result = await session.paypal.captureOrder(checkout.orderId, { requestId: checkout.requestId });
-        const capture = completedCapture(result, checkout.amount);
+        const capture = completedCapture(result, checkout.amount, checkout.currency || 'USD');
         if (capture) {
           recordCapture(session, checkout, capture);
           return send(response, 200, { captureId: capture.id, capture, checkout: publicCheckout(checkout) });
@@ -227,6 +228,19 @@ http.createServer(async (request, response) => {
         return send(response, 200, { failureCount: plan.failureCount, sampledPassCount: plan.sampledPassCount, queueCount: plan.queueCount, readyCount: plan.readyCount, deferredCount: plan.deferredCount, agreement: comparison.agreement, compared: comparison.compared, agreed: comparison.agreed, disagreed: comparison.disagreed, status: comparison.unverified || !comparison.compared ? 'unverified' : 'compared', reason: comparison.unverified || !comparison.compared ? 'Replays require fresh approved sandbox captures and trusted complete refund histories.' : undefined });
       } catch { return send(response, 400, { error: 'Replay plan could not be prepared.' }); }
     }
+    if (url.pathname === '/api/upgrade/replay-prepare') {
+      const input = await body(request);
+      if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || !Number.isInteger(input.index) || input.index < 0 || input.index > 100000) return send(response, 400, { error: 'Choose a replay from a valid batch.' });
+      try {
+        const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        const plan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 1, offset: input.index, samplePasses: 10 });
+        const item = plan.queue.find(entry => entry.queueState === 'ready');
+        if (!item) return send(response, 400, { error: 'No replay exists at this position.' });
+        const result = await createReplayCheckout({ session, item });
+        const status = result.status === 'approval_required' ? 200 : result.status === 'unavailable' ? 503 : result.status === 'create_unknown' ? 502 : 409;
+        return send(response, status, { status: result.status, error: result.error, checkout: publicCheckout(result.checkout) });
+      } catch { return send(response, 503, { error: 'Replay checkout could not be prepared. Check the current checkout before trying again.' }); }
+    }
     if (url.pathname === '/api/upgrade/replay-execute') {
       const input = await body(request);
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || !Number.isInteger(input.index) || input.index < 0 || input.index > 100000) return send(response, 400, { error: 'Choose a ready replay from a valid batch.' });
@@ -236,6 +250,7 @@ http.createServer(async (request, response) => {
         const plan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 1, offset: input.index, samplePasses: 10 });
         const item = plan.queue.find(entry => entry.queueState === 'ready');
         if (!item) return send(response, 400, { error: 'No replay exists at this position.' });
+        if (session.checkout?.replayKey !== item.key) return send(response, 409, { error: 'The active checkout belongs to a different replay.' });
         const ledger = await createReplayLedger({ directory: fileURLToPath(new URL('../.data/replay-ledger/', import.meta.url)) });
         session.replaySessionId ??= randomUUID();
         const result = await executePlannedSandboxReplay({ plan, key: item.key, sessionId: session.replaySessionId, checkout: session.checkout, adapter: session.paypal, ledger });
@@ -353,7 +368,7 @@ http.createServer(async (request, response) => {
       const input = await body(request);
       if (!['buggy', 'fixed'].includes(input.variant)) return send(response, 400, { error: 'Choose a scripted retry variant' });
       const checkout = session.checkout;
-      if (!session.paypal || !checkout || checkout.state !== 'captured' || checkout.captureId !== input.captureId || checkout.capture?.amount?.value !== '100.00' || session.spent.has(input.captureId)) return send(response, 400, { error: 'A fresh $100 sandbox capture is required' });
+      if (!session.paypal || !checkout || checkout.state !== 'captured' || checkout.captureId !== input.captureId || checkout.capture?.amount?.value !== '100.00' || checkout.capture?.amount?.currency_code !== 'USD' || checkout.replayKey || session.spent.has(input.captureId)) return send(response, 400, { error: 'A fresh $100 sandbox capture is required' });
       session.spent.add(input.captureId);
       checkout.state = 'spent';
       const provider = process.env.STILL_SYNTHETIC_PROVIDER === '1' ? 'synthetic-provider-fixture' : 'paypal-sandbox';

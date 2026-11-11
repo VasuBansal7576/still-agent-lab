@@ -5,16 +5,15 @@ import { UCI_BASKETS } from './uci-baskets.mjs';
 const PUBLIC_SEEDS = Object.freeze([
   { source: { dataset: 'τ-bench retail tasks', recordId: 'tasks.py:instruction-line-51', license: 'MIT, Copyright 2024 Sierra', url: 'https://github.com/sierra-research/tau-bench/blob/main/tau_bench/envs/retail/tasks.py#L51' }, concept: 'return several items from an order' },
   { source: { dataset: 'τ-bench retail tasks', recordId: 'tasks.py:instruction-line-272', license: 'MIT, Copyright 2024 Sierra', url: 'https://github.com/sierra-research/tau-bench/blob/main/tau_bench/envs/retail/tasks.py#L272' }, concept: 'return items from two orders and request a different payment method' },
-  ...UCI_BASKETS.map(([invoice, lines]) => {
-    const cents = lines.reduce((sum, [, quantity, unitPrice]) => sum + quantity * unitPrice, 0);
+  { source: { dataset: 'CFPB consumer complaint narrative', recordId: '4288475', license: 'Previously published narrative described by CFPB as public domain for FOIA purposes', url: 'https://www.consumerfinance.gov/data-research/consumer-complaints/search/detail/4288475', evidenceUrl: 'https://files-prod.consumerfinance.gov/f/documents/cfpb_buy-now-pay-later-market-trends-consumer-impacts_report_2022-09.pdf' }, concept: 'a consumer reports difficulty opening a dispute over purchases' },
+  { source: { dataset: 'Public refund dispute discussion', recordId: 'reddit post 1hb4xjo', license: 'No reuse license identified; situation paraphrased without copying post text', url: 'https://www.reddit.com/r/personalfinance/comments/1hb4xjo/' }, concept: 'a customer seeking a chargeback is asked for a refund transaction identifier' },
+  ...UCI_BASKETS.map(([invoice, lineCount, cents]) => {
     return {
-      source: { dataset: 'UCI Online Retail', recordId: `invoice ${invoice}, stock codes ${lines.map(([stock]) => stock).join(', ')}`, license: 'CC BY 4.0', url: 'https://archive.ics.uci.edu/dataset/352/online+retail', evidenceUrl: 'https://huggingface.co/datasets/pavan-naik/Online-Retail' },
-      concept: `an invoice with ${lines.length} product ${lines.length === 1 ? 'line' : 'lines'} totaling GBP ${(cents / 100).toFixed(2)}`,
+      source: { dataset: 'UCI Online Retail', recordId: `invoice ${invoice}`, license: 'CC BY 4.0', url: 'https://archive.ics.uci.edu/dataset/352/online+retail', evidenceUrl: 'https://archive.ics.uci.edu/static/public/352/online+retail.zip' },
+      concept: `an invoice with ${lineCount} ${lineCount === 1 ? 'line' : 'lines'} totaling GBP ${(cents / 100).toFixed(2)}`,
       base: { cents, approvedCents: Math.floor(cents / 2), currency: 'GBP' }
     };
   }),
-  { source: { dataset: 'CFPB consumer complaint narrative', recordId: '4288475', license: 'Previously published narrative described by CFPB as public domain for FOIA purposes', url: 'https://www.consumerfinance.gov/data-research/consumer-complaints/search/detail/4288475', evidenceUrl: 'https://files-prod.consumerfinance.gov/f/documents/cfpb_buy-now-pay-later-market-trends-consumer-impacts_report_2022-09.pdf' }, concept: 'a consumer reports difficulty opening a dispute over purchases' },
-  { source: { dataset: 'Public refund dispute discussion', recordId: 'reddit post 1hb4xjo', license: 'No reuse license identified; situation paraphrased without copying post text', url: 'https://www.reddit.com/r/personalfinance/comments/1hb4xjo/' }, concept: 'a customer seeking a chargeback is asked for a refund transaction identifier' },
   ...[
     [176, 'an exchange request changes at confirmation'],
     [200, 'an exchange request includes a preferred power source'],
@@ -91,7 +90,7 @@ export function generatePersonas({ count = 1000, seed = 'still' } = {}) {
   options(count, seed);
   return Array.from({ length: count }, (_, index) => {
     const publicSeed = PUBLIC_SEEDS[index % PUBLIC_SEEDS.length];
-    return makePersona(index, seed, publicSeed.source, publicSeed.concept, publicSeed.base, Math.floor(index / PUBLIC_SEEDS.length));
+    return makePersona(index, seed, publicSeed.source, publicSeed.concept, publicSeed.base, index + Math.floor(index / PUBLIC_SEEDS.length));
   });
 }
 
