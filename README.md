@@ -44,7 +44,7 @@ Open `/upgrade` for connected-agent trials, or `/lab` for advanced controls and 
 
 To use account-derived scenarios, connect a sandbox account at `/setup`, choose **Connected PayPal sandbox account**, select a UTC report range, and import before running. Optional times narrow a busy report. The import is read-only; dispute lookup is optional. Account record IDs and evidence remain in the local batch, while the requests, customer identities, approved returns, and scenario dispute states are synthetic. Reports may be delayed or incomplete. These runs cannot issue a permission because complete account history and dispute coverage are not established.
 
-The workspace can also record a demo session from your local HTTP agent through the mock gateway. Promote a completed session to replay its recorded gateway calls against a fresh mock. This does not rerun the agent or contact PayPal.
+The workspace can record a session from your local HTTP agent through its passing batch's mock permission. For v2, use the same endpoint address as the passing run. An address does not authenticate the agent. Promote a completed session to replay its recorded gateway calls against a fresh mock. This does not rerun the agent or contact PayPal.
 
 After a qualifying run earns a USD mock permission, **Connect a toolkit agent** shows an MCP stdio configuration for that local batch and the OpenAI toolkit wrapper. The binding supports four selected tools, represents one refund decision per process, and does not authenticate the client or contact PayPal. See [toolkit setup and limits](docs/actual-toolkit.md).
 

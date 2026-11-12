@@ -12,15 +12,15 @@ const validId = value => typeof value === 'string' && /^shadow-[a-f0-9-]{36}$/.t
 const sourceValues = new Set(['demo', 'local-agent']);
 const money = value => typeof value === 'string' && /^(?:0|[1-9]\d{0,5})\.\d{2}$/.test(value) && Number(value) > 0;
 
-async function binding(record) {
+async function binding(record, earnedPermission) {
   if (record.protocolVersion === 3) {
     const result = await createBatchBinding(record.batchId, { decisionId: 'shadow-binding' });
     if (result.protocolVersion !== 3) throw new Error('A toolkit-style passing batch is required.');
     return result.gateway;
   }
   const { scenario, id } = record;
-  const summary = await runTrials({ personas: [{ id: 'shadow-permission', scenario }], trials: 1, agent: 'safe' });
-  const permission = derivePermission({ agentId: 'scripted-safe', currency: scenario.currency, summary });
+  const summary = earnedPermission ? null : await runTrials({ personas: [{ id: 'shadow-permission', scenario }], trials: 1, agent: 'safe' });
+  const permission = earnedPermission || derivePermission({ agentId: 'scripted-safe', currency: scenario.currency, summary });
   const mock = createPayPalMock(scenario, id);
   const adapter = {
     trusted: true, replaySafe: true, stableRequestIds: true,
@@ -33,7 +33,7 @@ async function binding(record) {
     async get_refund(refundId) { const refund = mock.snapshot().refunds.find(item => item.id === refundId); return refund ? { ok: true, status: 200, body: refund } : { ok: false, status: 404 }; },
     async get_dispute(disputeId) { return { ok: true, status: 200, body: { id: disputeId, status: scenario.disputeOpen ? 'OPEN' : 'CLEAR' } }; }
   };
-  return createGateway({ agentId: 'scripted-safe', permission, adapter, mode: 'shadow' });
+  return createGateway({ agentId: permission.agentId, permission, adapter, mode: 'shadow' });
 }
 
 function validateCall(record, input) {
@@ -79,9 +79,14 @@ export function createShadowSessions({ directory, resolveBinding = createBatchBi
     if (record.version !== 1 || record.id !== id || !Array.isArray(record.events) || record.events.length > MAX_CALLS) throw new Error('Invalid stored session.');
     return record;
   };
+  async function earnedV2(record) {
+    const selected = await resolveBinding(record.batchId);
+    if (selected.protocolVersion !== 2 || selected.permission?.scope !== 'deterministic-mock' || selected.permission.create_refund?.currency !== 'USD' || selected.permission.create_refund?.allowed !== true || createHash('sha256').update(JSON.stringify(selected.permission)).digest('hex') !== record.permissionFingerprint) throw new Error('The saved mock permission changed or is unavailable.');
+    return selected.permission;
+  }
   async function restored(record) {
     if (gateways.has(record.id)) return gateways.get(record.id);
-    const gateway = record.protocolVersion === 3 ? (await resolveBinding(record.batchId, { decisionId: 'shadow-binding' })).gateway : await binding(record);
+    const gateway = record.protocolVersion === 3 ? (await resolveBinding(record.batchId, { decisionId: 'shadow-binding' })).gateway : await binding(record, record.batchId ? await earnedV2(record) : undefined);
     for (const event of record.events) await gateway.call({ sessionId: record.id, name: event.name, arguments: event.arguments, ...(event.decisionId ? { decisionId: event.decisionId } : {}) });
     gateways.set(record.id, gateway);
     return gateway;
@@ -111,6 +116,19 @@ export function createShadowSessions({ directory, resolveBinding = createBatchBi
         return record;
       }
       if (protocolVersion !== 2) throw new Error('Unsupported shadow protocol.');
+      if (source === 'local-agent' && batchId) {
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(batchId)) throw new Error('A saved passing batch is required.');
+        const selected = await resolveBinding(batchId);
+        if (selected.protocolVersion !== 2 || selected.permission?.scope !== 'deterministic-mock' || selected.permission.create_refund?.allowed !== true || selected.permission.create_refund.currency !== 'USD' || !money(selected.permission.create_refund.maxPerOrder)) throw new Error('A passing v2 batch with a USD mock permission is required.');
+        if ((await list()).length >= MAX_SESSIONS) throw new Error('Shadow session limit reached.');
+        const id = `shadow-${randomUUID()}`;
+        const limit = selected.permission.create_refund.maxPerOrder;
+        const scenario = { kind: 'partial-return', amount: limit, approvedReturn: limit, currency: 'USD', disputeOpen: false, customerId: `MOCK-CUSTOMER-${id}`, orderId: `MOCK-ORDER-${id}` };
+        const permissionFingerprint = createHash('sha256').update(JSON.stringify(selected.permission)).digest('hex');
+        const record = { version: 1, id, source, protocolVersion: 2, batchId, permissionFingerprint, provenance: 'deterministic-mock', createdAt: new Date().toISOString(), scenario, captureId: `MOCK-CAPTURE-${id}`, disputeId: `MOCK-DISPUTE-${id}`, events: [], agentStatus: 'recording', regression: null };
+        await save(record);
+        return record;
+      }
       if (!sourceValues.has(source) || !money(amount) || !money(approvedReturn) || Number(approvedReturn) > Number(amount) || !/^[A-Z]{3}$/.test(currency) || typeof disputeOpen !== 'boolean') throw new Error('Invalid mock session configuration.');
       if ((await list()).length >= MAX_SESSIONS) throw new Error('Shadow session limit reached.');
       const id = `shadow-${randomUUID()}`;
@@ -138,7 +156,7 @@ export function createShadowSessions({ directory, resolveBinding = createBatchBi
   function promote(id) {
     return serial(async () => {
       const record = await get(id);
-      if (record.protocolVersion === 3 && record.agentStatus !== 'completed') throw new Error('Complete the toolkit agent session before promotion.');
+      if (record.batchId && record.agentStatus !== 'completed') throw new Error('Complete the agent session before promotion.');
       if (!record.events.length) throw new Error('Cannot promote an empty session.');
       record.regression = { version: 1, kind: 'gateway-regression', sourceSessionId: id, source: record.source, provenance: 'deterministic-mock', promotedAt: new Date().toISOString(), calls: record.events.map(({ name, arguments: args, decisionId, toolkitArguments }) => ({ name, arguments: args, ...(decisionId ? { decisionId } : {}), ...(toolkitArguments ? { toolkitArguments } : {}) })), expectedResults: record.events.map(event => event.result) };
       await save(record);
@@ -149,7 +167,7 @@ export function createShadowSessions({ directory, resolveBinding = createBatchBi
     return serial(async () => {
       const record = await get(id);
       if (!record.regression) throw new Error('Promote the session before replay.');
-      const gateway = record.protocolVersion === 3 ? (await resolveBinding(record.batchId, { decisionId: 'shadow-binding' })).gateway : await binding(record);
+      const gateway = record.protocolVersion === 3 ? (await resolveBinding(record.batchId, { decisionId: 'shadow-binding' })).gateway : await binding(record, record.batchId ? await earnedV2(record) : undefined);
       const replay = await gateway.replay(record.regression);
       const expected = record.regression.expectedResults;
       let comparison;
@@ -165,7 +183,7 @@ export function createShadowSessions({ directory, resolveBinding = createBatchBi
   function finish(id, status) {
     return serial(async () => {
       const record = await get(id);
-      if (record.protocolVersion !== 3 || record.agentStatus !== 'recording' || !['completed', 'unverified'].includes(status)) throw new Error('Invalid shadow session state.');
+      if (!record.batchId || record.agentStatus !== 'recording' || !['completed', 'unverified'].includes(status)) throw new Error('Invalid shadow session state.');
       record.agentStatus = status;
       await save(record);
     });

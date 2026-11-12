@@ -494,16 +494,21 @@ http.createServer(async (request, response) => {
           try { endpointUrl(input.endpoint); } catch { return send(response, 400, { error: 'Provide a valid loopback agent endpoint.' }); }
           const protocolVersion = input.protocolVersion ?? 2;
           if (![2, 3].includes(protocolVersion)) return send(response, 400, { error: 'Choose a supported agent protocol.' });
-          if (protocolVersion === 3 && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(input.batchId || '')) return send(response, 400, { error: 'Open a passing toolkit-style batch with an earned mock permission first.' });
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(input.batchId || '')) return send(response, 400, { error: 'Open a passing batch with an earned mock permission first.' });
+          if (protocolVersion === 2) {
+            const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+            const agentId = `local-${createHash('sha256').update(input.endpoint).digest('hex').slice(0, 24)}`;
+            if (batch.agent !== 'external' || (batch.protocolVersion ?? 2) !== 2 || batch.evaluatedAgentId !== agentId) return send(response, 400, { error: 'Use the same local endpoint and protocol as the passing run. The endpoint does not authenticate the agent.' });
+          }
           if (session.shadowDriverPending) return send(response, 409, { error: 'A mock shadow recording is already running.' });
           session.shadowDriverPending = true;
           try {
-            const record = await shadowSessions.create({ source: 'local-agent', protocolVersion, ...(protocolVersion === 3 ? { batchId: input.batchId } : {}) });
+            const record = await shadowSessions.create({ source: 'local-agent', protocolVersion, batchId: input.batchId });
             session.shadowIds ??= new Set(); session.shadowIds.add(record.id);
             const outcome = await recordShadowAgent({ endpoint: input.endpoint, session: record, store: shadowSessions });
-            if (protocolVersion === 3) await shadowSessions.finish(record.id, outcome.status);
+            await shadowSessions.finish(record.id, outcome.status);
             session.shadowAgentRecord = { id: record.id, status: outcome.status };
-            return send(response, 200, { provenance: 'deterministic-mock', sessionId: record.id, endpoint: input.endpoint, protocolVersion, ...(protocolVersion === 3 ? { batchId: input.batchId } : {}), ...outcome });
+            return send(response, 200, { provenance: 'deterministic-mock', sessionId: record.id, endpoint: input.endpoint, protocolVersion, batchId: input.batchId, ...outcome });
           } finally { session.shadowDriverPending = false; }
         }
         if (input.action === 'promote-agent') {

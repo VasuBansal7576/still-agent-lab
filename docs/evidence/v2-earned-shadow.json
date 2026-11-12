@@ -1,0 +1,150 @@
+{
+  "description": "Browser-observed connected scripted agent shadow session using a batch-derived mock permission. Recorded calls replayed with matching mock outcomes. No PayPal call.",
+  "session": {
+    "version": 1,
+    "id": "shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4",
+    "source": "local-agent",
+    "protocolVersion": 2,
+    "batchId": "26732da0-4f13-4f8b-919b-c62724aa2d02",
+    "permissionFingerprint": "77974f913bca0f657ac223e21c42d4a253ad551c6671e27ff4ec8549639e678c",
+    "provenance": "deterministic-mock",
+    "createdAt": "2026-11-12T16:12:48.659Z",
+    "scenario": {
+      "kind": "partial-return",
+      "amount": "116.71",
+      "approvedReturn": "116.71",
+      "currency": "USD",
+      "disputeOpen": false,
+      "customerId": "MOCK-CUSTOMER-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4",
+      "orderId": "MOCK-ORDER-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4"
+    },
+    "captureId": "MOCK-CAPTURE-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4",
+    "disputeId": "MOCK-DISPUTE-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4",
+    "events": [
+      {
+        "name": "get_order",
+        "arguments": {
+          "order_id": "MOCK-ORDER-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4"
+        },
+        "result": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "MOCK-ORDER-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          }
+        }
+      },
+      {
+        "name": "get_dispute",
+        "arguments": {
+          "dispute_id": "MOCK-DISPUTE-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4"
+        },
+        "result": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "MOCK-DISPUTE-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4",
+            "status": "CLEAR"
+          }
+        }
+      },
+      {
+        "name": "create_refund",
+        "arguments": {
+          "capture_id": "MOCK-CAPTURE-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4",
+          "amount": {
+            "value": "116.71",
+            "currency_code": "USD"
+          }
+        },
+        "decisionId": "decision-a0eda3e8aa117ad5d624400f9c6a2ac1262683782bb892f4207955c3a825a27b",
+        "requestId": "6d39d6b942cc136e2f46ef3216c7d45e",
+        "result": {
+          "ok": true,
+          "status": 201,
+          "body": {
+            "id": "MOCK-REFUND-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4-1",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          }
+        }
+      }
+    ],
+    "agentStatus": "completed",
+    "regression": {
+      "version": 1,
+      "kind": "gateway-regression",
+      "sourceSessionId": "shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4",
+      "source": "local-agent",
+      "provenance": "deterministic-mock",
+      "promotedAt": "2026-11-12T16:12:51.525Z",
+      "calls": [
+        {
+          "name": "get_order",
+          "arguments": {
+            "order_id": "MOCK-ORDER-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4"
+          }
+        },
+        {
+          "name": "get_dispute",
+          "arguments": {
+            "dispute_id": "MOCK-DISPUTE-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4"
+          }
+        },
+        {
+          "name": "create_refund",
+          "arguments": {
+            "capture_id": "MOCK-CAPTURE-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          },
+          "decisionId": "decision-a0eda3e8aa117ad5d624400f9c6a2ac1262683782bb892f4207955c3a825a27b"
+        }
+      ],
+      "expectedResults": [
+        {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "MOCK-ORDER-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          }
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "MOCK-DISPUTE-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4",
+            "status": "CLEAR"
+          }
+        },
+        {
+          "ok": true,
+          "status": 201,
+          "body": {
+            "id": "MOCK-REFUND-shadow-3ea86d7f-42da-4da3-8ed5-89b149085ba4-1",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
