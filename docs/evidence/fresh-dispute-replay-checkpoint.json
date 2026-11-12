@@ -1,20 +1,22 @@
 {
-  "observedAt": "2026-11-12T07:03:41.620Z",
+  "observedAt": "2026-11-12T07:11:00.235Z",
   "source": "paypal-sandbox",
   "funding": "paypal-sandbox-test-card",
   "originalBatchId": "40f79126-1d0a-4152-b23d-5ef9c221e7ce",
   "replacementBatchId": "53b0e9b5-f2f9-4899-bbb2-33786539a98a",
   "selected": 401,
-  "compared": 247,
+  "compared": 322,
   "agreed": 0,
-  "disagreed": 247,
-  "unverified": 154,
+  "disagreed": 322,
+  "unverified": 79,
   "claimStates": {
-    "executed": 248,
-    "chargeback-unverified": 90,
-    "order-requested": 2,
-    "chargeback-requested": 2,
-    "resume-requested": 2
+    "executed": 323,
+    "chargeback-unverified": 78
   },
-  "note": "In-progress checkpoint. The unverified count includes queued, pending, provider-error and in-flight cases. Replacement results are separate from the original batch score."
+  "finalDeferredCaptureRead": {
+    "checked": 78,
+    "http200Pending": 78,
+    "note": "Read-only PayPal capture lookup; no refund calls."
+  },
+  "note": "Fresh replacement creation completed. All 78 deferred captures were PENDING on final recheck. Replacement results remain separate from the original historical score."
 }
