@@ -77,7 +77,7 @@ A fresh clone of public commit `9867277` started with Node 26. The browser ran t
 
 The hosted replay loaded and showed the saved sandbox retry evidence. A new sandbox order was created, but the buyer checkout required credentials and the developer dashboard showed a sign-in screen. A fresh capture and replay on this revision remain unverified. The saved sandbox evidence above remains historical evidence, not proof of a new run. Pending or uncertain provider outcomes remain unverified; reconciliation was stopped for this checkpoint.
 
-The requested one-click end-to-end journey is not complete. The failure cluster does not directly launch its matching sandbox replay, the corrected example is a separate scripted agent rather than an editable fix, and several controls expose raw JSON. The failure map now offers a one-click corrected mock run and links to the saved retry evidence. A finished screen recording and public YouTube video have not been produced. The [demo script](demo-script.md) and [submission draft](devpost-submission.md) are prepared but are not a submission.
+At this earlier checkpoint, the requested one-click end-to-end journey was not complete. The failure cluster does not directly launch its matching sandbox replay, the corrected example is a separate scripted agent rather than an editable fix, and several controls expose raw JSON. The failure map now offers a one-click corrected mock run and links to the saved retry evidence. At that checkpoint, a finished screen recording and public YouTube video had not been produced. The [demo script](demo-script.md) and [submission draft](devpost-submission.md) are prepared but are not a submission.
 
 ## Guided hero checkpoint
 
