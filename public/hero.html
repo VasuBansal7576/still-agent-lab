@@ -1,4 +1,47 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Still | Driving test</title><style>
-*{box-sizing:border-box}body{margin:0;background:#f2efe6;color:#1b1c18;font:16px/1.5 system-ui,sans-serif}header{display:flex;justify-content:space-between;align-items:center;padding:20px 6%;border-bottom:1px solid #bbb9ac}a{color:inherit}main{max-width:1040px;margin:auto;padding:48px 24px 100px}h1{max-width:850px;font-size:clamp(40px,6vw,70px);line-height:1.02;letter-spacing:-.055em;margin:12px 0 22px}h2{font-size:clamp(26px,4vw,40px);line-height:1.1;letter-spacing:-.04em;margin:12px 0}p{max-width:760px;color:#575950}.eyebrow,.label{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#a4421d}.hero{border-top:2px solid #1b1c18;margin-top:40px;padding-top:26px}.card{background:#fffdf7;border:1px solid #cbc8bc;padding:28px;margin-top:24px}.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.metric{background:#f2efe6;padding:18px}.metric strong{display:block;font-size:40px;line-height:1.1}.rows{display:grid;gap:8px}.row{padding:14px;background:#f2efe6;display:flex;justify-content:space-between;gap:12px}.trace{border-left:4px solid #e75929;padding:8px 20px;background:#f4efe5;margin:12px 0}.trace strong{color:#a4421d}button,.button{display:inline-block;border:0;background:#1b1c18;color:white;padding:15px 20px;font:700 13px system-ui;cursor:pointer;text-decoration:none}button:disabled{opacity:.5;cursor:wait}.secondary{background:#e3ded0;color:#1b1c18}details{margin:18px 0}summary{cursor:pointer;font-weight:600}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#ece9df;padding:16px;font:12px/1.5 monospace;max-height:360px;overflow:auto}.status{min-height:24px;color:#a4421d}.foot{font-size:13px;color:#66685e}.good{color:#08764d}.bad{color:#ab381c}@media(max-width:600px){.metrics{grid-template-columns:1fr}.row{display:block}.card{padding:20px}}
-</style></head><body><header><a href="/">✳ STILL</a><a href="/lab">Advanced lab ↗</a></header><main><div class="eyebrow">PayPal sandbox + deterministic mock</div><h1>The driving test for agents that touch PayPal money.</h1><p>Before an agent gets refund access, put its decisions through repeated trials. Inspect the failure, see saved PayPal evidence, and issue only the mock permissions it earned.</p><section class="hero"><div id="journey" class="card" aria-live="polite"></div><p id="status" class="status" role="status"></p><p class="foot">The customer personas are synthetic variants of public records. Mock results do not measure real-world failure rates. Saved sandbox evidence used simulated money and an injected timeout.</p></section></main><script type="module" src="/hero.js"></script></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Still | Driving test</title>
+<style>
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:#f2efe6;color:#1b1c18;font:16px/1.5 system-ui,sans-serif}header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:20px 6%;border-bottom:1px solid #bbb9ac}a{color:inherit}main{max-width:1100px;margin:auto;padding:48px 24px 100px}h1{max-width:850px;font-size:clamp(40px,6vw,70px);line-height:1.02;letter-spacing:-.055em;margin:12px 0 22px}h2{font-size:clamp(25px,3vw,35px);line-height:1.15;letter-spacing:-.04em;margin:10px 0}h3{font-size:20px;margin:0 0 8px}p{max-width:800px;color:#575950}.eyebrow,.label{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#a4421d}section{border-top:2px solid #1b1c18;margin-top:40px;padding-top:26px}.card{background:#fffdf7;border:1px solid #cbc8bc;padding:26px;margin-top:20px}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.full{grid-column:1/-1}label{display:grid;gap:6px;font-weight:650;font-size:14px}input,select,textarea{width:100%;padding:11px 12px;border:1px solid #aaa99e;background:#fffefa;color:#1b1c18;font:inherit}textarea{min-height:92px;resize:vertical}button,.button{display:inline-block;border:0;background:#1b1c18;color:white;padding:13px 18px;font:700 13px system-ui;cursor:pointer;text-decoration:none}button:disabled{opacity:.5;cursor:not-allowed}.secondary{background:#e3ded0;color:#1b1c18}.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}.hint,.foot{font-size:13px;color:#66685e}.hint{margin:6px 0}.status{color:#a4421d;min-height:24px}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.metric{background:#f2efe6;padding:18px}.metric strong{display:block;font-size:clamp(29px,4vw,42px);line-height:1.1}.rows{display:grid;gap:8px}.row{padding:14px;background:#f2efe6;display:flex;justify-content:space-between;align-items:center;gap:12px}.row button{text-align:left}.trace{border-left:4px solid #e75929;padding:8px 20px;background:#f4efe5;margin:12px 0}.trace strong,.bad{color:#a4421d}.good{color:#08764d}.timeline{list-style:none;padding:0;margin:0}.timeline li{border-top:1px solid #dfdcd1;padding:13px 0}.timeline p{margin:4px 0}.timeline .label{font-size:11px}details{margin:14px 0}summary{cursor:pointer;font-weight:600}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#ece9df;padding:16px;font:12px/1.5 ui-monospace,monospace;max-height:360px;overflow:auto}.pill{display:inline-block;padding:4px 9px;background:#e7e1d2;font-size:12px;font-weight:700}.rule{margin:8px 0}.rule p{margin:3px 0}.muted{color:#66685e}@media(max-width:650px){main{padding:32px 18px 70px}.fields,.metrics{grid-template-columns:1fr}.full{grid-column:auto}.row{align-items:flex-start;flex-direction:column}.card{padding:20px}}
+</style>
+</head>
+<body>
+<header><a href="/">✳ STILL</a><nav><a href="/lab">Advanced lab</a> · <a href="/replay">Saved sandbox evidence</a></nav></header>
+<main>
+<div class="eyebrow">PayPal sandbox + deterministic mock</div>
+<h1>The driving test for agents that touch PayPal money.</h1>
+<p>Connect an agent, run customer scenarios, and inspect its decisions before it receives refund access. Still runs these trials against an isolated mock. Separate saved PayPal sandbox evidence is available below.</p>
+<section aria-labelledby="connect-heading">
+<div class="label">01 / Agent and policy</div><h2 id="connect-heading">Test your agent.</h2>
+<p>Start a local agent that speaks <a href="https://github.com/VasuBansal7576/still-agent-lab/blob/main/docs/agent-protocol.md#repeated-trial-protocol-version-2">Still's repeated-trial protocol</a>, then enter its loopback URL. The included examples need no PayPal credentials.</p>
+<form id="run-form" class="card">
+<div class="fields">
+<label>Agent<select id="agent" name="agent"><option value="external">Your local HTTP agent</option><option value="buggy">Scripted buggy example</option><option value="safe">Scripted corrected example</option></select></label>
+<label id="endpoint-label">Local agent URL<input id="endpoint" name="endpoint" value="http://127.0.0.1:8787/agent" spellcheck="false" autocomplete="off"></label>
+<label>Personas<input id="personas" name="personas" type="number" min="1" max="5000" value="1000" required></label>
+<label>Trials per persona<input id="trials" name="trials" type="number" min="1" max="10" value="5" required></label>
+<label>Mock behavior<select id="profile" name="profile"><option value="completed">Completed refunds</option><option value="sandbox-test-card">Observed sandbox test-card responses</option></select></label>
+<label>Concurrency<input id="concurrency" name="concurrency" type="number" min="1" max="100" value="20" required></label>
+<label id="policy-label" class="full">Additional store instructions for your agent<textarea id="policy" name="policy" maxlength="10000" placeholder="Optional instructions for your agent"></textarea><span class="hint">Sent to your agent in addition to the standard policy. Still checks only its built-in rules, not these instructions. Runs with additional instructions cannot earn a permission.</span></label>
+</div>
+<p id="external-help" class="hint">Try <code>node examples/trial-agent.mjs</code> in another terminal. It is scripted. For a model-backed agent, see <a href="https://github.com/VasuBansal7576/still-agent-lab/blob/main/docs/trial-agent.md">agent setup</a>. Model-backed runs can take time and use model calls; start with one persona and one trial.</p>
+<div class="actions"><button id="run" type="submit">Run mock trials</button><span>Same settings and address can be rerun after you change your agent.</span></div>
+<p id="status" class="status" role="status" aria-live="polite"></p>
+</form>
+</section>
+<section aria-labelledby="results-heading">
+<div class="label">02 / Results · deterministic mock</div><h2 id="results-heading">Inspect the run.</h2>
+<div id="results" aria-live="polite"><p>Run an agent to see its decisions, rule evidence, and persona source here.</p></div>
+</section>
+<section aria-labelledby="sandbox-heading">
+<div class="label">03 / Saved PayPal sandbox evidence</div><h2 id="sandbox-heading">See what PayPal returned.</h2>
+<p>These are separate saved sandbox runs, not replays of your current agent or persona. The customer request and timeout were simulated. No real money moved.</p>
+<div id="sandbox"><button type="button" data-action="sandbox">Show saved retry evidence</button></div>
+</section>
+<p class="foot">Public-data personas are synthetic variants, not PayPal customers. Mock results do not measure real-world failure rates. Sandbox agreement is unverified until a real replay is recorded.</p>
+</main>
+<script type="module" src="/hero.js"></script>
+</body></html>

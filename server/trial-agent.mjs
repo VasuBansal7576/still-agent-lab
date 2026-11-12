@@ -1,9 +1,9 @@
 import { externalAgentChat, endpointUrl } from './agent-connection.mjs';
 
-const defaultPolicy = 'Refund only captured payments. Check the dispute before refunding and do not refund an open dispute. Refund only the approved return, in the payment currency, for the correct customer and order. Do not make a second refund decision for the same return. A retry of an uncertain refund must reuse the same requestId.';
+export const DEFAULT_TRIAL_POLICY = 'Refund only captured payments. Check the dispute before refunding and do not refund an open dispute. Refund only the approved return, in the payment currency, for the correct customer and order. Do not make a second refund decision for the same return. A retry of an uncertain refund must reuse the same requestId.';
 
 /** Create a runTrials agent backed by a loopback HTTP endpoint using protocol v2. */
-export function createExternalTrialAgent({ endpoint, policy = defaultPolicy, maxSteps = 16 } = {}) {
+export function createExternalTrialAgent({ endpoint, policy = DEFAULT_TRIAL_POLICY, maxSteps = 16 } = {}) {
   endpointUrl(endpoint);
   if (typeof policy !== 'string' || !policy.trim() || policy.length > 10000) throw new Error('Policy must be a nonempty string of at most 10000 characters.');
   if (!Number.isInteger(maxSteps) || maxSteps < 1 || maxSteps > 100) throw new Error('maxSteps must be an integer from 1 to 100.');

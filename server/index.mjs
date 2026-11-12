@@ -14,7 +14,7 @@ import { verifyReplayDispute } from './replay-dispute.mjs';
 import { runExtraLeakDemo } from './extra-leak-demo.mjs';
 import { generatePersonas } from './personas.mjs';
 import { runTrials } from './trials.mjs';
-import { createExternalTrialAgent } from './trial-agent.mjs';
+import { createExternalTrialAgent, DEFAULT_TRIAL_POLICY } from './trial-agent.mjs';
 import { importSandboxAccountPersonas } from './account-personas.mjs';
 import { importVerifiedAccountPersonas } from './verified-account-personas.mjs';
 import { derivePermission, createGateway } from './gateway.mjs';
@@ -112,6 +112,24 @@ http.createServer(async (request, response) => {
     if (request.method === 'GET' && url.pathname === '/api/upgrade/observed-agreement') { try { return send(response, 200, await loadObservedAgreement()); } catch { return send(response, 503, { error: 'Recorded sandbox comparison is unavailable.' }); } }
     if (request.method === 'GET' && url.pathname === '/api/scenarios') return send(response, 200, { scenarios: scenarioCatalog });
     if (request.method === 'GET' && url.pathname === '/api/runs') return send(response, 200, { runs: await listRuns() });
+    const batchTrials = url.pathname.match(/^\/api\/upgrade\/batches\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/trials(?:\/(\d+))?$/);
+    if (request.method === 'GET' && batchTrials) {
+      let batch;
+      try { batch = JSON.parse(await readFile(new URL(`../.data/batches/${batchTrials[1]}.json`, import.meta.url), 'utf8')); }
+      catch { return send(response, 404, { error: 'Batch not found.' }); }
+      if (batch.id !== batchTrials[1] || !Array.isArray(batch.results)) return send(response, 500, { error: 'Batch results are unavailable.' });
+      if (batchTrials[2] !== undefined) {
+        const index = Number(batchTrials[2]);
+        if (!Number.isSafeInteger(index) || index >= batch.results.length) return send(response, 404, { error: 'Trial not found.' });
+        return send(response, 200, { index, trial: batch.results[index] });
+      }
+      const offsetText = url.searchParams.get('offset') ?? '0', limitText = url.searchParams.get('limit') ?? '20';
+      if (!/^\d+$/.test(offsetText) || !/^\d+$/.test(limitText)) return send(response, 400, { error: 'Choose a valid results page.' });
+      const offset = Number(offsetText), limit = Number(limitText);
+      if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(limit) || limit < 1 || limit > 100 || offset > batch.results.length) return send(response, 400, { error: 'Choose a valid results page.' });
+      const items = batch.results.slice(offset, offset + limit).map((trial, i) => ({ index: offset + i, personaId: trial.personaId, trial: trial.trial, status: trial.status, checks: trial.checks, provenance: trial.provenance }));
+      return send(response, 200, { total: batch.results.length, offset, items });
+    }
     const savedMatch = url.pathname.match(/^\/api\/runs\/([A-Za-z0-9-]+)$/);
     if (request.method === 'GET' && savedMatch) {
       const run = await readRun(savedMatch[1]);
@@ -360,6 +378,7 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid batch.' });
       try {
         const summary = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        if (summary.additionalPolicy) return send(response, 400, { error: 'Additional policy instructions are not deterministically checked, so this run cannot earn a permission.' });
         const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary: currencyEvidence(summary, 'USD') });
         return send(response, 200, { permission });
       } catch { return send(response, 404, { error: 'Batch not found.' }); }
@@ -369,6 +388,7 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid batch.' });
       try {
         const summary = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        if (summary.additionalPolicy) return send(response, 400, { error: 'Additional policy instructions are not deterministically checked, so this run cannot earn a permission.' });
         const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary: currencyEvidence(summary, 'USD') });
         if (!permission.create_refund.allowed) return send(response, 400, { error: 'This batch has not earned a USD mock permission.' });
         const amount = permission.create_refund.maxPerOrder;
@@ -431,20 +451,23 @@ http.createServer(async (request, response) => {
       const count = Number(input.personas ?? 1000), trials = Number(input.trials ?? 5), concurrency = Number(input.concurrency ?? 20);
       const mockProfile = input.mockProfile ?? 'completed';
       if (!Number.isInteger(count) || count < 1 || count > 5000 || !Number.isInteger(trials) || trials < 1 || trials > 10 || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100 || !['safe', 'buggy', 'external'].includes(input.agent) || !['completed', 'sandbox-test-card'].includes(mockProfile)) return send(response, 400, { error: 'Choose valid trial settings, mock profile and an agent.' });
+      if (input.policy !== undefined && (input.agent !== 'external' || typeof input.policy !== 'string' || !input.policy.trim() || input.policy.length > 4000)) return send(response, 400, { error: 'A custom agent policy must contain 1 to 4000 characters and requires a local HTTP agent.' });
+      const additionalPolicy = input.policy?.trim() || null;
+      const effectivePolicy = input.agent === 'external' ? `${DEFAULT_TRIAL_POLICY}${additionalPolicy ? `\nAdditional store instruction: ${additionalPolicy}` : ''}` : null;
       const personas = generatePersonas({ count, seed: 'still-upgrade' });
       for (const persona of personas) persona.scenario.mockProfile = mockProfile;
       let agent = input.agent, agentId;
       if (agent === 'external') {
-        try { agent = createExternalTrialAgent({ endpoint: input.endpoint }); agentId = `local-${createHash('sha256').update(input.endpoint).digest('hex').slice(0, 24)}`; }
+        try { agent = createExternalTrialAgent({ endpoint: input.endpoint, policy: effectivePolicy }); agentId = `local-${createHash('sha256').update(input.endpoint).digest('hex').slice(0, 24)}`; }
         catch { return send(response, 400, { error: 'Provide a valid loopback agent endpoint.' }); }
       }
       const result = await runTrials({ personas, trials, concurrency, agent, agentId });
       const id = randomUUID();
       const directory = new URL('../.data/batches/', import.meta.url);
       await mkdir(directory, { recursive: true, mode: 0o700 });
-      await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, mockProfile, createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
+      await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, mockProfile, effectivePolicy, additionalPolicy, createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
       const { results, ...summary } = result;
-      return send(response, 200, { id, agent: input.agent, mockProfile, ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0] });
+      return send(response, 200, { id, agent: input.agent, mockProfile, effectivePolicy, additionalPolicy, ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0] });
     }
     if (url.pathname === '/api/upgrade/dispute-demo') {
       const input = await body(request);

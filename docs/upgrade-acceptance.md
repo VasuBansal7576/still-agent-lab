@@ -1,6 +1,12 @@
 # Driving test upgrade: acceptance evidence
 
-Updated 2026-11-11. The upgrade is incomplete. Sandbox evidence below is distinct from the deterministic mock; neither synthetic personas nor these trials establish real-world failure rates.
+Updated 2026-11-12. The upgrade is incomplete. Sandbox evidence below is distinct from the deterministic mock; neither synthetic personas nor these trials establish real-world failure rates.
+
+## Connected-agent checkpoint
+
+The current workspace connects an independent local HTTP agent, sends it the scenario and policy, executes its proposed calls against the mock, and displays a failure map and paginated individual traces. The browser ran the unsafe scripted HTTP example at 1,000 personas × five trials: 5,000 failed. After restarting the same endpoint in safe mode, another 1,000 × five run passed 5,000. The [saved summaries and example traces](evidence/connected-workspace.json) identify these separate mock batches. A smaller passing connected run earned a mock-only USD permission; the browser observed the mock gateway block an over-limit request and allow an eligible one. The local endpoint is not authenticated, and this is not a production grant.
+
+The browser generated an AI explanation for the duplicate-refund cluster, with the deterministic verdict unchanged. An optional model-backed HTTP agent produced one passing and one unverified mock trial; model outcomes vary. A separate custom-instruction trial showed the instruction reached the agent, and the server denied a permission because those instructions are not deterministically checked. Selecting a failure does not replay that connected agent's current trace against PayPal. The sandbox results below are historical provider evidence; pending or uncertain outcomes remain unverified and reconciliation has stopped.
 
 | Acceptance | Status | Evidence and limits |
 | --- | --- | --- |
