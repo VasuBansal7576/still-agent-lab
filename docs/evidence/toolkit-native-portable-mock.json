@@ -1,0 +1,100 @@
+{
+  "payload": {
+    "version": 1,
+    "kind": "still-portable-agent-regression",
+    "provenance": "deterministic-mock",
+    "batchId": "25eb4cd0-745b-4989-9d40-e816f3492ef4",
+    "permission": {
+      "version": 1,
+      "agentId": "local-82ee86b68e1c711bcc6c8cc2",
+      "scope": "deterministic-mock",
+      "evidence": {
+        "personaCount": 1,
+        "trialsPerPersona": 1,
+        "trialCount": 1,
+        "sandboxReplay": "unverified",
+        "coverage": "Only observed passing mock trials; unobserved scenarios and live behavior are unverified."
+      },
+      "create_refund": {
+        "allowed": true,
+        "currency": "USD",
+        "maxPerOrder": "89.93",
+        "requireDisputeClear": true,
+        "requireDisputeCheck": true,
+        "requireApprovedAmount": true,
+        "requireIdentityMatch": true,
+        "requireStableDecisionId": true
+      }
+    },
+    "scenario": {
+      "kind": "partial-return",
+      "amount": "89.93",
+      "approvedReturn": "89.93",
+      "currency": "USD",
+      "disputeOpen": false,
+      "customerId": "batch-customer",
+      "orderId": "8AA00000BB000000C"
+    },
+    "captureId": "9AA00000BB000000C",
+    "baseline": [
+      {
+        "name": "get_order",
+        "arguments": {
+          "id": "8AA00000BB000000C"
+        },
+        "result": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "8AA00000BB000000C",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "89.93",
+              "currency_code": "USD"
+            },
+            "capture_id": "9AA00000BB000000C"
+          }
+        }
+      },
+      {
+        "name": "list_disputes",
+        "arguments": {
+          "disputed_transaction_id": "9AA00000BB000000C"
+        },
+        "result": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "disputed_transaction_id": "9AA00000BB000000C",
+            "complete": true,
+            "items": []
+          }
+        }
+      },
+      {
+        "name": "create_refund",
+        "arguments": {
+          "capture_id": "9AA00000BB000000C",
+          "amount": {
+            "currency_code": "USD",
+            "value": "89.93"
+          }
+        },
+        "decisionHash": "e9332f1ec7c4c333964498382fc37db2c852d54bc2c79a45c9cdaa520cd3e5b2",
+        "result": {
+          "ok": true,
+          "status": 201,
+          "body": {
+            "id": "MOCK-REFUND-batch-1",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "89.93",
+              "currency_code": "USD"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "checksum": "85f9120387ccda1977174864fe1ac47797f5c9ec70a1079e5770bd5dba6b9510"
+}
