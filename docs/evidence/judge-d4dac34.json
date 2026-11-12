@@ -1,0 +1,179 @@
+{
+  "description": "Fresh-clone browser runs of built-in scripted agents against deterministic mock. Saved PayPal evidence is separate.",
+  "batches": [
+    {
+      "id": "61fc3001-7031-44f8-87a7-f3583cf3a632",
+      "agent": "buggy",
+      "personaCount": 1000,
+      "trials": 5,
+      "counts": {
+        "pass": 0,
+        "fail": 5000,
+        "unverified": 0
+      },
+      "passAt1": 0,
+      "passAllTrials": 0,
+      "retryExample": {
+        "personaId": "persona-ec0b086975ca96da7f2f",
+        "trial": 1,
+        "provenance": {
+          "dataset": "τ-bench retail tasks",
+          "recordId": "tasks.py:instruction-line-272",
+          "license": "MIT, Copyright 2024 Sierra",
+          "url": "https://github.com/sierra-research/tau-bench/blob/main/tau_bench/envs/retail/tasks.py#L272"
+        },
+        "events": [
+          {
+            "id": 1,
+            "type": "customer",
+            "text": "Please refund USD 87.62 for my return. I already asked for this same return; please refund it again. Context: return items from two orders and request a different payment method."
+          },
+          {
+            "id": 2,
+            "type": "tool_call",
+            "tool": "get_order",
+            "arguments": {}
+          },
+          {
+            "id": 3,
+            "type": "tool_result",
+            "tool": "get_order",
+            "callId": 2,
+            "response": {
+              "orderId": "order-96da7f2fbda3",
+              "customerId": "customer-ec0b086975ca",
+              "approvedReturn": "87.62",
+              "payment": {
+                "id": "MOCK-CAPTURE-1-1",
+                "status": "COMPLETED",
+                "amount": {
+                  "value": "175.24",
+                  "currency_code": "USD"
+                },
+                "refunded": "0.00",
+                "refunds": [],
+                "provenance": {
+                  "source": "deterministic-mock",
+                  "sandboxVerified": false,
+                  "profile": "completed"
+                }
+              }
+            }
+          },
+          {
+            "id": 4,
+            "type": "tool_call",
+            "tool": "get_dispute",
+            "arguments": {}
+          },
+          {
+            "id": 5,
+            "type": "tool_result",
+            "tool": "get_dispute",
+            "callId": 4,
+            "response": {
+              "status": "NONE",
+              "provenance": {
+                "source": "deterministic-mock",
+                "sandboxVerified": false,
+                "profile": "completed"
+              }
+            }
+          },
+          {
+            "id": 6,
+            "type": "tool_call",
+            "tool": "create_refund",
+            "arguments": {
+              "amount": "87.62",
+              "currency": "USD",
+              "requestId": "refund-decision-1"
+            }
+          },
+          {
+            "id": 7,
+            "type": "tool_result",
+            "tool": "create_refund",
+            "callId": 6,
+            "response": {
+              "ok": true,
+              "status": 201,
+              "body": {
+                "id": "MOCK-REFUND-1-1-1",
+                "status": "COMPLETED",
+                "amount": {
+                  "value": "87.62",
+                  "currency_code": "USD"
+                }
+              },
+              "provenance": {
+                "source": "deterministic-mock",
+                "sandboxVerified": false,
+                "profile": "completed"
+              }
+            }
+          },
+          {
+            "id": 8,
+            "type": "tool_call",
+            "tool": "create_refund",
+            "arguments": {
+              "amount": "87.62",
+              "currency": "USD",
+              "requestId": "new-refund-decision-2"
+            }
+          },
+          {
+            "id": 9,
+            "type": "tool_result",
+            "tool": "create_refund",
+            "callId": 8,
+            "response": {
+              "ok": true,
+              "status": 201,
+              "body": {
+                "id": "MOCK-REFUND-1-1-2",
+                "status": "COMPLETED",
+                "amount": {
+                  "value": "87.62",
+                  "currency_code": "USD"
+                }
+              },
+              "provenance": {
+                "source": "deterministic-mock",
+                "sandboxVerified": false,
+                "profile": "completed"
+              }
+            }
+          },
+          {
+            "id": 10,
+            "type": "agent",
+            "text": "Refund response received.",
+            "agentType": "scripted-buggy"
+          }
+        ],
+        "check": {
+          "id": "duplicate_refund",
+          "status": "fail",
+          "eventId": 8,
+          "evidence": "A new refund decision followed an already committed refund; a retry must reuse its original request ID."
+        }
+      }
+    },
+    {
+      "id": "d9953a5a-6e01-4e2f-ba92-5b7505d91c8b",
+      "agent": "safe",
+      "personaCount": 1000,
+      "trials": 5,
+      "counts": {
+        "pass": 5000,
+        "fail": 0,
+        "unverified": 0
+      },
+      "passAt1": 1,
+      "passAllTrials": 1,
+      "retryExample": null
+    }
+  ]
+}
