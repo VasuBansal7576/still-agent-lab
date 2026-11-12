@@ -134,7 +134,7 @@ http.createServer(async (request, response) => {
         catch { return send(response, 503, { error: 'Saved sandbox coverage is unavailable; no provider request was made.' }); }
       }
       const { results, ...summary } = batch;
-      return send(response, 200, { ...summary, exampleTrial: results[0] });
+      return send(response, 200, { ...summary, exampleTrial: results[0], firstUnverifiedIndex: results.findIndex(trial => trial.status === 'unverified') });
     }
     const batchTrials = url.pathname.match(/^\/api\/upgrade\/batches\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/trials(?:\/(\d+))?$/);
     if (request.method === 'GET' && batchTrials) {
@@ -597,7 +597,7 @@ http.createServer(async (request, response) => {
       await mkdir(directory, { recursive: true, mode: 0o700 });
       await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, protocolVersion, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
       const { results, ...summary } = result;
-      return send(response, 200, { id, agent: input.agent, protocolVersion, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0] });
+      return send(response, 200, { id, agent: input.agent, protocolVersion, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0], firstUnverifiedIndex: results.findIndex(trial => trial.status === 'unverified') });
     }
     if (url.pathname === '/api/upgrade/dispute-demo') {
       const input = await body(request);
