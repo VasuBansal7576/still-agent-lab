@@ -66,8 +66,8 @@ function sessionFor(request, response) {
 
 function publicCheckout(checkout) {
   if (!checkout) return null;
-  const { state, orderId, approvalUrl, captureId, capture, error, providerStatus, amount, currency, replayKey } = checkout;
-  return { state, orderId, approvalUrl, captureId, capture, error, providerStatus, amount, currency, replayKey };
+  const { state, orderId, approvalUrl, captureId, capture, error, providerStatus, amount, currency, replayKey, replayDisputeId } = checkout;
+  return { state, orderId, approvalUrl, captureId, capture, error, providerStatus, amount, currency, replayKey, replayDisputeId };
 }
 
 function completedCapture(result, amount = '50.00', currency = 'USD') {
@@ -295,6 +295,21 @@ http.createServer(async (request, response) => {
         return send(response, 200, sandboxReplayPage({ plan, evidence: await ledger.evidence(), verifyReceipt: ledger.verifyReceipt, offset: input.offset, limit: 10 }));
       } catch { return send(response, 400, { error: 'Replay page could not be loaded.' }); }
     }
+    if (url.pathname === '/api/upgrade/replay-select') {
+      const input = await body(request);
+      if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || typeof input.personaId !== 'string' || input.personaId.length > 200 || !Number.isSafeInteger(input.trial) || input.trial < 1) return send(response, 400, { error: 'Choose a valid batch and trial.' });
+      try {
+        const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        const plan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 0, samplePasses: 10 });
+        const index = plan.queue.findIndex(item => item.personaId === input.personaId && item.trial === input.trial);
+        if (index < 0) return send(response, 200, { status: 'not-selected', reason: 'This trial is not a failure or one of the sampled passing trials in the sandbox queue.' });
+        const selectedPlan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 1, offset: index, samplePasses: 10 });
+        const item = selectedPlan.queue[index];
+        const ledger = await createReplayLedger({ directory: fileURLToPath(new URL('../.data/replay-ledger/', import.meta.url)) });
+        const page = sandboxReplayPage({ plan: selectedPlan, evidence: await ledger.evidence(), verifyReceipt: ledger.verifyReceipt, offset: index, limit: 1 });
+        return send(response, 200, { status: 'selected', batchId: input.batchId, personaId: item.personaId, trial: item.trial, index, ...page.items[0], paypalReady: Boolean(session.paypal), checkout: publicCheckout(session.checkout), checkoutMatches: session.checkout?.replayKey === item.key });
+      } catch { return send(response, 400, { error: 'The selected sandbox replay could not be loaded.' }); }
+    }
     if (url.pathname === '/api/upgrade/replay-prepare') {
       const input = await body(request);
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || !Number.isInteger(input.index) || input.index < 0 || input.index > 100000) return send(response, 400, { error: 'Choose a replay from a valid batch.' });
@@ -305,7 +320,7 @@ http.createServer(async (request, response) => {
         if (!item) return send(response, 400, { error: 'No replay exists at this position.' });
         const result = await createReplayCheckout({ session, item });
         const status = result.status === 'approval_required' ? 200 : result.status === 'unavailable' ? 503 : result.status === 'create_unknown' ? 502 : 409;
-        return send(response, status, { status: result.status, error: result.error, checkout: publicCheckout(result.checkout) });
+        return send(response, status, { status: result.status, error: result.error, checkout: publicCheckout(result.checkout), noOrderAttempted: ['invalid', 'unavailable', 'conflict'].includes(result.status) });
       } catch { return send(response, 503, { error: 'Replay checkout could not be prepared. Check the current checkout before trying again.' }); }
     }
     if (url.pathname === '/api/upgrade/sandbox-permission-demo') {

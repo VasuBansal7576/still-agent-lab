@@ -8,13 +8,13 @@ const endpoint = document.querySelector('#endpoint');
 const policy = document.querySelector('#policy');
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const json = value => escape(JSON.stringify(value ?? null, null, 2));
-const state = { run: null, selectedCluster: null, selectedTrial: null, page: null, pageError: null, permission: null, permissionUrl: null, replay: null, explanation: null, sandbox: null, busy: false };
+const state = { run: null, selectedCluster: null, selectedTrial: null, page: null, pageError: null, permission: null, permissionUrl: null, replay: null, selectedReplay: null, explanation: null, sandbox: null, busy: false };
 const agentNames = { external: 'Local HTTP agent', buggy: 'Scripted buggy example', safe: 'Scripted corrected example' };
 
 async function request(path, body) {
   const response = await fetch(path, body === undefined ? {} : { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body) });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Request failed.');
+  if (!response.ok) { const error = new Error(data.error || 'Request failed.'); error.checkout = data.checkout; error.noOrderAttempted = data.noOrderAttempted === true; throw error; }
   return data;
 }
 function sourceLink(url, label) {
@@ -62,6 +62,34 @@ function clearPermission() {
   state.permissionUrl = null;
   state.replay = null;
 }
+function sandboxReplayView(selected) {
+  if (!selected) return '';
+  const selectedReplay = state.selectedReplay;
+  const intro = '<p class="hint">This sends the recorded mock tool calls to a fresh matching PayPal sandbox capture. It does not rerun the agent. Customer and store facts are synthetic; no real money moves.</p>';
+  if (!selectedReplay) return `<div class="card"><div class="label">Selected trial · PayPal sandbox</div><h3>Compare this trace.</h3>${intro}<button type="button" data-action="sandbox-select">Check sandbox replay</button></div>`;
+  if (selectedReplay.status !== 'selected') return `<div class="card"><div class="label">Selected trial · PayPal sandbox</div><h3>Replay unavailable.</h3>${intro}<p>${escape(selectedReplay.reason)}</p></div>`;
+  const checkout = selectedReplay.checkoutMatches ? selectedReplay.checkout : null;
+  const otherCheckout = !selectedReplay.checkoutMatches && selectedReplay.checkout && selectedReplay.checkout.state !== 'spent';
+  let controls = '';
+  if (selectedReplay.locked) controls = '<p>The operation outcome is uncertain. Do not retry automatically; check the sandbox state in the advanced lab.</p>';
+  else if (['recorded','recorded-unverified'].includes(selectedReplay.execution)) controls = '<p>A sandbox attempt is recorded for this trial. An uncertain result must not be retried automatically.</p>';
+  else if (selectedReplay.execution === 'unsupported') controls = `<p>${escape(selectedReplay.reason)}</p>`;
+  else if (otherCheckout) controls = '<p>Another sandbox checkout is active or unresolved. Finish it in the <a href="/lab">advanced lab</a> before starting this replay.</p>';
+  else if (!checkout && !selectedReplay.paypalReady) controls = '<p>Connect PayPal sandbox in <a href="/setup">setup</a> before creating the order.</p><button type="button" class="secondary" data-action="sandbox-select">Check connection again</button>';
+  else if (!checkout) controls = '<button type="button" data-action="sandbox-prepare">Create matching sandbox order</button><p class="hint">A sandbox buyer must approve the order before capture.</p>';
+  else if (checkout.state === 'spent') controls = '<p>This sandbox capture was already used. An uncertain result must not be retried automatically.</p>';
+  else if (checkout.state === 'approval_required') {
+    let link = '';
+    try { const u = new URL(checkout.approvalUrl); if (u.protocol === 'https:' && u.hostname === 'www.sandbox.paypal.com' && !u.username && !u.password && !u.port) link = `<a class="button secondary" href="${escape(u.href)}" target="_blank" rel="noopener noreferrer">Approve in PayPal sandbox ↗</a>`; } catch {}
+    controls = `<p>Approve the ${escape(checkout.currency)} ${escape(checkout.amount)} sandbox order, then capture it.</p><div class="actions">${link}<button type="button" data-action="sandbox-capture">Capture approved order</button></div>`;
+  } else if (checkout.state === 'captured') {
+    if (selectedReplay.execution === 'requires-sandbox-dispute' && !checkout.replayDisputeId) controls = `<p>A real unresolved sandbox dispute linked to capture ${escape(checkout.captureId)} is required before replay.</p><label>Sandbox dispute ID <input id="selected-dispute-id" placeholder="PayPal dispute ID"></label><button type="button" data-action="sandbox-dispute">Verify linked dispute</button>`;
+    else controls = `<p>Matching ${escape(checkout.currency)} ${escape(checkout.amount)} sandbox capture ${escape(checkout.captureId)} is ready${checkout.replayDisputeId ? `; dispute ${escape(checkout.replayDisputeId)} was verified` : ''}.</p><button type="button" data-action="sandbox-execute">Replay recorded calls against sandbox</button>`;
+  } else controls = `<p>Checkout outcome: ${escape(checkout.state)}. ${escape(checkout.error || 'Do not automatically retry an uncertain operation.')}</p>`;
+  const comparison = selectedReplay.comparison;
+  const comparisonText = comparison?.status === 'agreed' || comparison?.status === 'disagreed' ? `Sandbox comparison ${comparison.status}.` : 'Sandbox comparison unverified.';
+  return `<div class="card" id="selected-sandbox"><div class="label">Selected trial · PayPal sandbox</div><h3>${escape(comparisonText)}</h3><p>${escape(selectedReplay.personaId)} · trial ${escape(selectedReplay.trial)}</p>${intro}${selectedReplay.reason ? `<p>${escape(selectedReplay.reason)}</p>` : ''}${controls}${comparison ? `<details><summary>Inspect sandbox comparison</summary><pre>${json(comparison)}</pre></details>` : ''}${selectedReplay.result ? `<details open><summary>Inspect sandbox response</summary><pre>${json(selectedReplay.result)}</pre></details>` : ''}</div>`;
+}
 function renderResults() {
   if (!state.run) { results.innerHTML='<p>Run an agent to see its decisions, rule evidence, and persona source here.</p>'; return; }
   const { data, config } = state.run;
@@ -89,7 +117,7 @@ function renderResults() {
   let gateway = '';
   if (state.replay) { const calls = state.replay.events.filter(event => event.name === 'create_refund'); gateway = `<div class="card"><div class="label">Mock gateway replay</div><h3>Permission enforcement</h3>${calls.map((call,index)=>`<p><strong>${index === 0 ? 'Over limit' : 'Eligible'} · ${escape(call.arguments?.amount?.value)} ${escape(call.arguments?.amount?.currency_code)}</strong> · ${call.result?.blocked ? 'Blocked' : call.result?.ok ? 'Allowed' : 'Unverified'}</p>`).join('')}<p class="hint">The gateway uses an isolated mock. No PayPal payment was made.</p><details><summary>Inspect gateway events</summary><pre>${json(state.replay)}</pre></details></div>`; }
   const explanation = cluster ? `<div class="actions"><button type="button" class="secondary" data-action="explain">Explain this failure with AI</button></div>${state.explanation ? `<p>${escape(state.explanation)}</p>` : '<p class="hint">AI explains evidence; deterministic checks decide the verdict. Model access is required.</p>'}` : '';
-  results.innerHTML = `<div class="card"><span class="pill">${escape(verdict)} · mock</span><h3>${escape(scope)}</h3><p>${Number(data.personaCount).toLocaleString()} personas × ${Number(data.trials)} trials · ${escape(config.profile === 'sandbox-test-card' ? 'Observed sandbox test-card profile' : 'Completed-refund profile')}</p><p class="hint">Batch ${escape(data.id)}. Results belong to the settings used for this run, even if you change the form above. ${config.agent === 'external' ? 'The host identifies this agent by its endpoint; the endpoint does not authenticate the agent.' : 'This is a built-in scripted example.'}</p><div class="metrics"><div class="metric"><span>pass@1 · per trial</span><strong>${(Number(data.passAt1)*100).toFixed(1)}%</strong></div><div class="metric"><span>pass^${Number(data.trials)} · passed every trial</span><strong>${(Number(data.passAllTrials)*100).toFixed(1)}%</strong></div></div><p>${Number(data.counts.pass).toLocaleString()} passed · ${Number(data.counts.fail).toLocaleString()} failed · ${Number(data.counts.unverified).toLocaleString()} unverified</p><p class="hint">Unverified trials do not count as passes. These are mock results, not estimates of real-world reliability.</p>${data.effectivePolicy ? `<details><summary>Agent instructions used for this run</summary><pre>${escape(data.effectivePolicy)}</pre></details>` : ''}<h3>Failure map</h3><p class="hint">A trial can appear in multiple groups. Select a group to inspect its example.</p><div class="rows">${clusters || '<p>No observed failure groups.</p>'}</div><div class="actions"><button type="button" class="secondary" data-action="example">Inspect example trial</button><a href="#connect-heading">Change or rerun agent ↑</a></div><details id="trial-browser"><summary>Browse all trials</summary>${browser}</details></div>${traceView(selected, state.selectedTrial ? `Trial ${state.selectedTrial.index+1}` : cluster ? cluster.label : 'Example trial')}${explanation}<div class="card"><div class="label">Earned permission</div><h3>Scope access to observed evidence.</h3>${access}</div>${gateway}`;
+  results.innerHTML = `<div class="card"><span class="pill">${escape(verdict)} · mock</span><h3>${escape(scope)}</h3><p>${Number(data.personaCount).toLocaleString()} personas × ${Number(data.trials)} trials · ${escape(config.profile === 'sandbox-test-card' ? 'Observed sandbox test-card profile' : 'Completed-refund profile')}</p><p class="hint">Batch ${escape(data.id)}. Results belong to the settings used for this run, even if you change the form above. ${config.agent === 'external' ? 'The host identifies this agent by its endpoint; the endpoint does not authenticate the agent.' : 'This is a built-in scripted example.'}</p><div class="metrics"><div class="metric"><span>pass@1 · per trial</span><strong>${(Number(data.passAt1)*100).toFixed(1)}%</strong></div><div class="metric"><span>pass^${Number(data.trials)} · passed every trial</span><strong>${(Number(data.passAllTrials)*100).toFixed(1)}%</strong></div></div><p>${Number(data.counts.pass).toLocaleString()} passed · ${Number(data.counts.fail).toLocaleString()} failed · ${Number(data.counts.unverified).toLocaleString()} unverified</p><p class="hint">Unverified trials do not count as passes. These are mock results, not estimates of real-world reliability.</p>${data.effectivePolicy ? `<details><summary>Agent instructions used for this run</summary><pre>${escape(data.effectivePolicy)}</pre></details>` : ''}<h3>Failure map</h3><p class="hint">A trial can appear in multiple groups. Select a group to inspect its example.</p><div class="rows">${clusters || '<p>No observed failure groups.</p>'}</div><div class="actions"><button type="button" class="secondary" data-action="example">Inspect example trial</button><a href="#connect-heading">Change or rerun agent ↑</a></div><details id="trial-browser"><summary>Browse all trials</summary>${browser}</details></div>${traceView(selected, state.selectedTrial ? `Trial ${state.selectedTrial.index+1}` : cluster ? cluster.label : 'Example trial')}${explanation}${sandboxReplayView(selected)}<div class="card"><div class="label">Earned permission</div><h3>Scope access to observed evidence.</h3>${access}</div>${gateway}`;
 }
 function renderSandbox() {
   if (!state.sandbox) { sandbox.innerHTML='<button type="button" data-action="sandbox">Show saved retry evidence</button>'; return; }
@@ -121,7 +149,7 @@ form.addEventListener('submit', async event => {
   status.textContent='Running mock trials. The previous result stays visible until this run finishes.';
   try {
     const data = await request('/api/upgrade/batch',body);
-    clearPermission(); state.run={data,config}; state.selectedCluster=null; state.selectedTrial=null; state.page=null; state.pageError=null; state.explanation=null;
+    clearPermission(); state.run={data,config}; state.selectedCluster=null; state.selectedTrial=null; state.selectedReplay=null; state.page=null; state.pageError=null; state.explanation=null;
     try { state.page=await request(`/api/upgrade/batches/${encodeURIComponent(data.id)}/trials?offset=0&limit=20`); } catch(error) { state.pageError=`Could not load trials: ${error.message}`; }
     renderResults();
     status.textContent=`Mock run ${data.id} finished. Inspect its results below.`;
@@ -132,18 +160,36 @@ form.addEventListener('submit', async event => {
 results.addEventListener('click', async event => {
   const button=event.target.closest('button[data-action]'); if (!button || !state.run || state.busy) return;
   const action=button.dataset.action;
-  if (action === 'cluster') { state.selectedCluster=button.dataset.id; state.selectedTrial=null; state.explanation=null; renderResults(); document.querySelector('#trace')?.scrollIntoView({block:'start'}); return; }
-  if (action === 'example') { state.selectedCluster=null; state.selectedTrial=null; state.explanation=null; renderResults(); document.querySelector('#trace')?.scrollIntoView({block:'start'}); return; }
+  if (action === 'cluster') { state.selectedCluster=button.dataset.id; state.selectedTrial=null; state.selectedReplay=null; state.explanation=null; renderResults(); document.querySelector('#trace')?.scrollIntoView({block:'start'}); return; }
+  if (action === 'example') { state.selectedCluster=null; state.selectedTrial=null; state.selectedReplay=null; state.explanation=null; renderResults(); document.querySelector('#trace')?.scrollIntoView({block:'start'}); return; }
   const runId=state.run.data.id;
   state.busy=true; button.disabled=true; status.textContent='Working…';
   try {
     if (action === 'page') { state.page=await request(`/api/upgrade/batches/${encodeURIComponent(runId)}/trials?offset=${Number(button.dataset.offset)}&limit=20`); state.pageError=null; }
-    if (action === 'trial') { const data=await request(`/api/upgrade/batches/${encodeURIComponent(runId)}/trials/${Number(button.dataset.index)}`); state.selectedTrial=data; state.selectedCluster=null; state.explanation=null; }
+    if (action === 'trial') { const data=await request(`/api/upgrade/batches/${encodeURIComponent(runId)}/trials/${Number(button.dataset.index)}`); state.selectedTrial=data; state.selectedCluster=null; state.selectedReplay=null; state.explanation=null; }
     if (action === 'permission') { const data=await request('/api/upgrade/permission',{batchId:runId}); clearPermission(); state.permission=data.permission; if (data.permission?.create_refund?.allowed) state.permissionUrl=URL.createObjectURL(new Blob([JSON.stringify(data.permission,null,2)],{type:'application/json'})); }
     if (action === 'gateway') state.replay=await request('/api/upgrade/permission-replay',{batchId:runId});
     if (action === 'explain') { const data=await request('/api/upgrade/explain',{batchId:runId,clusterId:state.selectedCluster}); state.explanation=`AI explanation of mock evidence: ${data.explanation}`; }
-    renderResults(); status.textContent=action === 'gateway' ? 'Mock gateway replay completed.' : action === 'permission' ? 'Permission request completed.' : action === 'explain' ? 'Explanation generated.' : 'Trial evidence loaded.'; if (action === 'trial') document.querySelector('#trace')?.scrollIntoView({block:'start'}); if (action === 'page') { const details=results.querySelector('#trial-browser'); if (details) details.open=true; }
-  } catch (error) { status.textContent=error.message; button.disabled=false; results.querySelectorAll('.action-error').forEach(item=>item.remove()); const message=document.createElement('p'); message.className='status action-error'; message.setAttribute('role','status'); message.textContent=error.message; button.after(message); }
+    if (action === 'sandbox-select') {
+      const cluster = state.run.data.failureClusters.find(item => item.id === state.selectedCluster);
+      const selected = state.selectedTrial?.trial || cluster?.example || state.run.data.exampleTrial;
+      state.selectedReplay = await request('/api/upgrade/replay-select',{batchId:runId,personaId:selected.personaId,trial:selected.trial});
+    }
+    if (action === 'sandbox-prepare') { const data=await request('/api/upgrade/replay-prepare',{batchId:runId,index:state.selectedReplay.index}); state.selectedReplay.checkout=data.checkout; state.selectedReplay.checkoutMatches=true; }
+    if (action === 'sandbox-capture') { const data=await request(`/api/orders/${encodeURIComponent(state.selectedReplay.checkout.orderId)}/capture`,{}); state.selectedReplay.checkout=data.checkout; }
+    if (action === 'sandbox-dispute') { const data=await request('/api/upgrade/replay-dispute',{disputeId:document.querySelector('#selected-dispute-id').value.trim()}); state.selectedReplay.checkout.replayDisputeId=data.id; }
+    if (action === 'sandbox-execute') {
+      const old=state.selectedReplay;
+      const result=await request('/api/upgrade/replay-execute',{batchId:runId,index:old.index});
+      state.selectedReplay={...old,locked:true,result};
+      const updated=await request('/api/upgrade/replay-select',{batchId:runId,personaId:old.personaId,trial:old.trial});
+      state.selectedReplay={...updated,locked: !['recorded','recorded-unverified'].includes(updated.execution),result};
+    }
+    renderResults(); status.textContent=action === 'gateway' ? 'Mock gateway replay completed.' : action === 'permission' ? 'Permission request completed.' : action === 'explain' ? 'Explanation generated.' : action.startsWith('sandbox-') ? 'Sandbox replay state updated.' : 'Trial evidence loaded.'; if (action === 'trial') document.querySelector('#trace')?.scrollIntoView({block:'start'}); if (action === 'page') { const details=results.querySelector('#trial-browser'); if (details) details.open=true; }
+  } catch (error) {
+    if (action.startsWith('sandbox-') && state.selectedReplay) { if (error.checkout) { state.selectedReplay.checkout=error.checkout; state.selectedReplay.checkoutMatches=error.checkout.replayKey === JSON.stringify([runId,String(state.selectedReplay.personaId),state.selectedReplay.trial]); } else if (['sandbox-capture','sandbox-execute'].includes(action) || action === 'sandbox-prepare' && !error.noOrderAttempted) state.selectedReplay.locked=true; renderResults(); }
+    status.textContent=error.message; button.disabled=false; results.querySelectorAll('.action-error').forEach(item=>item.remove()); const message=document.createElement('p'); message.className='status action-error'; message.setAttribute('role','status'); message.textContent=error.message; (results.querySelector('#selected-sandbox') || button).append(message);
+  }
   finally { state.busy=false; }
 });
 sandbox.addEventListener('click',async event=>{
