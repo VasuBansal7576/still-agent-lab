@@ -52,7 +52,7 @@ An experimental [toolkit-style trial protocol](docs/toolkit-trials.md) lets an a
 
 The [model-driven gateway example](docs/toolkit-v3-model-gateway.md) uses a qualifying local batch and Codex to choose toolkit calls through that mock binding. The CLI and GitHub Action also accept `agent-protocol: '3'` for an external toolkit-style agent. These paths do not authenticate the agent or call PayPal.
 
-With a qualifying v3 mock permission open, shadow mode can record the connected toolkit-style agent's calls and promote them to a mock regression. The replay repeats recorded calls; it does not rerun the agent. See [toolkit shadow setup](docs/toolkit-trials.md).
+With a qualifying v2 or v3 mock permission open, shadow mode records the connected agent's calls and promotes them to a mock regression. Replay repeats recorded calls; the separate agent rerun invokes the current endpoint against an equivalent mock and reports matched, changed or unverified. The endpoint does not authenticate the agent. See [shadow setup](docs/toolkit-trials.md).
 
 After promotion, **Rerun the connected agent** asks the current v3 endpoint to make decisions again against a fresh mock and compares its calls and outcomes with the recording. A changed result needs inspection; an unavailable agent is unverified.
 

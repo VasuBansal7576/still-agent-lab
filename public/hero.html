@@ -45,7 +45,7 @@
 </section>
 <section aria-labelledby="shadow-heading">
 <div class="label">03 / Shadow session · deterministic mock</div><h2 id="shadow-heading">Turn a session into a regression.</h2>
-<p>Run your connected local HTTP agent through the mock gateway. Still records the calls the agent chooses. A regression repeats those gateway calls against a fresh mock; it does not rerun the agent or call PayPal.</p>
+<p>Run your connected local HTTP agent through the mock gateway. Still records the calls the agent chooses. After promotion, replay the recorded calls or rerun the connected agent against an equivalent mock. Neither action calls PayPal.</p>
 <div class="card" id="shadow-workspace"><button type="button" id="shadow-start">Record agent session</button><p class="hint">Uses the selected protocol and local agent URL above with a synthetic partial-return request. Open a passing connected-agent run and request its mock permission first. The endpoint is not authenticated as the tested agent. The gateway blocks unsafe calls.</p><p id="shadow-status" class="status" role="status" aria-live="polite"></p><div id="shadow-result"></div></div>
 </section>
 <section aria-labelledby="sandbox-heading">
