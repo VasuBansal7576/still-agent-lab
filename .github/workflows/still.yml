@@ -15,3 +15,5 @@ jobs:
         with:
           personas: '1000'
           trials: '5'
+          max-refund: '100.00'
+          refund-currency: USD

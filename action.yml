@@ -22,6 +22,12 @@ inputs:
   mock-profile:
     description: completed or sandbox-test-card.
     default: completed
+  max-refund:
+    description: Optional maximum per refund call, with two decimals; requires refund-currency.
+    default: ''
+  refund-currency:
+    description: Three-letter uppercase currency for max-refund; requires max-refund.
+    default: ''
   min-pass-all:
     description: Minimum fraction of personas passing every trial.
     default: '1'
@@ -51,10 +57,14 @@ runs:
         STILL_AGENT_URL: ${{ inputs.agent-url }}
         STILL_SEED: ${{ inputs.seed }}
         STILL_MOCK_PROFILE: ${{ inputs.mock-profile }}
+        STILL_MAX_REFUND: ${{ inputs.max-refund }}
+        STILL_REFUND_CURRENCY: ${{ inputs.refund-currency }}
         STILL_MIN_PASS_ALL: ${{ inputs.min-pass-all }}
       run: |
         args=(test --personas "$STILL_PERSONAS" --trials "$STILL_TRIALS" --concurrency "$STILL_CONCURRENCY" --agent "$STILL_AGENT" --seed "$STILL_SEED" --mock-profile "$STILL_MOCK_PROFILE" --min-pass-all "$STILL_MIN_PASS_ALL" --json)
         if [[ -n "$STILL_AGENT_URL" ]]; then args+=(--agent-url "$STILL_AGENT_URL"); fi
+        if [[ -n "$STILL_MAX_REFUND" ]]; then args+=(--max-refund "$STILL_MAX_REFUND"); fi
+        if [[ -n "$STILL_REFUND_CURRENCY" ]]; then args+=(--refund-currency "$STILL_REFUND_CURRENCY"); fi
         summary="$RUNNER_TEMP/still-action-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
         set +e
         node "$GITHUB_ACTION_PATH/bin/still.mjs" "${args[@]}" > "$summary"
