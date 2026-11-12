@@ -25,6 +25,7 @@ import { importSandboxAccountPersonas } from './account-personas.mjs';
 import { importVerifiedAccountPersonas } from './verified-account-personas.mjs';
 import { derivePermission, createGateway } from './gateway.mjs';
 import { createPayPalMock } from './paypal-mock.mjs';
+import { identityReplayEvidence, replayIdentityFailure } from './identity-replay.mjs';
 import { planSandboxReplays, planSelectedSandboxReplay, reconcileSandboxReplays, executePlannedSandboxReplay, sandboxReplayPage } from './sandbox-replay.mjs';
 import { summarizeReplayFidelity } from './replay-fidelity.mjs';
 import { summarizeDelayedReplays } from './delayed-replay-reconciliation.mjs';
@@ -496,6 +497,33 @@ http.createServer(async (request, response) => {
         const v3 = binding.protocolVersion === 3;
         return send(response, 200, { batchId: input.batchId, ...(v3 ? { decisionId: input.decisionId } : {}), protocolVersion: binding.protocolVersion, config: { mcpServers: { still: { command: 'node', args: [fileURLToPath(new URL('./mcp-batch-binding.mjs', import.meta.url)), input.batchId, ...(v3 ? [input.decisionId] : [])] } } }, toolkitModule: new URL('../examples/still-openai-toolkit.mjs', import.meta.url).href, scope: 'deterministic-mock' });
       } catch (error) { return send(response, 400, { error: error?.message === 'Toolkit-style binding requires an explicit decision ID from the host.' ? 'Enter a stable decision ID for this toolkit-style batch.' : 'This saved batch cannot start the USD mock toolkit binding. A fully passing batch with qualifying USD refund evidence is required.' }); }
+    }
+    if (url.pathname === '/api/upgrade/identity-replay') {
+      const input = await body(request);
+      const uuid = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value || '');
+      if (!uuid(input.batchId) || typeof input.personaId !== 'string' || !Number.isInteger(input.trial) || (input.permissionBatchId !== undefined && !uuid(input.permissionBatchId))) return send(response, 400, { error: 'Choose a saved failed trial and a valid passing batch.' });
+      try {
+        const readBatch = async id => JSON.parse(await readFile(new URL(`../.data/batches/${id}.json`, import.meta.url), 'utf8'));
+        const failed = await readBatch(input.batchId);
+        const evidence = identityReplayEvidence(failed, input.personaId, input.trial);
+        const eligible = async id => {
+          const grant = await readBatch(id);
+          if (grant.id !== id || grant.agent === 'mcp' || grant.evaluatedAgentId !== evidence.agentId || !Number.isFinite(Date.parse(grant.createdAt)) || !(Date.parse(grant.createdAt) < Date.parse(failed.createdAt))) return null;
+          const permission = derivePermission({ agentId: evidence.agentId, currency: 'USD', summary: currencyEvidence(grant, 'USD') });
+          return permission.create_refund.allowed && Number(permission.create_refund.maxPerOrder) >= Number(evidence.args.amount) ? { id, createdAt: grant.createdAt, permission } : null;
+        };
+        if (input.permissionBatchId) {
+          const selected = await eligible(input.permissionBatchId);
+          if (!selected) return send(response, 400, { error: 'That saved batch is not an earlier qualifying passing batch for this agent.' });
+          return send(response, 200, await replayIdentityFailure(evidence, selected.permission));
+        }
+        const history = await recentBatches(fileURLToPath(new URL('../.data/batches/', import.meta.url)));
+        const candidates = [];
+        for (const batch of history.batches.filter(b => b.verdict === 'pass')) {
+          try { const item = await eligible(batch.id); if (item) candidates.push({ id: item.id, createdAt: item.createdAt, ceiling: item.permission.create_refund.maxPerOrder, trialCount: item.permission.evidence.trialCount }); } catch {}
+        }
+        return send(response, 200, { candidates, limited: history.limited });
+      } catch (error) { return send(response, 400, { error: error.message || 'The saved trial cannot be replayed.' }); }
     }
     if (url.pathname === '/api/upgrade/permission') {
       const input = await body(request);
