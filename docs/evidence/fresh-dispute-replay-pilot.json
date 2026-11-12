@@ -1,0 +1,342 @@
+{
+  "source": "paypal-sandbox",
+  "observedAt": "2026-11-12T06:35:43.821Z",
+  "batches": [
+    {
+      "batchId": "37eb97d5-e2d8-4b18-a125-2f53b37a59b5",
+      "replacementOf": {
+        "batchId": "40f79126-1d0a-4152-b23d-5ef9c221e7ce",
+        "personaId": "persona-c51ceab1326a45bd0640",
+        "trial": 5,
+        "meaning": "Fresh sandbox attempt of the same saved mock trace. The original receipt and result are unchanged."
+      },
+      "compared": 1,
+      "agreed": 0,
+      "disagreed": 1,
+      "unverified": 0,
+      "results": [
+        {
+          "key": "[\"37eb97d5-e2d8-4b18-a125-2f53b37a59b5\",\"persona-c51ceab1326a45bd0640\",5]",
+          "personaId": "persona-c51ceab1326a45bd0640",
+          "trial": 5,
+          "status": "disagreed",
+          "source": "paypal-sandbox",
+          "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+          "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+          "disputeKind": "sandbox-card-chargeback",
+          "comparisons": [
+            {
+              "mock": {
+                "status": 201,
+                "outcome": "COMPLETED",
+                "amount": {
+                  "value": "170.45",
+                  "currency_code": "GBP"
+                },
+                "id": "MOCK-REFUND-249-5-1",
+                "timeoutInjected": false
+              },
+              "provider": {
+                "ok": false,
+                "status": 422,
+                "body": {
+                  "name": "UNPROCESSABLE_ENTITY",
+                  "details": [
+                    {
+                      "issue": "REFUND_NOT_PERMITTED_DUE_TO_CHARGEBACK"
+                    }
+                  ]
+                }
+              },
+              "dispute": {
+                "verified": true,
+                "source": "paypal-sandbox",
+                "httpStatus": 200,
+                "id": "PP-R-NEF-10199709",
+                "status": "UNDER_REVIEW",
+                "captureId": "0K444556YR0209914",
+                "amount": {
+                  "value": "340.90",
+                  "currency_code": "GBP"
+                },
+                "observedAt": "2026-11-12T06:32:55.722Z"
+              },
+              "match": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "batchId": "2fae72cb-06b1-4830-87cb-92f4ff1c67cc",
+      "replacementOf": {
+        "batchId": "40f79126-1d0a-4152-b23d-5ef9c221e7ce",
+        "originalKeys": [
+          "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-51eead76ac230ad8dcc3\",1]",
+          "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-f60f83c4f94babd7a924\",5]",
+          "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-8de7c17cfb6b457b3696\",2]",
+          "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-85b38fe7d9262ea2019b\",1]",
+          "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-d47e6ed294a7a3545ae5\",3]"
+        ],
+        "meaning": "Fresh sandbox attempts of the same saved mock traces. Original claims and results are unchanged."
+      },
+      "compared": 5,
+      "agreed": 0,
+      "disagreed": 5,
+      "unverified": 0,
+      "results": [
+        {
+          "key": "[\"2fae72cb-06b1-4830-87cb-92f4ff1c67cc\",\"persona-51eead76ac230ad8dcc3\",1]",
+          "personaId": "persona-51eead76ac230ad8dcc3",
+          "trial": 1,
+          "status": "disagreed",
+          "source": "paypal-sandbox",
+          "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+          "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+          "disputeKind": "sandbox-card-chargeback",
+          "comparisons": [
+            {
+              "mock": {
+                "status": 201,
+                "outcome": "COMPLETED",
+                "amount": {
+                  "value": "51.15",
+                  "currency_code": "GBP"
+                },
+                "id": "MOCK-REFUND-420-1-1",
+                "timeoutInjected": false
+              },
+              "provider": {
+                "ok": false,
+                "status": 422,
+                "body": {
+                  "name": "UNPROCESSABLE_ENTITY",
+                  "details": [
+                    {
+                      "issue": "REFUND_NOT_PERMITTED_DUE_TO_CHARGEBACK"
+                    }
+                  ]
+                }
+              },
+              "dispute": {
+                "verified": true,
+                "source": "paypal-sandbox",
+                "httpStatus": 200,
+                "id": "PP-R-WIE-10199711",
+                "status": "UNDER_REVIEW",
+                "captureId": "29E36341F0786302D",
+                "amount": {
+                  "value": "102.30",
+                  "currency_code": "GBP"
+                },
+                "observedAt": "2026-11-12T06:35:11.180Z"
+              },
+              "match": false
+            }
+          ]
+        },
+        {
+          "key": "[\"2fae72cb-06b1-4830-87cb-92f4ff1c67cc\",\"persona-85b38fe7d9262ea2019b\",1]",
+          "personaId": "persona-85b38fe7d9262ea2019b",
+          "trial": 1,
+          "status": "disagreed",
+          "source": "paypal-sandbox",
+          "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+          "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+          "disputeKind": "sandbox-card-chargeback",
+          "comparisons": [
+            {
+              "mock": {
+                "status": 201,
+                "outcome": "COMPLETED",
+                "amount": {
+                  "value": "434.99",
+                  "currency_code": "GBP"
+                },
+                "id": "MOCK-REFUND-690-1-1",
+                "timeoutInjected": false
+              },
+              "provider": {
+                "ok": false,
+                "status": 422,
+                "body": {
+                  "name": "UNPROCESSABLE_ENTITY",
+                  "details": [
+                    {
+                      "issue": "REFUND_NOT_PERMITTED_DUE_TO_CHARGEBACK"
+                    }
+                  ]
+                }
+              },
+              "dispute": {
+                "verified": true,
+                "source": "paypal-sandbox",
+                "httpStatus": 200,
+                "id": "PP-R-JTP-10199712",
+                "status": "UNDER_REVIEW",
+                "captureId": "7M6604585X690062D",
+                "amount": {
+                  "value": "869.98",
+                  "currency_code": "GBP"
+                },
+                "observedAt": "2026-11-12T06:34:58.372Z"
+              },
+              "match": false
+            }
+          ]
+        },
+        {
+          "key": "[\"2fae72cb-06b1-4830-87cb-92f4ff1c67cc\",\"persona-8de7c17cfb6b457b3696\",2]",
+          "personaId": "persona-8de7c17cfb6b457b3696",
+          "trial": 2,
+          "status": "disagreed",
+          "source": "paypal-sandbox",
+          "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+          "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+          "disputeKind": "sandbox-card-chargeback",
+          "comparisons": [
+            {
+              "mock": {
+                "status": 201,
+                "outcome": "COMPLETED",
+                "amount": {
+                  "value": "97.51",
+                  "currency_code": "GBP"
+                },
+                "id": "MOCK-REFUND-960-2-1",
+                "timeoutInjected": false
+              },
+              "provider": {
+                "ok": false,
+                "status": 422,
+                "body": {
+                  "name": "UNPROCESSABLE_ENTITY",
+                  "details": [
+                    {
+                      "issue": "REFUND_NOT_PERMITTED_DUE_TO_CHARGEBACK"
+                    }
+                  ]
+                }
+              },
+              "dispute": {
+                "verified": true,
+                "source": "paypal-sandbox",
+                "httpStatus": 200,
+                "id": "PP-R-HCV-10199713",
+                "status": "OPEN",
+                "captureId": "36L60388BP946724H",
+                "amount": {
+                  "value": "195.02",
+                  "currency_code": "GBP"
+                },
+                "observedAt": "2026-11-12T06:35:02.506Z"
+              },
+              "match": false
+            }
+          ]
+        },
+        {
+          "key": "[\"2fae72cb-06b1-4830-87cb-92f4ff1c67cc\",\"persona-d47e6ed294a7a3545ae5\",3]",
+          "personaId": "persona-d47e6ed294a7a3545ae5",
+          "trial": 3,
+          "status": "disagreed",
+          "source": "paypal-sandbox",
+          "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+          "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+          "disputeKind": "sandbox-card-chargeback",
+          "comparisons": [
+            {
+              "mock": {
+                "status": 201,
+                "outcome": "COMPLETED",
+                "amount": {
+                  "value": "97.06",
+                  "currency_code": "GBP"
+                },
+                "id": "MOCK-REFUND-717-3-1",
+                "timeoutInjected": false
+              },
+              "provider": {
+                "ok": false,
+                "status": 422,
+                "body": {
+                  "name": "UNPROCESSABLE_ENTITY",
+                  "details": [
+                    {
+                      "issue": "REFUND_NOT_PERMITTED_DUE_TO_CHARGEBACK"
+                    }
+                  ]
+                }
+              },
+              "dispute": {
+                "verified": true,
+                "source": "paypal-sandbox",
+                "httpStatus": 200,
+                "id": "PP-R-UAA-10199714",
+                "status": "UNDER_REVIEW",
+                "captureId": "7AN83247MH744640L",
+                "amount": {
+                  "value": "194.12",
+                  "currency_code": "GBP"
+                },
+                "observedAt": "2026-11-12T06:35:06.807Z"
+              },
+              "match": false
+            }
+          ]
+        },
+        {
+          "key": "[\"2fae72cb-06b1-4830-87cb-92f4ff1c67cc\",\"persona-f60f83c4f94babd7a924\",5]",
+          "personaId": "persona-f60f83c4f94babd7a924",
+          "trial": 5,
+          "status": "disagreed",
+          "source": "paypal-sandbox",
+          "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+          "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+          "disputeKind": "sandbox-card-chargeback",
+          "comparisons": [
+            {
+              "mock": {
+                "status": 201,
+                "outcome": "COMPLETED",
+                "amount": {
+                  "value": "122.43",
+                  "currency_code": "GBP"
+                },
+                "id": "MOCK-REFUND-456-5-1",
+                "timeoutInjected": false
+              },
+              "provider": {
+                "ok": false,
+                "status": 422,
+                "body": {
+                  "name": "UNPROCESSABLE_ENTITY",
+                  "details": [
+                    {
+                      "issue": "REFUND_NOT_PERMITTED_DUE_TO_CHARGEBACK"
+                    }
+                  ]
+                }
+              },
+              "dispute": {
+                "verified": true,
+                "source": "paypal-sandbox",
+                "httpStatus": 200,
+                "id": "PP-R-WYQ-10199715",
+                "status": "OPEN",
+                "captureId": "05B63114RE863041D",
+                "amount": {
+                  "value": "244.86",
+                  "currency_code": "GBP"
+                },
+                "observedAt": "2026-11-12T06:35:15.321Z"
+              },
+              "match": false
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "note": "Fresh replacement attempts. Original historical outcomes remain unchanged. Synthetic customer facts and injected timeouts do not establish real customer behavior."
+}
