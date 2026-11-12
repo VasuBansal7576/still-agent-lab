@@ -2,6 +2,7 @@ import { DEFAULT_TRIAL_POLICY } from './trial-agent.mjs';
 
 const supported = new Set(['get_order', 'get_dispute', 'list_disputes', 'get_refund', 'create_refund']);
 const confirmation = { name: 'request_refund_confirmation', description: 'Ask the simulated customer to confirm the exact approved refund amount.', inputSchema: { type: 'object', properties: { amount: { type: 'string' }, currency: { type: 'string' } }, required: ['amount', 'currency'], additionalProperties: false } };
+const validMeta = meta => !meta || (typeof meta === 'object' && !Array.isArray(meta) && Object.keys(meta).every(key => ['stillRequestId', 'progressToken'].includes(key)) && (meta.progressToken === undefined || typeof meta.progressToken === 'string' || Number.isSafeInteger(meta.progressToken)));
 
 /** A fresh in-memory MCP session per trial. The host owns the agent loop. */
 export function createMcpTrialAgent({ sdk, toolkit, runAgent, policy = DEFAULT_TRIAL_POLICY, maxCalls = 16 } = {}) {
@@ -21,7 +22,7 @@ export function createMcpTrialAgent({ sdk, toolkit, runAgent, policy = DEFAULT_T
         if (!active || ++calls > maxCalls) { invalid = true; return { content: [{ type: 'text', text: 'Trial unavailable or call limit exceeded.' }], isError: true }; }
         const { name, arguments: args, _meta } = request.params;
         const decisionId = _meta?.stillRequestId;
-        if (!available.some(t => t.name === name) || !args || typeof args !== 'object' || Array.isArray(args) || (decisionId !== undefined && (name !== 'create_refund' || typeof decisionId !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(decisionId))) || (_meta && Object.keys(_meta).some(k => k !== 'stillRequestId'))) {
+        if (!available.some(t => t.name === name) || !args || typeof args !== 'object' || Array.isArray(args) || (decisionId !== undefined && (name !== 'create_refund' || typeof decisionId !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(decisionId))) || !validMeta(_meta)) {
           invalid = true;
           return { content: [{ type: 'text', text: 'Unsupported mock call.' }], isError: true };
         }

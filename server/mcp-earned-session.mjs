@@ -1,4 +1,5 @@
 import { createMockBatchBinding } from './mcp-batch-binding.mjs';
+const validMeta = meta => !meta || (typeof meta === 'object' && !Array.isArray(meta) && Object.keys(meta).every(key => ['stillRequestId', 'progressToken'].includes(key)) && (meta.progressToken === undefined || typeof meta.progressToken === 'string' || Number.isSafeInteger(meta.progressToken)));
 
 // The host is trusted local code. Every exposed payment tool is bound to a fresh mock gateway.
 export async function runMcpEarnedSession({ host, permission, policy }) {
@@ -17,7 +18,7 @@ export async function runMcpEarnedSession({ host, permission, policy }) {
     const task = serial.then(async () => {
       const { name, arguments: args, _meta } = request.params;
       const decisionId = _meta?.stillRequestId;
-      if (!active || ++calls > 16 || !definitions.some(t => t.name === name) || !args || typeof args !== 'object' || Array.isArray(args) || (_meta && Object.keys(_meta).some(k => k !== 'stillRequestId')) || (decisionId !== undefined && (name !== 'create_refund' || typeof decisionId !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(decisionId)))) {
+      if (!active || ++calls > 16 || !definitions.some(t => t.name === name) || !args || typeof args !== 'object' || Array.isArray(args) || !validMeta(_meta) || (decisionId !== undefined && (name !== 'create_refund' || typeof decisionId !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(decisionId)))) {
         invalid = true;
         return { content: [{ type: 'text', text: 'Unsupported mock call.' }], isError: true };
       }
