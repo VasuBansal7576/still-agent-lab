@@ -1,0 +1,137 @@
+{
+  "source": "paypal-sandbox",
+  "observedAt": "2026-11-12T08:40:45.648Z",
+  "transfer": {
+    "gross": "100.00",
+    "currency": "GBP",
+    "merchantTransaction": "4TT70620EL1573947",
+    "status": "COMPLETED",
+    "netGBP": "96.12",
+    "convertedUSD": "124.72"
+  },
+  "afterAddingGBP": {
+    "transferGross": "100.00",
+    "currency": "GBP",
+    "merchantTransaction": "3WW71252A1996312C",
+    "status": "COMPLETED",
+    "netGBP": "96.12",
+    "convertedUSD": "124.72"
+  },
+  "records": [
+    {
+      "key": "[\"9d4688c4-cec7-4580-b2cf-4ac6337326d8\",\"persona-aeb22728711d820bf1af\",1]",
+      "capture": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "73G35369JG5560427",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "34.00",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "73G35369JG5560427",
+            "amount": "17.00",
+            "currency": "GBP",
+            "requestId": "still-da736a3ec0ec3e8121ea8d935bc1a0f8390f9982"
+          },
+          "refund": {
+            "ok": false,
+            "status": 422,
+            "body": {
+              "name": "UNPROCESSABLE_ENTITY",
+              "details": [
+                {
+                  "issue": "REFUND_FAILED_INSUFFICIENT_FUNDS"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "status": "rejected"
+    },
+    {
+      "key": "[\"a37f9f38-19ff-4947-84d6-aab0edfa0ed4\",\"persona-aeb22728711d820bf1af\",2]",
+      "capture": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "0WP22380GW350832P",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "34.00",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "0WP22380GW350832P",
+            "amount": "17.00",
+            "currency": "GBP",
+            "requestId": "still-5cccce06a1909d1afd68760a25f86510fe129fdb"
+          },
+          "refund": {
+            "ok": false,
+            "status": 422,
+            "body": {
+              "name": "UNPROCESSABLE_ENTITY",
+              "details": [
+                {
+                  "issue": "REFUND_FAILED_INSUFFICIENT_FUNDS"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "status": "rejected"
+    },
+    {
+      "key": "[\"75994b22-6157-4504-bba4-189e3ef6fe61\",\"persona-aeb22728711d820bf1af\",5]",
+      "capture": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "3FA96325AF881092S",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "34.00",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "3FA96325AF881092S",
+            "amount": "17.00",
+            "currency": "GBP",
+            "requestId": "still-d20a0d595eb915bed14a701e8353d476af1515aa"
+          },
+          "refund": {
+            "ok": false,
+            "status": 422,
+            "body": {
+              "name": "UNPROCESSABLE_ENTITY",
+              "details": [
+                {
+                  "issue": "REFUND_FAILED_INSUFFICIENT_FUNDS"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "status": "rejected"
+    }
+  ],
+  "limitations": "Both transfers converted to USD. Spendable GBP remains unverified; prior receipts remain unchanged and full replay traces unverified."
+}
