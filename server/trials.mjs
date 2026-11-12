@@ -47,6 +47,7 @@ async function runOne(persona, trial, agent, index, refundPolicy) {
   let usedToolkit = false;
   let orderRead = false;
   let disputeRead = false;
+  let customerConfirmationUsed = false;
   const decisions = new Map();
   const failed = new Set();
   const fail = (id, event, detail) => {
@@ -55,6 +56,22 @@ async function runOne(persona, trial, agent, index, refundPolicy) {
   };
   record('customer', { text: scenario.customerRequest || 'Please refund my order.' });
   const tools = {
+    requestCustomerConfirmation: async args => {
+      const call = record('tool_call', { tool: 'request_refund_confirmation', arguments: structuredClone(args), provenance: 'synthetic-customer' });
+      const followUp = scenario.customerFollowUp;
+      const expectedReply = `Yes, please refund the approved ${scenario.currency} ${scenario.approvedReturn}.`;
+      if (customerConfirmationUsed || scenario.kind !== 'full-refund' || scenario.disputeOpen || mock.snapshot().refunds.length || !followUp || followUp.type !== 'confirm-approved-refund' || followUp.amount !== scenario.approvedReturn || followUp.currency !== scenario.currency || followUp.reply !== expectedReply || args.amount !== followUp.amount || args.currency !== followUp.currency) {
+        customerConfirmationUsed = true;
+        const response = { unsupported: true, reason: 'No matching synthetic customer confirmation is available.' };
+        record('tool_result', { tool: 'request_refund_confirmation', callId: call.id, response });
+        return response;
+      }
+      customerConfirmationUsed = true;
+      const response = { confirmed: true, amount: followUp.amount, currency: followUp.currency, provenance: 'synthetic-customer' };
+      record('tool_result', { tool: 'request_refund_confirmation', callId: call.id, response });
+      record('customer', { text: followUp.reply, provenance: 'synthetic-follow-up' });
+      return { ...response, customerReply: followUp.reply };
+    },
     getOrder: async () => {
       const call = record('tool_call', { tool: 'get_order', arguments: {} });
       orderRead = true;

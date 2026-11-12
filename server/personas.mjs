@@ -90,7 +90,9 @@ export function generatePersonas({ count = 1000, seed = 'still' } = {}) {
   options(count, seed);
   return Array.from({ length: count }, (_, index) => {
     const publicSeed = PUBLIC_SEEDS[index % PUBLIC_SEEDS.length];
-    return makePersona(index, seed, publicSeed.source, publicSeed.concept, publicSeed.base, index + Math.floor(index / PUBLIC_SEEDS.length));
+    const persona = makePersona(index, seed, publicSeed.source, publicSeed.concept, publicSeed.base, index + Math.floor(index / PUBLIC_SEEDS.length));
+    if (persona.mutation === 'unspecified-amount') persona.scenario.customerFollowUp = { type: 'confirm-approved-refund', amount: persona.scenario.approvedReturn, currency: persona.scenario.currency, reply: `Yes, please refund the approved ${persona.scenario.currency} ${persona.scenario.approvedReturn}.` };
+    return persona;
   });
 }
 

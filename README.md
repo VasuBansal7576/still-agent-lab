@@ -52,6 +52,8 @@ An experimental [toolkit-style trial protocol](docs/toolkit-trials.md) lets an a
 
 An optional [native function-call example](docs/toolkit-trial-adapter.md#native-codex-function-call-example) lets a Codex-backed model choose selected PayPal toolkit functions during mock trials. It needs a signed-in Codex CLI and a separate toolkit installation; it does not send PayPal requests. The model may supply a refund decision ID as application context; a permission still depends on the observed mock evidence.
 
+For the synthetic amount-free scenario, an adapted agent can explicitly request confirmation of the approved amount and receive a predetermined synthetic customer reply. Free-text questions alone remain unverified. See [the toolkit trial setup](docs/toolkit-trial-adapter.md#synthetic-confirmation-example).
+
 The [model-driven gateway example](docs/toolkit-v3-model-gateway.md) uses a qualifying local batch and Codex to choose toolkit calls through that mock binding. The CLI and GitHub Action also accept `agent-protocol: '3'` for an external toolkit-style agent. These paths do not authenticate the agent or call PayPal.
 
 With a qualifying v2 or v3 mock permission open, shadow mode records the connected agent's calls and promotes them to a mock regression. Replay repeats recorded calls; the separate agent rerun invokes the current endpoint against an equivalent mock and reports matched, changed or unverified. The endpoint does not authenticate the agent. See [shadow setup](docs/toolkit-trials.md).

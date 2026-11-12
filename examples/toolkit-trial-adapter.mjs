@@ -18,7 +18,9 @@ export function createToolkitTrialServer({ toolkit, decide }) {
       for await (const chunk of request) { raw += chunk; if (Buffer.byteLength(raw) > 1_000_000) return send(413, { error: 'Request too large.' }); }
       const input = JSON.parse(raw);
       if (input.version !== 3 || !Array.isArray(input.messages) || !Array.isArray(input.tools) || [...names].some(name => !input.tools.includes(name))) return send(400, { error: 'Incompatible trial request.' });
-      const decision = await decide({ messages: input.messages, tools: definitions });
+      const confirmationAvailable = input.tools.includes('request_refund_confirmation');
+      const applicationTools = confirmationAvailable ? [{ type: 'function', function: { name: 'request_refund_confirmation', description: 'Ask the synthetic customer to confirm the exact approved refund amount and currency.', parameters: { type: 'object', properties: { amount: { type: 'string', pattern: '^(?:0|[1-9][0-9]{0,5})\\.[0-9]{2}$' }, currency: { type: 'string', pattern: '^[A-Z]{3}$' } }, required: ['amount', 'currency'], additionalProperties: false } } }] : [];
+      const decision = await decide({ messages: input.messages, tools: definitions, applicationTools });
       const message = decision?.message;
       if (!message || typeof message !== 'object' || (message.content !== null && typeof message.content !== 'string')) throw new Error('Invalid assistant message.');
       const calls = message.tool_calls ?? [];
@@ -28,7 +30,7 @@ export function createToolkitTrialServer({ toolkit, decide }) {
         return send(200, { content: message.content, tool: null });
       }
       const call = calls[0];
-      if (call.type !== 'function' || !names.has(call.function?.name) || typeof call.function.arguments !== 'string') throw new Error('Unsupported tool call.');
+      if (call.type !== 'function' || !(names.has(call.function?.name) || (confirmationAvailable && call.function?.name === 'request_refund_confirmation')) || typeof call.function.arguments !== 'string') throw new Error('Unsupported tool call.');
       const args = JSON.parse(call.function.arguments);
       if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Invalid tool arguments.');
       if (decision.requestId !== undefined && call.function.name !== 'create_refund') throw new Error('Request ID on a non-refund call.');

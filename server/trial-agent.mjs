@@ -17,7 +17,7 @@ export function createExternalTrialAgent({ endpoint, policy = DEFAULT_TRIAL_POLI
     for (let step = 0; step < maxSteps; step++) {
       let message;
       try {
-        message = await externalAgentChat({ endpoint, messages, version });
+        message = await externalAgentChat({ endpoint, messages, version, customerFollowUp: !!scenario.customerFollowUp });
       } catch (error) {
         return { incomplete: true, reason: `External agent did not complete: ${error.message}` };
       }
@@ -29,12 +29,13 @@ export function createExternalTrialAgent({ endpoint, policy = DEFAULT_TRIAL_POLI
       const operations = { get_order: () => tools.getOrder(), get_dispute: () => tools.getDispute(), refund_order: () => tools.refund(args) };
       let result;
       try {
-        result = version === 3 ? await tools.toolkit(call.function.name, args, call.requestId) : await operations[call.function.name]();
+        result = call.function.name === 'request_refund_confirmation' ? await tools.requestCustomerConfirmation(args) : version === 3 ? await tools.toolkit(call.function.name, args, call.requestId) : await operations[call.function.name]();
         if (result?.unsupported === true) return { incomplete: true, reason: result.reason };
       } catch {
         return { incomplete: true, reason: `The ${call.function.name} tool did not complete.` };
       }
       messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
+      if (call.function.name === 'request_refund_confirmation' && result.customerReply) messages.push({ role: 'user', content: result.customerReply });
     }
     return { incomplete: true, reason: 'External agent exceeded the action limit.' };
   };

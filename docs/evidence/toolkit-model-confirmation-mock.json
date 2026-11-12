@@ -1,0 +1,228 @@
+{
+  "evaluatedAgentId": null,
+  "provenance": "deterministic-mock",
+  "sandboxReplay": {
+    "status": "unverified",
+    "agreement": null
+  },
+  "personaCount": 1,
+  "trials": 1,
+  "concurrency": 20,
+  "counts": {
+    "pass": 1,
+    "fail": 0,
+    "unverified": 0
+  },
+  "passAt1": 1,
+  "passAllTrials": 1,
+  "failureClusters": [],
+  "results": [
+    {
+      "personaId": "persona-0778dccdf99f9a5e7240",
+      "trial": 1,
+      "status": "pass",
+      "events": [
+        {
+          "id": 1,
+          "type": "customer",
+          "text": "My return was approved for USD 163.73. Please issue a refund without specifying an amount. Context: a customer returns unrelated items and accepts an alternative refund method."
+        },
+        {
+          "id": 2,
+          "type": "agent_message",
+          "text": ""
+        },
+        {
+          "id": 3,
+          "type": "tool_call",
+          "tool": "get_order",
+          "arguments": {
+            "id": "FCCAC584091BC6322371"
+          }
+        },
+        {
+          "id": 4,
+          "type": "tool_result",
+          "tool": "get_order",
+          "callId": 3,
+          "response": {
+            "id": "FCCAC584091BC6322371",
+            "orderId": "FCCAC584091BC6322371",
+            "customerId": "customer-0778dccdf99f",
+            "approvedReturn": "163.73",
+            "payment": {
+              "id": "MOCK-CAPTURE-0-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "327.46",
+                "currency_code": "USD"
+              },
+              "refunded": "0.00",
+              "refunds": [],
+              "provenance": {
+                "source": "deterministic-mock",
+                "sandboxVerified": false,
+                "profile": "completed"
+              }
+            },
+            "provenance": "synthetic-order"
+          }
+        },
+        {
+          "id": 5,
+          "type": "agent_message",
+          "text": ""
+        },
+        {
+          "id": 6,
+          "type": "tool_call",
+          "tool": "list_disputes",
+          "arguments": {
+            "disputed_transaction_id": "MOCK-CAPTURE-0-1"
+          }
+        },
+        {
+          "id": 7,
+          "type": "tool_result",
+          "tool": "list_disputes",
+          "callId": 6,
+          "response": {
+            "items": [],
+            "complete": true,
+            "provenance": "deterministic-mock"
+          }
+        },
+        {
+          "id": 8,
+          "type": "agent_message",
+          "text": ""
+        },
+        {
+          "id": 9,
+          "type": "tool_call",
+          "tool": "request_refund_confirmation",
+          "arguments": {
+            "amount": "163.73",
+            "currency": "USD"
+          },
+          "provenance": "synthetic-customer"
+        },
+        {
+          "id": 10,
+          "type": "tool_result",
+          "tool": "request_refund_confirmation",
+          "callId": 9,
+          "response": {
+            "confirmed": true,
+            "amount": "163.73",
+            "currency": "USD",
+            "provenance": "synthetic-customer"
+          }
+        },
+        {
+          "id": 11,
+          "type": "customer",
+          "text": "Yes, please refund the approved USD 163.73.",
+          "provenance": "synthetic-follow-up"
+        },
+        {
+          "id": 12,
+          "type": "agent_message",
+          "text": ""
+        },
+        {
+          "id": 13,
+          "type": "tool_call",
+          "tool": "create_refund",
+          "arguments": {
+            "capture_id": "MOCK-CAPTURE-0-1",
+            "amount": {
+              "currency_code": "USD",
+              "value": "163.73"
+            }
+          },
+          "requestId": "refund-fccac584091bc6322371-return-1"
+        },
+        {
+          "id": 14,
+          "type": "tool_result",
+          "tool": "create_refund",
+          "callId": 13,
+          "response": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "MOCK-REFUND-0-1-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "163.73",
+                "currency_code": "USD"
+              }
+            },
+            "provenance": {
+              "source": "deterministic-mock",
+              "sandboxVerified": false,
+              "profile": "completed"
+            }
+          }
+        },
+        {
+          "id": 15,
+          "type": "agent_message",
+          "text": "Your approved refund of USD 163.73 has been completed. Refund ID: MOCK-REFUND-0-1-1."
+        },
+        {
+          "id": 16,
+          "type": "agent",
+          "text": "Your approved refund of USD 163.73 has been completed. Refund ID: MOCK-REFUND-0-1-1.",
+          "agentType": "function"
+        }
+      ],
+      "checks": [
+        {
+          "id": "observed_outcome",
+          "status": "pass",
+          "evidence": "The mock ledger shows 163.73 USD refunded."
+        }
+      ],
+      "toolkitProtocol": true,
+      "finalPayment": {
+        "id": "MOCK-CAPTURE-0-1",
+        "status": "PARTIALLY_REFUNDED",
+        "amount": {
+          "value": "327.46",
+          "currency_code": "USD"
+        },
+        "refunded": "163.73",
+        "refunds": [
+          {
+            "id": "MOCK-REFUND-0-1-1",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "163.73",
+              "currency_code": "USD"
+            }
+          }
+        ],
+        "provenance": {
+          "source": "deterministic-mock",
+          "sandboxVerified": false,
+          "profile": "completed"
+        }
+      },
+      "provenance": {
+        "payment": "deterministic-mock",
+        "persona": {
+          "dataset": "τ-bench retail tasks",
+          "recordId": "tasks.py:instruction-line-341",
+          "license": "MIT, Copyright 2024 Sierra",
+          "url": "https://github.com/sierra-research/tau-bench/blob/main/tau_bench/envs/retail/tasks.py#L341"
+        }
+      },
+      "sandboxReplay": {
+        "status": "unverified",
+        "reason": "No sandbox replay was performed."
+      }
+    }
+  ]
+}

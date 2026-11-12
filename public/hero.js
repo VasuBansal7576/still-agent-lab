@@ -58,7 +58,7 @@ function provenance(source) {
   return `<p><strong>${escape(source.dataset)}</strong><br>Record ${escape(source.recordId)}<br>${escape(source.license)}</p>${Array.isArray(source.recordIds) ? `<p>Linked record IDs: ${source.recordIds.map(escape).join(', ')}</p>` : ''}${source.scenarioAssumptions ? `<p>${escape(source.scenarioAssumptions)}</p>` : ''}${source.accountEvidence ? `<details><summary>Account evidence and coverage</summary><pre>${json(source.accountEvidence)}</pre></details>` : ''}<p>${sourceLink(source.url, 'Open source record')} ${sourceLink(source.evidenceUrl, 'Source evidence')}</p>`;
 }
 function eventSummary(event) {
-  if (event.type === 'customer') return { label:'Customer', text:event.text };
+  if (event.type === 'customer') return { label:event.provenance === 'synthetic-follow-up' ? 'Customer · simulated follow-up' : 'Customer', text:event.text };
   if (event.type === 'agent' && event.agentType === 'function' && typeof event.text === 'string') {
     try {
       const result = JSON.parse(event.text);
@@ -68,12 +68,14 @@ function eventSummary(event) {
   if (event.type === 'agent_message' || event.type === 'agent') return event.text ? { label:'Agent', text:event.text } : null;
   if (event.type === 'error') return { label:'Error', text:event.message || 'The agent did not complete.' };
   if (event.type === 'tool_call') {
+    if (event.tool === 'request_refund_confirmation') return { label:'Agent asks customer', text:`Confirm ${event.arguments?.currency || ''} ${event.arguments?.amount || ''} for the approved refund.` };
     const args = event.arguments || {};
     const amount = args.amount == null ? '' : typeof args.amount === 'object' ? ` · ${args.amount.value || ''} ${args.amount.currency_code || ''}` : ` · ${args.amount} ${args.currency || ''}`;
     return { label:'Tool call', text:`${event.tool || 'Unknown tool'}${amount}` };
   }
   if (event.type === 'tool_result') {
     const response = event.response || {};
+    if (event.tool === 'request_refund_confirmation') return { label:'Simulated customer', text:response.confirmed ? 'The customer confirmed the approved amount.' : 'No matching customer confirmation was available.' };
     if (event.tool === 'get_order') return { label:'Mock order', text:`Payment ${response.payment?.status || 'unknown'} · approved return ${response.approvedReturn ?? 'unknown'} ${response.payment?.amount?.currency_code || ''}` };
     if (event.tool === 'list_disputes') return { label:'Mock dispute list', text:response.complete ? `${response.items?.length || 0} disputes for this capture · complete in mock` : response.error || response.reason || 'Listing unverified' };
     if (event.tool === 'get_dispute') return { label:'Mock dispute', text:`Dispute status: ${response.status || 'unknown'}` };

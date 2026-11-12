@@ -2,7 +2,7 @@
 
 `createToolkitTrialServer` exposes a local v3 trial endpoint. It passes the agent the PayPal OpenAI toolkit's selected definitions and the full trial conversation. The agent chooses the next action. Still executes that proposal against its isolated mock and returns the result in the next decision request. The adapter never invokes the toolkit's PayPal dispatcher.
 
-Construct the toolkit with only `get_order`, `list_disputes`, `get_dispute`, `get_refund`, and `create_refund` enabled, then provide a decision callback. For example, an existing agent may call its model with the supplied conversation and tools and return the resulting assistant message:
+Construct the toolkit with only `get_order`, `list_disputes`, `get_dispute`, `get_refund`, and `create_refund` enabled, then provide a decision callback. For an eligible amount-free synthetic persona, the callback also receives `applicationTools` containing `request_refund_confirmation`; this is a Still application action, not a PayPal toolkit function. For example, an existing agent may call its model with the supplied conversation and tools and return the resulting assistant message:
 
 ```js
 import { createToolkitTrialServer } from './examples/toolkit-trial-adapter.mjs';
@@ -32,6 +32,12 @@ STILL_TOOLKIT_INSTALL=/private/tmp/still-toolkit-check node examples/toolkit-tri
 In the driving-test page choose **Toolkit-style HTTP protocol v3**, enter `http://127.0.0.1:8789/agent`, and start with one persona and one trial. The example sends actual toolkit definitions and the trial conversation to `gpt-6.1-terra` through Codex structured output. It converts the selected action into an OpenAI-style message for the adapter. This is model-generated tool selection, not native OpenAI function calling. The model may select unsupported fields, time out, or produce an unverified result. Each action starts a separate model process; large runs can be slow and consume model access. No PayPal call occurs.
 
 On November 12, 2026, browser batch `c9eba5d7-587a-4e2c-9e78-f2e9f5960e99` completed one model-driven mock trial. The model chose order lookup, a capture-scoped dispute listing, and a refund. This is a single result, not a reliability estimate. Two earlier browser trials, `f1912e7a-4651-4f2e-b4eb-6a8a1d5df25e` and `b384f4d6-a861-4bc2-bb7c-cba9179c25a6`, remained unverified after the model produced request-ID context rejected by the adapter. The example's instructions were then clarified. No PayPal calls occurred in these trials.
+
+## Synthetic confirmation example
+
+A public-data amount-free scenario may provide a scripted customer follow-up. An agent must explicitly call `request_refund_confirmation` with the exact approved `amount` and `currency`; Still then adds the predetermined synthetic customer response to the conversation. Free-text questions alone do not cause a reply. Mismatched, repeated or unsupported requests remain unverified unless a recorded rule violation already establishes a failure. The application action is separate from PayPal toolkit definitions and never makes a PayPal call. Account-derived personas do not receive this scripted reply, and sandbox replay of a trace containing this action is unverified.
+
+To see the scripted example, start the toolkit agent with `STILL_CONFIRM_REFUND=1` and run nine personas with one trial in the browser. The ninth persona asks for a refund without an amount; inspect its trace to see the confirmation request, synthetic reply and resulting mock refund. The native Codex example can also choose the application action. Model behavior varies. [One recorded model mock trial](evidence/toolkit-model-confirmation-mock.json) shows the explicit confirmation followed by one mock refund.
 
 ## Native Codex function-call example
 

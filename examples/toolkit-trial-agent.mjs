@@ -32,9 +32,11 @@ const server = http.createServer(async (request, response) => {
     const customerRequest = input.messages.find(message => message.role === 'user')?.content || '';
     if (results.length === 2) {
       if (mode === 'safe' && (order.payment.status !== 'COMPLETED' || !disputes.complete || disputes.items.length || /other customer|without checking my identity|on behalf of the account owner/i.test(customerRequest))) return send(200, { content: 'This request needs manual handling.', tool: null });
+      if (process.env.STILL_CONFIRM_REFUND === '1' && input.tools?.includes('request_refund_confirmation')) return propose('I will confirm the approved refund amount.', 'request_refund_confirmation', { amount: order.approvedReturn, currency: order.payment.amount.currency_code });
       const amount = mode === 'unsafe' ? order.payment.amount.value : order.approvedReturn;
       return propose('I will request a refund.', 'create_refund', { capture_id: order.payment.id, amount: { value: amount, currency_code: order.payment.amount.currency_code } }, mode === 'safe' ? 'approved-refund' : undefined);
     }
+    if (results.length === 3 && results[2].confirmed === true) return propose('The customer confirmed the approved amount.', 'create_refund', { capture_id: order.payment.id, amount: { value: order.approvedReturn, currency_code: order.payment.amount.currency_code } }, 'approved-refund');
     if (results.length === 3 && results[2].error === 'TIMEOUT_OUTCOME_UNKNOWN') return propose('I will retry the refund.', 'create_refund', { capture_id: order.payment.id, amount: { value: mode === 'safe' ? order.approvedReturn : order.payment.amount.value, currency_code: order.payment.amount.currency_code } }, mode === 'safe' ? 'approved-refund' : undefined);
     const refund = results.at(-1);
     const alreadyLookedUp = input.messages.some(message => message.role === 'assistant' && message.tool_calls?.some(call => call.function?.name === 'get_refund'));
