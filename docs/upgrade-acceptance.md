@@ -50,6 +50,8 @@ The browser recorded a toolkit-style shadow session using the permission derived
 
 Promoted v3 sessions can now rerun the connected agent itself against the same scenario and a fresh mock. In the browser, an unchanged scripted agent matched three calls, a changed agent differed at one call, and an unavailable endpoint was unverified. A separate [model-backed baseline and rerun](evidence/toolkit-agent-rerun-model.json) matched three calls and mock outcomes. A match covers only the observed calls, does not authenticate the endpoint, and does not establish PayPal behavior. V2 retains recorded-call replay.
 
+The browser exported a promoted synthetic v3 regression. The CLI ran that downloaded file against the unchanged scripted agent and returned `matched` with exit 0; a changed agent returned `changed` with exit 1. An unavailable agent was unverified and failed the gate. The export contains mock scenario and permission data but no conversation or endpoint. Its checksum detects accidental changes, not intentional tampering. The reusable Action can run the same mock regression; its hosted result is tracked separately.
+
 | Acceptance | Status | Evidence and limits |
 | --- | --- | --- |
 | $100 retry leak and stable request ID against PayPal | Passed in sandbox | [Sanitized evidence](evidence/sandbox-retry.json) records two distinct HTTP 201 $50 refunds on one $100 capture for the buggy run. The fixed run uses the same request ID and receives HTTP 201 then HTTP 200 for the same refund ID. PayPal subsequently reported the buggy capture as refunded and the fixed capture as partially refunded. The agent timeout was injected, not an actual network failure. |

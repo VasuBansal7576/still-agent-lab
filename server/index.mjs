@@ -28,6 +28,7 @@ import { createReplayLedger } from './replay-ledger.mjs';
 import { createShadowSessions } from './shadow-sessions.mjs';
 import { recentBatches } from './batch-history.mjs';
 import { recordShadowAgent } from './shadow-agent-driver.mjs';
+import { exportPortableShadow } from './portable-shadow.mjs';
 import { rerunShadowAgent } from './shadow-agent-regression.mjs';
 import { createReplayCheckout } from './replay-checkout.mjs';
 import { loadObservedAgreement } from './observed-agreement.mjs';
@@ -508,6 +509,10 @@ http.createServer(async (request, response) => {
         if (input.action === 'promote-agent') {
           if (session.shadowDriverPending || !session.shadowIds?.has(input.id) || session.shadowAgentRecord?.id !== input.id || session.shadowAgentRecord.status !== 'completed') return send(response, 400, { error: 'Complete a mock agent recording in this browser session first.' });
           return send(response, 200, { regression: await shadowSessions.promote(input.id), replay: await shadowSessions.replay(input.id) });
+        }
+        if (input.action === 'export-agent') {
+          if (session.shadowDriverPending || !session.shadowIds?.has(input.id) || session.shadowAgentRecord?.id !== input.id || session.shadowAgentRecord.status !== 'completed') return send(response, 400, { error: 'Promote a completed toolkit mock recording in this browser session first.' });
+          return send(response, 200, { artifact: await exportPortableShadow({ sourceId: input.id, store: shadowSessions }) });
         }
         if (input.action === 'rerun-agent') {
           if (session.shadowDriverPending || !session.shadowIds?.has(input.id) || session.shadowAgentRecord?.id !== input.id || session.shadowAgentRecord.status !== 'completed') return send(response, 400, { error: 'Promote a completed mock agent recording in this browser session first.' });

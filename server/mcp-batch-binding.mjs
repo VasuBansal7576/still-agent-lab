@@ -30,6 +30,11 @@ export async function createBatchBinding(batchId, { decisionId } = {}) {
   const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary: evidence });
   if (!permission.create_refund.allowed) throw new Error('Batch did not earn a USD mock refund permission.');
 
+  return createMockBatchBinding({ permission, agentId: summary.evaluatedAgentId, toolkitTrial, decisionId });
+}
+
+export function createMockBatchBinding({ permission, agentId, toolkitTrial = true, decisionId } = {}) {
+  if (permission?.scope !== 'deterministic-mock' || permission?.agentId !== agentId || permission?.create_refund?.allowed !== true || permission.create_refund.currency !== 'USD' || !/^(?:0|[1-9]\d{0,8})\.\d{2}$/.test(permission.create_refund.maxPerOrder || '') || Number(permission.create_refund.maxPerOrder) <= 0 || (toolkitTrial && (typeof decisionId !== 'string' || !/^[A-Za-z0-9_-]{1,127}$/.test(decisionId)))) throw new Error('A valid mock permission and decision ID are required.');
   const amount = permission.create_refund.maxPerOrder;
   const orderId = toolkitTrial ? '8AA00000BB000000C' : 'batch-order';
   const captureId = toolkitTrial ? '9AA00000BB000000C' : 'MOCK-CAPTURE-batch';
@@ -48,7 +53,7 @@ export async function createBatchBinding(batchId, { decisionId } = {}) {
     async get_dispute(disputeId) { return toolkitTrial ? { ok: false, status: 404 } : { ok: true, status: 200, body: { id: disputeId, status: 'CLEAR' } }; },
     async list_disputes(requestedCapture) { return toolkitTrial && requestedCapture === captureId ? { ok: true, status: 200, body: { disputed_transaction_id: captureId, complete: true, items: [] } } : { ok: false, status: 404 }; }
   };
-  return { gateway: createGateway({ agentId: summary.evaluatedAgentId, permission, adapter }), permission, sessionId: 'stdio-batch', decisionId: toolkitTrial ? decisionId : 'batch-refund-decision', protocolVersion: toolkitTrial ? 3 : 2 };
+  return { gateway: createGateway({ agentId, permission, adapter }), permission, sessionId: 'stdio-batch', decisionId: toolkitTrial ? decisionId : 'batch-refund-decision', protocolVersion: toolkitTrial ? 3 : 2 };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -62,7 +62,7 @@ function validateCall(record, input) {
 }
 
 /** Records only constrained calls to an isolated mock. The directory is private local data. */
-export function createShadowSessions({ directory } = {}) {
+export function createShadowSessions({ directory, resolveBinding = createBatchBinding } = {}) {
   if (typeof directory !== 'string' || !directory) throw new Error('A storage directory is required.');
   let queue = Promise.resolve();
   const gateways = new Map();
@@ -81,7 +81,7 @@ export function createShadowSessions({ directory } = {}) {
   };
   async function restored(record) {
     if (gateways.has(record.id)) return gateways.get(record.id);
-    const gateway = await binding(record);
+    const gateway = record.protocolVersion === 3 ? (await resolveBinding(record.batchId, { decisionId: 'shadow-binding' })).gateway : await binding(record);
     for (const event of record.events) await gateway.call({ sessionId: record.id, name: event.name, arguments: event.arguments, ...(event.decisionId ? { decisionId: event.decisionId } : {}) });
     gateways.set(record.id, gateway);
     return gateway;
@@ -97,7 +97,7 @@ export function createShadowSessions({ directory } = {}) {
     return serial(async () => {
       if (protocolVersion === 3) {
         if (source !== 'local-agent' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(batchId || '')) throw new Error('A saved toolkit-style batch is required.');
-        const selected = await createBatchBinding(batchId, { decisionId: 'shadow-binding' });
+        const selected = await resolveBinding(batchId, { decisionId: 'shadow-binding' });
         if (selected.protocolVersion !== 3) throw new Error('A toolkit-style batch is required.');
         const order = await selected.gateway.call({ sessionId: 'shadow-setup', name: 'get_order', arguments: { order_id: '8AA00000BB000000C' } });
         if (!order.ok || !money(order.body?.amount?.value) || order.body.amount.currency_code !== 'USD' || order.body.capture_id !== '9AA00000BB000000C') throw new Error('Mock order is unavailable.');
@@ -149,7 +149,7 @@ export function createShadowSessions({ directory } = {}) {
     return serial(async () => {
       const record = await get(id);
       if (!record.regression) throw new Error('Promote the session before replay.');
-      const gateway = await binding(record);
+      const gateway = record.protocolVersion === 3 ? (await resolveBinding(record.batchId, { decisionId: 'shadow-binding' })).gateway : await binding(record);
       const replay = await gateway.replay(record.regression);
       const expected = record.regression.expectedResults;
       let comparison;

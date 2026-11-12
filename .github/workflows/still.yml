@@ -44,3 +44,8 @@ jobs:
           agent-protocol: '3'
           personas: '10'
           trials: '5'
+      - name: Rerun exported toolkit agent regression
+        uses: ./
+        with:
+          agent-url: http://127.0.0.1:8788/agent
+          regression-file: examples/toolkit-agent-regression.json

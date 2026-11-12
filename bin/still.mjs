@@ -4,8 +4,10 @@ import { runTrials } from '../server/trials.mjs';
 import { createExternalTrialAgent, DEFAULT_TRIAL_POLICY } from '../server/trial-agent.mjs';
 import { normalizeRefundPolicy, refundPolicyInstruction } from '../server/refund-policy.mjs';
 import { createHash } from 'node:crypto';
+import { runPortableShadow } from '../server/portable-shadow.mjs';
 
 const usage = `Usage: still test [options]
+       still regression --file PATH --agent-url URL
 
 Run scripted or local HTTP agents against the deterministic PayPal mock.
   --personas N       Number of synthetic personas (default 1000)
@@ -62,7 +64,22 @@ function parse(args) {
 }
 
 try {
-  const options = parse(process.argv.slice(2));
+  const args = process.argv.slice(2);
+  if (args[0] === 'regression') {
+    args.shift();
+    const options = {};
+    while (args.length) {
+      const flag = args.shift();
+      if (!['--file', '--agent-url'].includes(flag) || !args.length || args[0].startsWith('--') || options[flag]) throw new Error(`Invalid regression option: ${flag}`);
+      options[flag] = args.shift();
+    }
+    if (!options['--file'] || !options['--agent-url']) throw new Error('Regression requires --file and --agent-url.');
+    const result = await runPortableShadow({ path: options['--file'], endpoint: options['--agent-url'] });
+    console.log(JSON.stringify(result, null, 2));
+    console.log('Deterministic mock only. The endpoint is not authenticated. No PayPal call was made.');
+    process.exitCode = result.status === 'matched' ? 0 : 1;
+  } else {
+  const options = parse(args);
   if (!options) { console.log(usage); process.exitCode = 0; }
   else {
     const personas = generatePersonas({ count: options.personas, seed: options.seed });
@@ -98,6 +115,7 @@ try {
       console.log('Sandbox replay: unverified; no live PayPal calls were made.');
     }
     process.exitCode = passed ? 0 : 1;
+  }
   }
 } catch (error) {
   console.error(`still: ${error.message}`);

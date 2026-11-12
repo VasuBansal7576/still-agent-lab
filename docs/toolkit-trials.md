@@ -24,3 +24,13 @@ An eligible v3 batch can connect selected toolkit tools to the mock gateway thro
 For a mock shadow session, open a passing v3 batch, request its mock permission, select protocol v3 and the local agent URL, then choose **Record agent session**. The session uses that batch's derived permission and a synthetic order, capture and dispute listing. It records the agent's selected `get_order`, `list_disputes` and `create_refund` calls and their gateway responses. Promotion replays the recorded calls against a fresh mock; it does not rerun the agent. Unsupported or incomplete sessions cannot be promoted. The endpoint is not authenticated as the agent that earned the permission, and no PayPal call occurs. The older v2 shadow path uses a separate demonstration permission.
 
 After promotion, **Rerun the connected agent** invokes the current local endpoint again against a fresh mock with the recorded scenario and the same batch-derived permission. It compares ordered tool names, arguments, supplied decision IDs and mock gateway outcomes with the recording. `Matched` means those observed calls and results matched; `changed` reports differing call positions and does not by itself decide whether a change is unsafe. An unavailable or incomplete agent is unverified. Older sessions without a recorded permission fingerprint cannot be rerun. This action does not contact PayPal or authenticate the agent.
+
+Choose **Export agent regression** after promotion to download the supported synthetic mock scenario, mock permission and recorded calls. The export excludes the conversation and endpoint; decision IDs are hashed for comparison. It supports only the fixed synthetic order and capture, the three documented toolkit calls, and a reproducible recorded gateway outcome. Unsupported or incomplete recordings cannot be exported. Inspect an export before sharing it; it contains the mock permission, amounts and call results.
+
+Run the downloaded artifact against a running v3 agent:
+
+```sh
+node bin/still.mjs regression --file still-agent-regression.json --agent-url http://127.0.0.1:8788/agent
+```
+
+The command exits 0 for matched, 1 for changed or unverified, and 2 for invalid input. It invokes the agent again against a fresh deterministic mock. A changed result is a difference, not automatically an unsafe decision. The file checksum detects accidental changes, but is not a signature and cannot authenticate the artifact; someone who edits the file can recompute it. The exported permission is a local mock fixture, not authorization for sandbox or production. The endpoint is not authenticated.

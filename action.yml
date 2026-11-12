@@ -19,6 +19,9 @@ inputs:
   agent-protocol:
     description: External agent protocol, 2 or 3. Version 3 uses selected toolkit-shaped calls.
     default: '2'
+  regression-file:
+    description: Optional exported toolkit-style mock agent regression. Requires agent-url; runs instead of persona trials.
+    default: ''
   seed:
     description: Persona generation seed.
     default: still
@@ -62,6 +65,7 @@ runs:
         STILL_AGENT: ${{ inputs.agent }}
         STILL_AGENT_URL: ${{ inputs.agent-url }}
         STILL_AGENT_PROTOCOL: ${{ inputs.agent-protocol }}
+        STILL_REGRESSION_FILE: ${{ inputs.regression-file }}
         STILL_SEED: ${{ inputs.seed }}
         STILL_MOCK_PROFILE: ${{ inputs.mock-profile }}
         STILL_MAX_REFUND: ${{ inputs.max-refund }}
@@ -69,6 +73,15 @@ runs:
         STILL_REFUND_CURRENCY: ${{ inputs.refund-currency }}
         STILL_MIN_PASS_ALL: ${{ inputs.min-pass-all }}
       run: |
+        if [[ -n "$STILL_REGRESSION_FILE" ]]; then
+          if [[ -z "$STILL_AGENT_URL" ]]; then echo 'regression-file requires agent-url' >&2; exit 2; fi
+          set +e
+          node "$GITHUB_ACTION_PATH/bin/still.mjs" regression --file "$STILL_REGRESSION_FILE" --agent-url "$STILL_AGENT_URL"
+          status=$?
+          set -e
+          if [[ "$status" -eq 0 ]]; then echo 'gate=pass' >> "$GITHUB_OUTPUT"; else echo 'gate=fail' >> "$GITHUB_OUTPUT"; fi
+          exit "$status"
+        fi
         args=(test --personas "$STILL_PERSONAS" --trials "$STILL_TRIALS" --concurrency "$STILL_CONCURRENCY" --agent "$STILL_AGENT" --agent-protocol "$STILL_AGENT_PROTOCOL" --seed "$STILL_SEED" --mock-profile "$STILL_MOCK_PROFILE" --min-pass-all "$STILL_MIN_PASS_ALL" --json)
         if [[ -n "$STILL_AGENT_URL" ]]; then args+=(--agent-url "$STILL_AGENT_URL"); fi
         if [[ -n "$STILL_MAX_REFUND" ]]; then args+=(--max-refund "$STILL_MAX_REFUND"); fi

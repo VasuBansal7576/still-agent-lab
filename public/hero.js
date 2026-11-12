@@ -333,7 +333,7 @@ shadowResult.addEventListener('click',async event=>{
     const data=await request('/api/upgrade/shadow-session',{action:'promote-agent',id:shadowRecord.sessionId});
     const comparison=data.replay?.comparison;
     const outcome=comparison?.status === 'matched' ? `Matched across ${comparison.callsCompared} calls.` : comparison?.status === 'changed' ? `Changed: ${comparison.differences.length} call outcomes differ.` : 'Replay outcome is unverified.';
-    document.querySelector('#shadow-replay').innerHTML=`<div class="trace"><strong>Mock regression · ${escape(comparison?.status || 'unverified')}</strong><p>${escape(outcome)} The replay repeats recorded calls; it does not rerun the agent or contact PayPal.</p><details><summary>Inspect regression and replay</summary><pre>${json(data)}</pre></details>${shadowRecord.protocolVersion === 3 ? '<button type="button" class="secondary" id="shadow-rerun">Rerun the connected agent</button><p>Uses the current local agent URL and a fresh mock with the same batch permission and scenario. The endpoint is not authenticated.</p><div id="shadow-agent-rerun"></div>' : ''}</div>`;
+    document.querySelector('#shadow-replay').innerHTML=`<div class="trace"><strong>Mock regression · ${escape(comparison?.status || 'unverified')}</strong><p>${escape(outcome)} The replay repeats recorded calls; it does not rerun the agent or contact PayPal.</p><details><summary>Inspect regression and replay</summary><pre>${json(data)}</pre></details>${shadowRecord.protocolVersion === 3 ? '<button type="button" class="secondary" id="shadow-rerun">Rerun the connected agent</button><button type="button" class="secondary" id="shadow-export">Export agent regression</button><p>Uses the current local agent URL and a fresh mock with the same batch permission and scenario. The endpoint is not authenticated.</p><div id="shadow-agent-rerun"></div>' : ''}</div>`;
     shadowStatus.textContent='Mock regression replay completed.';
   } catch(error) { shadowStatus.textContent=`Regression replay unverified: ${error.message}`; }
   finally { shadowBusy=false; button.disabled=false; }
@@ -348,6 +348,18 @@ shadowResult.addEventListener('click',async event=>{
     document.querySelector('#shadow-agent-rerun').innerHTML=`<div class="trace"><strong>Agent rerun · ${escape(data.status || 'unverified')}</strong><p>${escape(outcome)} This is a fresh mock, not PayPal. The endpoint is not authenticated.</p><details><summary>Inspect agent rerun</summary><pre>${json(data)}</pre></details></div>`;
     shadowStatus.textContent=data.status === 'unverified' ? 'Agent rerun unverified.' : 'Agent rerun completed.';
   } catch(error) { shadowStatus.textContent=`Agent rerun unverified: ${error.message}`; }
+  finally { shadowBusy=false; button.disabled=false; }
+});
+shadowResult.addEventListener('click',async event=>{
+  const button=event.target.closest('#shadow-export');
+  if (!button || shadowBusy || !shadowRecord) return;
+  shadowBusy=true; button.disabled=true; shadowStatus.textContent='Preparing mock regression export…';
+  try {
+    const data=await request('/api/upgrade/shadow-session',{action:'export-agent',id:shadowRecord.sessionId});
+    const url=URL.createObjectURL(new Blob([JSON.stringify(data.artifact,null,2)],{type:'application/json'}));
+    const link=document.createElement('a'); link.href=url; link.download='still-agent-regression.json'; link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),60000); shadowStatus.textContent='Mock regression downloaded. Run it with still regression.';
+  } catch(error) { shadowStatus.textContent=`Could not export regression: ${error.message}`; }
   finally { shadowBusy=false; button.disabled=false; }
 });
 modeChanged();
