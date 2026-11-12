@@ -12,16 +12,42 @@ const accountStatus = document.querySelector('#account-status');
 const shadowStart = document.querySelector('#shadow-start');
 const shadowStatus = document.querySelector('#shadow-status');
 const shadowResult = document.querySelector('#shadow-result');
+const recentBatches = document.querySelector('#recent-batches');
+const savedBatchStatus = document.querySelector('#saved-batch-status');
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const json = value => escape(JSON.stringify(value ?? null, null, 2));
 const state = { run: null, selectedCluster: null, selectedTrial: null, page: null, pageError: null, permission: null, permissionUrl: null, replay: null, selectedReplay: null, coverage: null, explanation: null, sandbox: null, accountSnapshot: null, busy: false };
 const agentNames = { external: 'Local HTTP agent', buggy: 'Scripted buggy example', safe: 'Scripted corrected example' };
+let recentRequest = 0;
+let recentData = null, recentExpanded = false;
 
 async function request(path, body) {
   const response = await fetch(path, body === undefined ? {} : { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body) });
   const data = await response.json();
   if (!response.ok) { const error = new Error(data.error || 'Request failed.'); error.checkout = data.checkout; error.noOrderAttempted = data.noOrderAttempted === true; throw error; }
   return data;
+}
+function renderRecentBatches() {
+  if (!recentData) return;
+  const labels = { pass:'Passed', fail:'Failed', unverified:'Unverified' };
+  const sources = { public:'Public-data personas', 'sandbox-account':'Sandbox account-derived personas', unknown:'Persona source not recorded' };
+  const shown = recentExpanded ? recentData.batches : recentData.batches.slice(0, 5);
+  const rows = shown.map((batch, index) => {
+    const label = labels[batch.verdict] || 'Unknown', agentName = agentNames[batch.agent] || 'Agent not recorded';
+    const when = new Date(batch.createdAt).toLocaleString();
+    return `<div class="row"><span><strong>${escape(label)} · mock</strong><br>${escape(agentName)} · ${escape(sources[batch.source] || sources.unknown)}<br><span class="hint">${Number(batch.personaCount).toLocaleString()} personas × ${Number(batch.trials)} trials · ${escape(when)}</span></span><button type="button" class="secondary" data-recent-id="${escape(batch.id)}" aria-label="${escape(`Open ${label.toLowerCase()} ${agentName} run ${index + 1}, ${when}`)}">Open run</button></div>`;
+  }).join('');
+  const toggle = recentData.batches.length > 5 ? `<button type="button" class="secondary" data-recent-expand aria-expanded="${recentExpanded}">${recentExpanded ? 'Show fewer runs' : `Show ${recentData.batches.length - 5} more runs`}</button>` : '';
+  recentBatches.innerHTML = `${rows ? `<div class="rows">${rows}</div>${toggle}` : '<p>No recent saved runs found.</p>'}${recentData.limited ? '<p class="hint">Some runs could not be listed within the history limits. Open an older batch by ID.</p>' : ''}`;
+}
+async function loadRecentBatches() {
+  const sequence = ++recentRequest;
+  recentBatches.innerHTML = '<p>Loading recent runs…</p>';
+  try {
+    const data = await request('/api/upgrade/recent-batches');
+    if (sequence !== recentRequest) return;
+    recentData = data; recentExpanded = false; renderRecentBatches();
+  } catch { if (sequence === recentRequest) recentBatches.innerHTML='<p>Recent runs are unavailable. You can open a saved batch by ID below.</p>'; }
 }
 function sourceLink(url, label) {
   try { const parsed = new URL(url); if (parsed.protocol === 'https:') return `<a href="${escape(parsed.href)}" target="_blank" rel="noopener noreferrer">${escape(label)} ↗</a>`; } catch {}
@@ -211,14 +237,14 @@ form.addEventListener('submit', async event => {
     try { state.page=await request(`/api/upgrade/batches/${encodeURIComponent(data.id)}/trials?offset=0&limit=20`); } catch(error) { state.pageError=`Could not load trials: ${error.message}`; }
     renderResults();
     status.textContent=`Mock run ${data.id} finished. Inspect its results below.`;
+    void loadRecentBatches();
     document.querySelector('#results-heading').scrollIntoView({block:'start'});
   } catch (error) { status.textContent=`Run failed to start or complete: ${error.message} The previous result, if any, is unchanged.`; }
   finally { state.busy=false; runButton.disabled=false; }
 });
-document.querySelector('#open-saved-batch').addEventListener('click', async () => {
+async function openSavedBatch(id) {
   if (state.busy) return;
-  const id = document.querySelector('#saved-batch-id').value.trim();
-  const message = document.querySelector('#saved-batch-status');
+  const message = savedBatchStatus;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)) { message.textContent='Enter a valid saved batch ID.'; return; }
   state.busy=true; document.querySelector('#open-saved-batch').disabled=true; runButton.disabled=true; message.textContent='Opening saved batch…';
   try {
@@ -228,6 +254,12 @@ document.querySelector('#open-saved-batch').addEventListener('click', async () =
     renderResults(); message.textContent=`Opened saved mock batch ${id}.`; status.textContent='';
   } catch(error) { message.textContent=`Could not open saved batch: ${error.message} The current result is unchanged.`; }
   finally { state.busy=false; document.querySelector('#open-saved-batch').disabled=false; runButton.disabled=false; }
+}
+document.querySelector('#open-saved-batch').addEventListener('click', () => openSavedBatch(document.querySelector('#saved-batch-id').value.trim()));
+document.querySelector('#refresh-batches').addEventListener('click', () => { void loadRecentBatches(); });
+recentBatches.addEventListener('click', event => {
+  if (event.target.closest('button[data-recent-expand]')) { recentExpanded = !recentExpanded; renderRecentBatches(); return; }
+  const button=event.target.closest('button[data-recent-id]'); if (button) void openSavedBatch(button.dataset.recentId);
 });
 results.addEventListener('click', async event => {
   const button=event.target.closest('button[data-action]'); if (!button || !state.run || state.busy) return;
@@ -301,3 +333,4 @@ shadowResult.addEventListener('click',async event=>{
   finally { shadowBusy=false; button.disabled=false; }
 });
 modeChanged();
+void loadRecentBatches();

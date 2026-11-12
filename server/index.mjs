@@ -26,6 +26,7 @@ import { summarizeDelayedReplays } from './delayed-replay-reconciliation.mjs';
 import { summarizeFreshReplays } from './fresh-replay-summary.mjs';
 import { createReplayLedger } from './replay-ledger.mjs';
 import { createShadowSessions } from './shadow-sessions.mjs';
+import { recentBatches } from './batch-history.mjs';
 import { recordShadowAgent } from './shadow-agent-driver.mjs';
 import { createReplayCheckout } from './replay-checkout.mjs';
 import { loadObservedAgreement } from './observed-agreement.mjs';
@@ -115,6 +116,10 @@ http.createServer(async (request, response) => {
     if (request.method === 'GET' && url.pathname === '/api/upgrade/observed-agreement') { try { return send(response, 200, await loadObservedAgreement()); } catch { return send(response, 503, { error: 'Recorded sandbox comparison is unavailable.' }); } }
     if (request.method === 'GET' && url.pathname === '/api/scenarios') return send(response, 200, { scenarios: scenarioCatalog });
     if (request.method === 'GET' && url.pathname === '/api/runs') return send(response, 200, { runs: await listRuns() });
+    if (request.method === 'GET' && url.pathname === '/api/upgrade/recent-batches') {
+      try { return send(response, 200, await recentBatches(fileURLToPath(new URL('../.data/batches/', import.meta.url)))); }
+      catch { return send(response, 503, { error: 'Recent saved batches are unavailable.' }); }
+    }
     const batchSummary = url.pathname.match(/^\/api\/upgrade\/batches\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(\/sandbox-coverage)?$/);
     if (request.method === 'GET' && batchSummary) {
       let batch;
