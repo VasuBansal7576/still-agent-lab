@@ -1,0 +1,9 @@
+# Isolating future sandbox payment experiments
+
+PayPal's [sandbox account guide](https://developer.paypal.com/sandbox-testing/accounts) documents creating a separate business sandbox account through the Developer Dashboard. A separate personal sandbox account acts as the buyer. PayPal assigns these test accounts a default balance; sandbox transactions do not move real money. PayPal's [disputes setup guide](https://developer.paypal.com/platforms/disputes/set-up/) describes creating a sandbox merchant app bound to the chosen sandbox business account.
+
+A dedicated sandbox merchant and app can separate future experiments from the account used by earlier runs. It does not by itself prove exclusive access, complete refund history, or the outcomes of earlier HTTP 503 requests. A future controlled run must also keep its credentials private, record the capture and every attempted action durably, prevent concurrent local use, verify PayPal's responses, and keep unknown outcomes unverified. Account isolation does not make a pending capture equivalent to a completed one.
+
+On November 12, 2026, the existing sandbox app authenticated successfully for read-only capture checks. PayPal returned HTTP 200 for five captures linked to uncertain refund calls; four were `COMPLETED` and one was `PARTIALLY_REFUNDED`. Those states did not establish whether the uncertain refunds executed. No refund was sent.
+
+The documented dashboard route for creating a separate merchant could not be completed in this run. The available Chrome developer dashboard redirected to PayPal sign-in and required the account password; no saved sign-in was offered. The existing sandbox app credentials authorize sandbox API calls but do not establish an authenticated Developer Dashboard session. No supported developer-account creation REST endpoint was established during this investigation. No account or app was created.
