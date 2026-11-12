@@ -96,3 +96,15 @@ jobs:
         with:
           agent-module: examples/mcp-scripted-host.mjs
           regression-file: examples/mcp-agent-regression.json
+      - name: Gate an MCP stdio agent process
+        uses: ./
+        env:
+          STILL_TOOLKIT_INSTALL: ${{ runner.temp }}/still-mcp
+          STILL_STDIO_AGENT_COMMAND: node
+          STILL_STDIO_AGENT_ARGS: '["examples/mcp-stdio-scripted-agent.mjs"]'
+        with:
+          agent: mcp
+          agent-module: examples/mcp-stdio-host.mjs
+          personas: '2'
+          trials: '2'
+          concurrency: '2'

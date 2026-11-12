@@ -23,6 +23,19 @@ The module exports `sdk`, `toolkit` and `runAgent` as described below. It execut
 
 `examples/mcp-codex-host.mjs` is an optional model-backed host using the local signed-in Codex CLI to choose each action. It uses the same mock tools and needs `STILL_TOOLKIT_INSTALL`. Model availability and authentication are required; an unavailable or incomplete model run fails the gate as unverified. It does not prove a PayPal sandbox outcome.
 
+## Connect a subprocess over MCP stdio
+
+The stdio host can start a trusted local agent process for each trial. It gives that process a standard MCP server command for the isolated mock ledger. This still requires an agent launcher that accepts the scenario and server configuration; it does not automatically adapt an unchanged agent. The included subprocess is scripted and makes no PayPal calls.
+
+```sh
+STILL_TOOLKIT_INSTALL=/tmp/still-mcp-deps \
+STILL_STDIO_AGENT_COMMAND=node \
+STILL_STDIO_AGENT_ARGS='["examples/mcp-stdio-scripted-agent.mjs"]' \
+node bin/still.mjs test --agent mcp --agent-module examples/mcp-stdio-host.mjs --personas 2 --trials 2
+```
+
+For the app, set those same variables and `STILL_MCP_AGENT_MODULE=examples/mcp-stdio-host.mjs` when starting Still, then select **Configured local MCP host**. To see the intentionally unsafe scripted variant, add `"--unsafe"` to `STILL_STDIO_AGENT_ARGS`. Each process receives one JSON object on stdin containing `customerRequest`, `orderId`, `policy`, and `mcpServer` with `command` and `args` for the standard stdio server. It must connect that server, run the scenario, and print exactly one JSON object with a nonempty `answer` on stdout. The mock server closes when the process finishes. The example shows an actual MCP SDK stdio client. The process is trusted local code; Still does not prevent it from contacting other services. A private temporary Unix socket isolates each trial, accepts one connection, and is removed after use. This bridge currently requires Unix-domain sockets and a Node.js runtime for the proxy. An incomplete, unavailable or timed-out process makes the trial unverified. The timeout is 60 seconds by default; set `STILL_STDIO_AGENT_TIMEOUT_MS` from 1000 to 300000 to change it. The child receives `PATH` and `STILL_TOOLKIT_INSTALL`, not the parent process's full environment.
+
 To use a trusted MCP host in the app, start Still with the module configured by the operator, then select **Configured local MCP host** on the driving-test page:
 
 ```sh
