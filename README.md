@@ -54,7 +54,7 @@ The [model-driven gateway example](docs/toolkit-v3-model-gateway.md) uses a qual
 
 With a qualifying v2 or v3 mock permission open, shadow mode records the connected agent's calls and promotes them to a mock regression. Replay repeats recorded calls; the separate agent rerun invokes the current endpoint against an equivalent mock and reports matched, changed or unverified. The endpoint does not authenticate the agent. See [shadow setup](docs/toolkit-trials.md).
 
-After promotion, **Rerun the connected agent** asks the current v3 endpoint to make decisions again against a fresh mock and compares its calls and outcomes with the recording. A changed result needs inspection; an unavailable agent is unverified.
+After promotion, **Rerun the connected agent** asks the current v2 or v3 endpoint to make decisions again against a fresh mock and compares its calls and outcomes with the recording. A changed result needs inspection; an unavailable agent is unverified.
 
 You can export a supported synthetic mock regression and run it with `still regression` or the GitHub Action. The agent is invoked again, and changed or unverified results fail the gate. The export is a mock fixture; its checksum is not an authenticity signature.
 
