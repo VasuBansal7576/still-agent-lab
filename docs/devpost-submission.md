@@ -26,7 +26,7 @@ The saved sandbox retry shows two completed refunds for one decision. A separate
 
 ## What's next
 
-Make the full journey easier to follow, expand agent and toolkit coverage, improve mock agreement with sandbox behavior, and validate permissions against complete external payment and dispute history before considering production use.
+Expand agent and toolkit coverage, improve mock agreement with sandbox behavior, and validate permissions against complete external payment and dispute history before considering production use.
 
 ## Built with
 
@@ -36,5 +36,9 @@ Node.js, JavaScript, PayPal sandbox APIs, PayPal Agent Toolkit, MCP, public reta
 
 - [Public repository and setup](https://github.com/VasuBansal7576/still-agent-lab)
 - [Saved sandbox replay](https://vasubansal7576.github.io/still-agent-lab/)
-- [Evidence and limitations](upgrade-acceptance.md)
-- [Demo video file](still-demo.mp4) (2 minutes 16 seconds). A public YouTube link is still required for submission.
+- [Evidence and limitations](https://github.com/VasuBansal7576/still-agent-lab/blob/main/docs/upgrade-acceptance.md)
+- [Demo video file](https://vasubansal7576.github.io/still-agent-lab/still-demo.mp4) (2 minutes 16 seconds). A public YouTube link is still required for submission.
+
+## Judge setup
+
+Clone the repository with Node.js 22 or later, run `npm start`, and open `http://127.0.0.1:3000/upgrade`. The guided scripted journey needs neither a Codex login nor PayPal credentials. It uses saved sandbox responses and runs fresh mock trials. The public replay works without setup.
