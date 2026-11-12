@@ -10,7 +10,7 @@ A support agent can say the right thing and still send money twice. In a PayPal 
 
 Still runs customer scenarios against an agent, records its tool calls, and checks payment decisions against deterministic rules. Synthetic personas cite public source records. Repeated mock trials report pass@1, the share of trials that pass, and pass^N, the share of personas that pass every trial. A failure map groups related mistakes and links to example traces.
 
-A passing run can produce a mock-scoped permission file. Still's gateway enforces its amount ceiling and other conditions. Developers can set checked per-refund and per-order limits, reopen local results, and inspect saved sandbox comparison coverage. A developer can record a connected agent's mock gateway session and promote its calls to a regression. The CLI and GitHub Action support repeatable runs. The hosted replay presents saved sandbox evidence without an account.
+A passing run can produce a mock-scoped permission file. Still's gateway enforces its amount ceiling and other conditions. Developers can set checked per-refund and per-order limits, reopen local results, and inspect saved sandbox comparison coverage. A developer can record a connected agent's mock gateway session, promote it to a regression, and rerun the connected agent against a fresh mock. The CLI and GitHub Action support repeatable runs. The hosted replay presents saved sandbox evidence without an account.
 
 ## How we built it
 
