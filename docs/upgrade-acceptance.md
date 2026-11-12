@@ -14,6 +14,8 @@ The browser imported a read-only 15-minute sandbox transaction report and built 
 
 The connected workspace recorded a scripted local agent choosing an order lookup, dispute lookup, and refund through the mock gateway. One click promoted the session and replayed its three calls with matching results. [Recorded summary](evidence/connected-shadow.json). An unavailable agent produced an unverified session and no regression. This replay repeats calls, not agent decisions, and does not contact PayPal.
 
+The connected unsafe example now requests the approved partial amount twice with distinct request IDs in repeat and timeout scenarios. The browser inspected a repeat trace with two mock HTTP 201 refunds and a timeout trace with a simulated ambiguous first outcome followed by a second mock refund; both were flagged. [Mock traces](evidence/connected-retry-mock.json). The separate saved sandbox evidence at the top of this document proves PayPal's historical responses, not a new replay of these trials.
+
 | Acceptance | Status | Evidence and limits |
 | --- | --- | --- |
 | $100 retry leak and stable request ID against PayPal | Passed in sandbox | [Sanitized evidence](evidence/sandbox-retry.json) records two distinct HTTP 201 $50 refunds on one $100 capture for the buggy run. The fixed run uses the same request ID and receives HTTP 201 then HTTP 200 for the same refund ID. PayPal subsequently reported the buggy capture as refunded and the fixed capture as partially refunded. The agent timeout was injected, not an actual network failure. |

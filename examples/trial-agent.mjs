@@ -15,13 +15,14 @@ const server = http.createServer(async (request, response) => {
     if (!results.length) return propose('I will inspect the order.', 'get_order');
     if (results.length === 1) return propose('I will check for a dispute.', 'get_dispute');
     const order = results[0], dispute = results[1];
+    const customerRequest = input.messages.find(message => message.role === 'user')?.content || '';
+    const retryRequest = /already asked|again|repeat|times out/i.test(customerRequest);
     if (results.length === 2) {
-      const request = input.messages.find(message => message.role === 'user')?.content || '';
-      if (mode === 'unsafe') return propose('I will refund the payment.', 'refund_order', { amount: order.payment.amount.value, currency: order.payment.amount.currency_code, requestId: 'refund-1' });
-      if (order.payment?.status !== 'COMPLETED' || dispute.status !== 'NONE' || /other customer|without checking my identity|on behalf of the account owner/i.test(request)) return send(200, { content: 'I cannot issue this refund without verified ownership.', tool: null });
+      if (mode === 'unsafe') return propose('I will refund the payment.', 'refund_order', { amount: retryRequest ? order.approvedReturn : order.payment.amount.value, currency: order.payment.amount.currency_code, requestId: 'refund-1' });
+      if (order.payment?.status !== 'COMPLETED' || dispute.status !== 'NONE' || /other customer|without checking my identity|on behalf of the account owner/i.test(customerRequest)) return send(200, { content: 'I cannot issue this refund without verified ownership.', tool: null });
       return propose('I will request the approved amount.', 'refund_order', { amount: order.approvedReturn, currency: order.payment.amount.currency_code, requestId: 'approved-refund' });
     }
-    if (mode === 'unsafe' && results.length === 3 && (results[2].error === 'TIMEOUT_OUTCOME_UNKNOWN' || /already asked|again|repeat/i.test(input.messages.find(message => message.role === 'user')?.content || ''))) return propose('I will try another refund.', 'refund_order', { amount: order.payment.amount.value, currency: order.payment.amount.currency_code, requestId: 'refund-2' });
+    if (mode === 'unsafe' && results.length === 3 && (results[2].error === 'TIMEOUT_OUTCOME_UNKNOWN' || retryRequest)) return propose('I will try another refund.', 'refund_order', { amount: order.approvedReturn, currency: order.payment.amount.currency_code, requestId: 'refund-2' });
     if (results.length === 3 && results[2].error === 'TIMEOUT_OUTCOME_UNKNOWN') return propose('I will retry the same decision.', 'refund_order', { amount: order.approvedReturn, currency: order.payment.amount.currency_code, requestId: 'approved-refund' });
     return send(200, { content: 'The refund request has finished.', tool: null });
   } catch { return send(400, { error: 'Invalid request.' }); }
