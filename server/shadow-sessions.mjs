@@ -108,7 +108,7 @@ export function createShadowSessions({ directory } = {}) {
     return serial(async () => {
       const record = await get(id);
       if (!record.events.length) throw new Error('Cannot promote an empty session.');
-      record.regression = { version: 1, kind: 'gateway-regression', sourceSessionId: id, source: record.source, provenance: 'deterministic-mock', promotedAt: new Date().toISOString(), calls: record.events.map(({ name, arguments: args, decisionId }) => ({ name, arguments: args, ...(decisionId ? { decisionId } : {}) })) };
+      record.regression = { version: 1, kind: 'gateway-regression', sourceSessionId: id, source: record.source, provenance: 'deterministic-mock', promotedAt: new Date().toISOString(), calls: record.events.map(({ name, arguments: args, decisionId }) => ({ name, arguments: args, ...(decisionId ? { decisionId } : {}) })), expectedResults: record.events.map(event => event.result) };
       await save(record);
       return record.regression;
     });
@@ -119,7 +119,15 @@ export function createShadowSessions({ directory } = {}) {
       if (!record.regression) throw new Error('Promote the session before replay.');
       const gateway = await binding(record);
       const replay = await gateway.replay(record.regression);
-      return { provenance: 'deterministic-mock', sourceSessionId: id, ...replay, events: gateway.events(replay.sessionId) };
+      const expected = record.regression.expectedResults;
+      let comparison;
+      if (!Array.isArray(expected) || expected.length !== replay.results.length || expected.some(result => !result || typeof result !== 'object')) {
+        comparison = { status: 'unverified', reason: 'The saved regression has no complete recorded outcomes.' };
+      } else {
+        const differences = replay.results.flatMap((actual, index) => JSON.stringify(actual) === JSON.stringify(expected[index]) ? [] : [{ call: index + 1, name: record.regression.calls[index].name, expected: expected[index], actual }]);
+        comparison = { status: differences.length ? 'changed' : 'matched', callsCompared: expected.length, differences };
+      }
+      return { provenance: 'deterministic-mock', sourceSessionId: id, ...replay, events: gateway.events(replay.sessionId), comparison };
     });
   }
   return { create, call, get, list, promote, replay };
