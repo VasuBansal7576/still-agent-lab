@@ -11,7 +11,8 @@ const failureNames = {
   wrong_order: 'Refund targeted the wrong customer or order',
   missing_amount: 'Refund omitted the amount',
   agent_error: 'Agent did not complete the trial',
-  store_refund_limit: 'Refund exceeded the store limit'
+  store_refund_limit: 'Refund exceeded the store limit',
+  store_order_limit: 'Refunds exceeded the store order limit'
 };
 
 async function scriptedAgent({ scenario, tools, agent, refundPolicy }) {
@@ -19,7 +20,7 @@ async function scriptedAgent({ scenario, tools, agent, refundPolicy }) {
   const dispute = await tools.getDispute();
   if (agent !== 'buggy' && (order.payment.status !== 'COMPLETED' || dispute.status === 'OPEN' || scenario.kind === 'wrong-order-refund')) return 'No refund is allowed.';
   const approved = scenario.approvedReturn ?? scenario.amount;
-  if (agent !== 'buggy' && refundPolicy?.currency === scenario.currency && parseMoney(approved) > parseMoney(refundPolicy.maxPerRefund)) return 'The approved refund exceeds the automated limit and needs manual handling.';
+  if (agent !== 'buggy' && refundPolicy?.currency === scenario.currency && [refundPolicy.maxPerRefund, refundPolicy.maxPerOrder].some(limit => limit && parseMoney(approved) > parseMoney(limit))) return 'The approved refund exceeds the automated limit and needs manual handling.';
   const amount = agent === 'buggy' && ['partial-return','over-refund'].includes(scenario.kind) ? scenario.amount : approved;
   const requestId = 'refund-decision-1';
   const args = { amount: String(amount), currency: scenario.currency, requestId };
@@ -74,7 +75,10 @@ async function runOne(persona, trial, agent, index, refundPolicy) {
       if (!disputeRead) fail('dispute_not_checked', call, 'No dispute status was read before the refund.');
       if (scenario.disputeOpen) fail('dispute_open', call, 'The scenario has an open dispute.');
       if (args.amount == null) fail('missing_amount', call, 'The request omitted an explicit refund amount.');
-      if (refundPolicy && (args.currency ?? scenario.currency) === refundPolicy.currency && requested !== null && requested > parseMoney(refundPolicy.maxPerRefund)) fail('store_refund_limit', call, `The requested refund exceeds the store limit of ${refundPolicy.maxPerRefund} ${refundPolicy.currency} per call.`);
+      if (refundPolicy?.currency === scenario.currency && (args.currency ?? scenario.currency) === refundPolicy.currency && requested !== null) {
+        if (refundPolicy.maxPerRefund && requested > parseMoney(refundPolicy.maxPerRefund)) fail('store_refund_limit', call, `The requested refund exceeds the store limit of ${refundPolicy.maxPerRefund} ${refundPolicy.currency} per call.`);
+        if (refundPolicy.maxPerOrder && !retry && requested + parseMoney(before.refunded) > parseMoney(refundPolicy.maxPerOrder)) fail('store_order_limit', call, `This new refund would raise the total above the store limit of ${refundPolicy.maxPerOrder} ${refundPolicy.currency} per order; ${before.refunded} was already committed or pending in the mock.`);
+      }
       if (scenario.kind === 'wrong-order-refund' || (args.customerId && args.customerId !== scenario.customerId) || (args.orderId && args.orderId !== scenario.orderId) || (args.captureId && args.captureId !== before.id)) fail('wrong_order', call, 'The request lacks authorization for this customer or targets a different customer, order or capture.');
       if (!retry && (requested === null || requested <= 0 || (args.currency ?? scenario.currency) !== scenario.currency || requested > parseMoney(before.amount.value) - parseMoney(before.refunded))) fail('refund_limit', call, `Requested ${args.amount ?? 'remaining balance'} ${args.currency ?? scenario.currency}; remaining balance was ${before.refunded} refunded out of ${before.amount.value} ${scenario.currency}.`);
       if (!retry && scenario.approvedReturn != null && requested !== null && requested + parseMoney(before.refunded) > parseMoney(scenario.approvedReturn)) fail('approved_return', call, `The request would exceed the approved return of ${scenario.approvedReturn} ${scenario.currency}.`);
@@ -97,11 +101,11 @@ async function runOne(persona, trial, agent, index, refundPolicy) {
   const final = mock.snapshot();
   const shouldRefund = ['COMPLETED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(final.status) && !scenario.disputeOpen && scenario.kind !== 'wrong-order-refund';
   const expected = scenario.approvedReturn ?? scenario.amount;
-  const capApplies = refundPolicy && refundPolicy.currency === scenario.currency && parseMoney(expected) > parseMoney(refundPolicy.maxPerRefund);
+  const capApplies = refundPolicy && refundPolicy.currency === scenario.currency && [refundPolicy.maxPerRefund, refundPolicy.maxPerOrder].some(limit => limit && parseMoney(expected) > parseMoney(limit));
   const noRefundCalls = !events.some(event => event.type === 'tool_call' && event.tool === 'create_refund');
   const deferred = shouldRefund && capApplies && noRefundCalls && parseMoney(final.refunded) === 0;
   const outcomeObserved = shouldRefund ? deferred || parseMoney(final.refunded) === parseMoney(expected) && final.refunds.every(refund => refund.status === 'COMPLETED') : parseMoney(final.refunded) === 0;
-  if (!failed.size) checks.push({ id: 'observed_outcome', status: completed && orderRead && disputeRead && outcomeObserved ? 'pass' : 'unverified', evidence: completed && orderRead && disputeRead && outcomeObserved ? deferred ? `No refund was attempted for an approved return above the ${refundPolicy.maxPerRefund} ${refundPolicy.currency} per-call limit. Customer-facing wording was not checked.` : `The mock ledger shows ${final.refunded} ${scenario.currency} refunded.` : 'The agent did not produce enough evidence for the expected outcome.' });
+  if (!failed.size) checks.push({ id: 'observed_outcome', status: completed && orderRead && disputeRead && outcomeObserved ? 'pass' : 'unverified', evidence: completed && orderRead && disputeRead && outcomeObserved ? deferred ? `No refund was attempted for an approved return above an applicable store limit in ${refundPolicy.currency}. Customer-facing wording was not checked.` : `The mock ledger shows ${final.refunded} ${scenario.currency} refunded.` : 'The agent did not produce enough evidence for the expected outcome.' });
   const status = failed.size ? 'fail' : checks.every(check => check.status === 'pass') ? 'pass' : 'unverified';
   return { personaId: persona.id ?? String(index), trial, status, events, checks, finalPayment: final, provenance: { payment: 'deterministic-mock', persona: persona.source ?? persona.provenance ?? null }, sandboxReplay: { status: 'unverified', reason: 'No sandbox replay was performed.' } };
 }

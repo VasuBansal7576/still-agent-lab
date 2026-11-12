@@ -26,17 +26,19 @@ export function derivePermission({ agentId, currency: code, summary } = {}) {
     const key = `${trial?.personaId}\0${trial?.trial}`;
     if (typeof trial?.personaId !== 'string' || !trial.personaId || !Number.isInteger(trial.trial) || trial.trial < 1 || trial.trial > summary.trials || seen.has(key) || trial.status !== 'pass' || trial.provenance?.payment !== 'deterministic-mock' || !Array.isArray(trial.checks) || !trial.checks.length || !trial.checks.every(check => check?.status === 'pass' && typeof check.evidence === 'string' && check.evidence.trim()) || !Array.isArray(trial.events) || !Array.isArray(trial.finalPayment?.refunds)) return denied;
     seen.add(key);
+    let orderRefunded = 0;
     for (const refund of trial.finalPayment.refunds) {
       const amount = cents(refund?.amount?.value);
       if (refund.status !== 'COMPLETED' || refund.amount?.currency_code !== code || amount === null) return denied;
-      if (refundPolicy?.currency === code && amount > cents(refundPolicy.maxPerRefund)) return denied;
+      orderRefunded += amount;
+      if (refundPolicy?.currency === code && ((refundPolicy.maxPerRefund && amount > cents(refundPolicy.maxPerRefund)) || (refundPolicy.maxPerOrder && orderRefunded > cents(refundPolicy.maxPerOrder)))) return denied;
       const observed = trial.events.some(event => event.type === 'tool_result' && event.tool === 'create_refund' && event.response?.ok === true && event.response.body?.id === refund.id && event.response.body?.status === 'COMPLETED' && event.response.body?.amount?.value === refund.amount.value && event.response.body?.amount?.currency_code === code);
       if (!observed) return denied;
       max = Math.max(max, amount);
     }
   }
   if (new Set(trials.map(trial => trial.personaId)).size !== summary.personaCount || !max) return denied;
-  if (refundPolicy?.currency === code) max = Math.min(max, cents(refundPolicy.maxPerRefund));
+  if (refundPolicy?.currency === code) for (const limit of [refundPolicy.maxPerRefund, refundPolicy.maxPerOrder]) if (limit) max = Math.min(max, cents(limit));
   return { version: 1, agentId, scope: 'deterministic-mock', evidence: { personaCount: summary.personaCount, trialsPerPersona: summary.trials, trialCount: trials.length, sandboxReplay: 'unverified', coverage: 'Only observed passing mock trials; unobserved scenarios and live behavior are unverified.', ...(refundPolicy ? { structuredPolicy: refundPolicy } : {}) }, create_refund: { allowed: true, currency: code, maxPerOrder: decimal(max), requireDisputeClear: true, requireDisputeCheck: true, requireApprovedAmount: true, requireIdentityMatch: true, requireStableDecisionId: true } };
 }
 

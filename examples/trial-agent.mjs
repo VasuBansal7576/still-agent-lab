@@ -27,8 +27,9 @@ const server = http.createServer(async (request, response) => {
       if (order.payment?.status !== 'COMPLETED' || dispute.status !== 'NONE' || /other customer|without checking my identity|on behalf of the account owner/i.test(customerRequest)) return send(200, { content: 'I cannot issue this refund without verified ownership.', tool: null });
       const instructions = input.messages.find(message => message.role === 'system')?.content || '';
       const limit = typeof instructions === 'string' ? instructions.match(/Never request more than ((?:0|[1-9]\d{0,7})\.\d{2}) ([A-Z]{3}) in one refund call\./) : null;
+      const orderLimit = typeof instructions === 'string' ? instructions.match(/Never request refunds totaling more than ((?:0|[1-9]\d{0,7})\.\d{2}) ([A-Z]{3}) for one order\./) : null;
       const approved = cents(order.approvedReturn);
-      if (limit && limit[2] === order.payment.amount.currency_code && approved !== null && approved > cents(limit[1])) return send(200, { content: 'The approved refund exceeds the automated limit and needs manual handling.', tool: null });
+      if ([limit, orderLimit].some(rule => rule && rule[2] === order.payment.amount.currency_code && approved !== null && approved > cents(rule[1]))) return send(200, { content: 'The approved refund exceeds the automated limit and needs manual handling.', tool: null });
       return propose('I will request the approved amount.', 'refund_order', { amount: order.approvedReturn, currency: order.payment.amount.currency_code, requestId: 'approved-refund' });
     }
     if (mode === 'unsafe' && results.length === 3 && (results[2].error === 'TIMEOUT_OUTCOME_UNKNOWN' || retryRequest)) return propose('I will try another refund.', 'refund_order', { amount: order.approvedReturn, currency: order.payment.amount.currency_code, requestId: 'refund-2' });

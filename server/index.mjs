@@ -532,7 +532,7 @@ http.createServer(async (request, response) => {
       if (input.policy !== undefined && (input.agent !== 'external' || typeof input.policy !== 'string' || !input.policy.trim() || input.policy.length > 4000)) return send(response, 400, { error: 'A custom agent policy must contain 1 to 4000 characters and requires a local HTTP agent.' });
       let structuredPolicy;
       try { structuredPolicy = normalizeRefundPolicy(input.structuredPolicy); }
-      catch { return send(response, 400, { error: 'Choose a positive per-refund maximum with two decimals and a three-letter currency.' }); }
+      catch { return send(response, 400, { error: 'Choose a positive per-refund or per-order maximum with two decimals and a three-letter currency.' }); }
       const additionalPolicy = input.policy?.trim() || null;
       const effectivePolicy = input.agent === 'external' ? `${DEFAULT_TRIAL_POLICY}${structuredPolicy ? `\n${refundPolicyInstruction(structuredPolicy)}` : ''}${additionalPolicy ? `\nAdditional store instruction: ${additionalPolicy}` : ''}` : null;
       let personas;

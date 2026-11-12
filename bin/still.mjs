@@ -17,7 +17,8 @@ Run scripted agents against the deterministic PayPal mock.
   --mock-profile VALUE  completed or sandbox-test-card (default completed)
   --mock-refund-outcome VALUE  completed, pending-echeck or refund-not-allowed (default completed)
   --max-refund AMOUNT  Maximum per refund call, with two decimals (requires --refund-currency)
-  --refund-currency CODE  Three-letter uppercase currency (requires --max-refund)
+  --max-order-refund AMOUNT  Maximum total refunds per order, with two decimals (requires --refund-currency)
+  --refund-currency CODE  Three-letter uppercase currency (requires at least one limit)
   --min-pass-all N   Minimum pass^N fraction, 0-1 (default 1)
   --json             Print the summary as JSON
   --help             Show this help
@@ -29,7 +30,7 @@ function parse(args) {
   if (args.length === 0 || args.includes('--help')) return null;
   if (args.shift() !== 'test') throw new Error('Expected the test command.');
   const options = { personas: 1000, trials: 5, concurrency: 20, agent: 'safe', seed: 'still', mockProfile: 'completed', mockRefundOutcome: 'completed', minPassAll: 1, json: false };
-  const names = { '--personas': 'personas', '--trials': 'trials', '--concurrency': 'concurrency', '--agent': 'agent', '--agent-url': 'endpoint', '--seed': 'seed', '--mock-profile': 'mockProfile', '--mock-refund-outcome': 'mockRefundOutcome', '--max-refund': 'maxRefund', '--refund-currency': 'refundCurrency', '--min-pass-all': 'minPassAll' };
+  const names = { '--personas': 'personas', '--trials': 'trials', '--concurrency': 'concurrency', '--agent': 'agent', '--agent-url': 'endpoint', '--seed': 'seed', '--mock-profile': 'mockProfile', '--mock-refund-outcome': 'mockRefundOutcome', '--max-refund': 'maxRefund', '--max-order-refund': 'maxOrderRefund', '--refund-currency': 'refundCurrency', '--min-pass-all': 'minPassAll' };
   while (args.length) {
     const flag = args.shift();
     if (flag === '--json') { options.json = true; continue; }
@@ -51,8 +52,9 @@ function parse(args) {
   if (!['completed', 'sandbox-test-card'].includes(options.mockProfile)) throw new Error('--mock-profile must be completed or sandbox-test-card.');
   if (!['completed', 'pending-echeck', 'refund-not-allowed'].includes(options.mockRefundOutcome)) throw new Error('--mock-refund-outcome must be completed, pending-echeck or refund-not-allowed.');
   if (options.mockProfile !== 'completed' && options.mockRefundOutcome !== 'completed') throw new Error('Choose either --mock-profile or --mock-refund-outcome.');
-  if ((options.maxRefund === undefined) !== (options.refundCurrency === undefined)) throw new Error('--max-refund and --refund-currency must be supplied together.');
-  options.structuredPolicy = options.maxRefund === undefined ? null : normalizeRefundPolicy({ currency: options.refundCurrency, maxPerRefund: options.maxRefund });
+  const hasLimit = options.maxRefund !== undefined || options.maxOrderRefund !== undefined;
+  if (hasLimit !== (options.refundCurrency !== undefined)) throw new Error('Provide --refund-currency together with at least one refund limit.');
+  options.structuredPolicy = !hasLimit ? null : normalizeRefundPolicy({ currency: options.refundCurrency, ...(options.maxRefund !== undefined ? { maxPerRefund: options.maxRefund } : {}), ...(options.maxOrderRefund !== undefined ? { maxPerOrder: options.maxOrderRefund } : {}) });
   return options;
 }
 
@@ -79,7 +81,10 @@ try {
     else {
       const pct = n => `${(n * 100).toFixed(1)}%`;
       console.log(`Still ${summary.gate.toUpperCase()} | ${summary.agent} | deterministic mock`);
-      if (summary.structuredPolicy) console.log(`Checked store limit: ${summary.structuredPolicy.maxPerRefund} ${summary.structuredPolicy.currency} per refund call.`);
+      if (summary.structuredPolicy) {
+        const p = summary.structuredPolicy;
+        console.log(`Checked store limits: ${[p.maxPerRefund && `${p.maxPerRefund} ${p.currency} per refund call`, p.maxPerOrder && `${p.maxPerOrder} ${p.currency} total per order`].filter(Boolean).join(' · ')}.`);
+      }
       if (options.mockProfile === 'sandbox-test-card') console.log('Mock profile: sandbox-test-card (modeled observations, not a prediction of PayPal outcomes).');
       if (options.mockRefundOutcome !== 'completed') console.log(`Mock refund outcome: ${options.mockRefundOutcome} (explicit scenario; sandbox funding not predicted).`);
       console.log(`${summary.personas} personas × ${summary.trials} trials: ${summary.counts.pass} passed, ${summary.counts.fail} failed, ${summary.counts.unverified} unverified`);
