@@ -54,6 +54,8 @@ On a fresh public clone of `d4dac34`, the browser ran the built-in buggy and cor
 
 The browser exported a promoted synthetic v3 regression. The CLI ran that downloaded file against the unchanged scripted agent and returned `matched` with exit 0; a changed agent returned `changed` with exit 1. An unavailable agent was unverified and failed the gate. The export contains mock scenario and permission data but no conversation or endpoint. Its checksum detects accidental changes, not intentional tampering. The reusable Action can run the same mock regression; its hosted result is tracked separately.
 
+Agent regressions now compare the pattern of decision-ID reuse within each session rather than literal IDs across independent sessions. A real mock-gateway check reproduced the prior false change for an otherwise identical agent with a new stable ID. After the fix, the browser marked that rerun matched and a missing-ID agent changed. A four-call CLI retry regression matched both original and freshly generated stable IDs; changing the ID on the retry returned changed with exit 1. These are mock observations, not PayPal results.
+
 | Acceptance | Status | Evidence and limits |
 | --- | --- | --- |
 | $100 retry leak and stable request ID against PayPal | Passed in sandbox | [Sanitized evidence](evidence/sandbox-retry.json) records two distinct HTTP 201 $50 refunds on one $100 capture for the buggy run. The fixed run uses the same request ID and receives HTTP 201 then HTTP 200 for the same refund ID. PayPal subsequently reported the buggy capture as refunded and the fixed capture as partially refunded. The agent timeout was injected, not an actual network failure. |

@@ -1,4 +1,5 @@
 import { recordShadowAgent } from './shadow-agent-driver.mjs';
+import { normalizeDecisionIds } from './decision-equivalence.mjs';
 
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
@@ -22,8 +23,8 @@ export async function rerunShadowAgent({ endpoint, sourceId, store }) {
   await store.finish(candidate.id, outcome.status);
   const recorded = await store.get(candidate.id);
   if (outcome.status !== 'completed' || !recorded.events.length) return { status: 'unverified', reason: outcome.reason || 'The agent did not complete the mock session.', sessionId: candidate.id, observed: outcome.observed };
-  const calls = recorded.events.map(({ name, arguments: args, decisionId, toolkitArguments, result }) => ({ name, arguments: args, ...(decisionId ? { decisionId } : {}), ...(toolkitArguments ? { toolkitArguments } : {}), result }));
-  const expected = source.regression.calls.map((call, index) => ({ ...call, result: source.regression.expectedResults[index] }));
+  const calls = normalizeDecisionIds(recorded.events.map(({ name, arguments: args, decisionId, toolkitArguments, result }) => ({ name, arguments: args, ...(decisionId ? { decisionId } : {}), ...(toolkitArguments ? { toolkitArguments } : {}), result })), 'decisionId');
+  const expected = normalizeDecisionIds(source.regression.calls.map((call, index) => ({ ...call, result: source.regression.expectedResults[index] })), 'decisionId');
   const differences = [];
   for (let index = 0; index < Math.max(expected.length, calls.length); index++) {
     if (!equal(expected[index], calls[index])) differences.push({ call: index + 1, expected: expected[index] ?? null, actual: calls[index] ?? null });

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { createBatchBinding, createMockBatchBinding } from './mcp-batch-binding.mjs';
 import { createShadowSessions } from './shadow-sessions.mjs';
 import { recordShadowAgent } from './shadow-agent-driver.mjs';
+import { normalizeDecisionIds } from './decision-equivalence.mjs';
 
 const hash = value => createHash('sha256').update(value).digest('hex');
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
@@ -56,9 +57,10 @@ export async function runPortableShadow({ path, endpoint }) {
     await store.finish(session.id, outcome.status);
     if (outcome.status !== 'completed') return { status: 'unverified', reason: outcome.reason, provenance: 'deterministic-mock' };
     const result = await store.get(session.id);
-    const actual = result.events.map(event => safeCall({ ...event, toolkitArguments: event.toolkitArguments }, event.result));
+    const actual = normalizeDecisionIds(result.events.map(event => safeCall({ ...event, toolkitArguments: event.toolkitArguments }, event.result)), 'decisionHash');
+    const baseline = normalizeDecisionIds(p.baseline, 'decisionHash');
     const differences = [];
-    for (let i = 0; i < Math.max(p.baseline.length, actual.length); i++) if (encoded(p.baseline[i] ?? null) !== encoded(actual[i] ?? null)) differences.push(i + 1);
-    return { status: differences.length ? 'changed' : 'matched', callsCompared: Math.max(p.baseline.length, actual.length), differences, provenance: 'deterministic-mock' };
+    for (let i = 0; i < Math.max(baseline.length, actual.length); i++) if (encoded(baseline[i] ?? null) !== encoded(actual[i] ?? null)) differences.push(i + 1);
+    return { status: differences.length ? 'changed' : 'matched', callsCompared: Math.max(baseline.length, actual.length), differences, provenance: 'deterministic-mock' };
   } finally { await rm(directory, { recursive: true, force: true }); }
 }
