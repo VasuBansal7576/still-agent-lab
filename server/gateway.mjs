@@ -13,18 +13,43 @@ const cents = value => {
 const nonnegativeCents = value => value === '0.00' || value === '0' ? 0 : cents(value);
 const decimal = value => `${Math.floor(value / 100)}.${String(value % 100).padStart(2, '0')}`;
 
+// V3 records toolkit proposals separately from their mock results. A grant needs
+// a completed lookup and a complete, capture-scoped dispute list before each refund.
+function toolkitGrantEvidence(trial) {
+  const calls = new Map();
+  const inspected = new Set();
+  const cleared = new Set();
+  for (const event of trial.events) {
+    if (event?.type === 'tool_call') {
+      if (!Number.isInteger(event.id) || calls.has(event.id)) return false;
+      calls.set(event.id, event);
+      if (event.tool === 'create_refund') {
+        const captureId = event.arguments?.capture_id;
+        if (!id(event.requestId) || !id(captureId) || !inspected.has(captureId) || !cleared.has(captureId)) return false;
+      }
+    } else if (event?.type === 'tool_result') {
+      const call = calls.get(event.callId);
+      if (!call || call.tool !== event.tool) return false;
+      if (event.tool === 'get_order' && event.response?.id === call.arguments?.id && id(event.response?.payment?.id)) inspected.add(event.response.payment.id);
+      if (event.tool === 'list_disputes' && event.response?.provenance === 'deterministic-mock' && event.response?.complete === true && Array.isArray(event.response.items) && event.response.items.length === 0 && id(call.arguments?.disputed_transaction_id)) cleared.add(call.arguments.disputed_transaction_id);
+    }
+  }
+  return true;
+}
+
 // Mock trials can earn a mock-only ceiling. They cannot attest live payment behavior.
 export function derivePermission({ agentId, currency: code, summary } = {}) {
   const trials = summary?.results;
   const denied = { version: 1, agentId: id(agentId) ? agentId : null, create_refund: { allowed: false }, reason: 'Insufficient complete passing mock evidence for this agent.' };
   let refundPolicy;
   try { refundPolicy = normalizeRefundPolicy(summary?.structuredPolicy); } catch { return denied; }
-  if (summary?.protocolVersion === 3 || summary?.results?.some(result => result.toolkitProtocol === true) || summary?.additionalPolicy || summary?.personaSource === 'sandbox-account' || !id(agentId) || !currency(code) || summary?.evaluatedAgentId !== agentId || summary?.provenance !== 'deterministic-mock' || !Array.isArray(trials) || !trials.length || !Number.isInteger(summary.personaCount) || !Number.isInteger(summary.trials) || summary.personaCount < 1 || summary.trials < 1 || trials.length !== summary.personaCount * summary.trials) return denied;
+  if (summary?.additionalPolicy || summary?.personaSource === 'sandbox-account' || !id(agentId) || !currency(code) || summary?.evaluatedAgentId !== agentId || summary?.provenance !== 'deterministic-mock' || !Array.isArray(trials) || !trials.length || !Number.isInteger(summary.personaCount) || !Number.isInteger(summary.trials) || summary.personaCount < 1 || summary.trials < 1 || trials.length !== summary.personaCount * summary.trials) return denied;
   const seen = new Set();
   let max = 0;
   for (const trial of trials) {
     const key = `${trial?.personaId}\0${trial?.trial}`;
     if (typeof trial?.personaId !== 'string' || !trial.personaId || !Number.isInteger(trial.trial) || trial.trial < 1 || trial.trial > summary.trials || seen.has(key) || trial.status !== 'pass' || trial.provenance?.payment !== 'deterministic-mock' || !Array.isArray(trial.checks) || !trial.checks.length || !trial.checks.every(check => check?.status === 'pass' && typeof check.evidence === 'string' && check.evidence.trim()) || !Array.isArray(trial.events) || !Array.isArray(trial.finalPayment?.refunds)) return denied;
+    if ((summary.protocolVersion === 3 || trial.toolkitProtocol === true) && (trial.toolkitProtocol !== true || !toolkitGrantEvidence(trial))) return denied;
     seen.add(key);
     let orderRefunded = 0;
     for (const refund of trial.finalPayment.refunds) {

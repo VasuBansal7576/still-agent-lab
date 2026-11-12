@@ -39,6 +39,7 @@ export async function observeSandboxDisputes({ credentials, paypal, captureId } 
 
 // This grant is usable only by a host that can establish the store facts required below.
 export async function earnSandboxPermission({ batchId, batch, ledger, currency = 'USD' } = {}) {
+  if (batch?.protocolVersion === 3 || batch?.results?.some(result => result.toolkitProtocol === true)) throw new Error('Toolkit-style trial batches cannot earn sandbox permissions.');
   if (!validId(batchId) || !ledger || typeof ledger.evidence !== 'function' || typeof ledger.verifyReceipt !== 'function' || !Array.isArray(batch?.results) || batch.results.some(result => result.status !== 'pass')) throw new Error('A fully passing saved batch and trusted replay ledger are required.');
   const results = batch.results.filter(result => result.finalPayment?.amount?.currency_code === currency);
   const summary = { ...batch, results, personaCount: new Set(results.map(result => result.personaId)).size };

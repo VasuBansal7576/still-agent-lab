@@ -20,6 +20,7 @@ export async function createBatchBinding(batchId) {
     summary = JSON.parse(await file.readFile('utf8'));
   } finally { await file.close(); }
   if (summary.id !== batchId) throw new Error('Batch identity does not match its file.');
+  if (summary.protocolVersion === 3 || summary.results?.some(item => item.toolkitProtocol === true)) throw new Error('Toolkit-style trial batches cannot yet bind the MCP gateway.');
   if (!Array.isArray(summary.results) || !Number.isInteger(summary.personaCount) || !Number.isInteger(summary.trials) || summary.personaCount < 1 || summary.trials < 1 || summary.results.length !== summary.personaCount * summary.trials || summary.results.some(item => item.status !== 'pass')) throw new Error('Batch is incomplete or contains a failure.');
   const identities = new Set(summary.results.map(item => `${item.personaId}\0${item.trial}`));
   if (identities.size !== summary.results.length || new Set(summary.results.map(item => item.personaId)).size !== summary.personaCount || summary.results.some(item => typeof item.personaId !== 'string' || !item.personaId || !Number.isInteger(item.trial) || item.trial < 1 || item.trial > summary.trials)) throw new Error('Batch trial identities are incomplete.');
