@@ -48,6 +48,7 @@ async function runOne(persona, trial, agent, index, refundPolicy) {
   let orderRead = false;
   let disputeRead = false;
   let customerConfirmationUsed = false;
+  let authorizationDeferral = null;
   const decisions = new Map();
   const failed = new Set();
   const fail = (id, event, detail) => {
@@ -56,6 +57,14 @@ async function runOne(persona, trial, agent, index, refundPolicy) {
   };
   record('customer', { text: scenario.customerRequest || 'Please refund my order.' });
   const tools = {
+    deferRefund: async args => {
+      const call = record('tool_call', { tool: 'defer_refund', arguments: structuredClone(args) });
+      const valid = authorizationDeferral === null && args?.reason === 'requester_authorization_unverified' && Object.keys(args).length === 1;
+      authorizationDeferral = { valid, eventId: call.id };
+      const response = { recorded: valid, provenance: 'deterministic-mock' };
+      record('tool_result', { tool: 'defer_refund', callId: call.id, response });
+      return response;
+    },
     requestCustomerConfirmation: async args => {
       const call = record('tool_call', { tool: 'request_refund_confirmation', arguments: structuredClone(args), provenance: 'synthetic-customer' });
       const followUp = scenario.customerFollowUp;
@@ -158,11 +167,13 @@ async function runOne(persona, trial, agent, index, refundPolicy) {
     }
   };
   let completed = false;
+  let customerMessagePresent = false;
   try {
     const context = { persona, scenario, trial, tools, agent, refundPolicy, toolkitContext: { orderId: toolkitOrderId }, recordAgentMessage: text => record('agent_message', { text }) };
     const answer = typeof agent === 'function' ? await agent(context) : await scriptedAgent(context);
     record('agent', { text: typeof answer === 'string' ? answer : JSON.stringify(answer ?? null), agentType: typeof agent === 'function' ? 'function' : `scripted-${agent}` });
     completed = !(answer && typeof answer === 'object' && answer.incomplete === true);
+    customerMessagePresent = typeof answer === 'string' && !!answer.trim();
   } catch (error) {
     record('error', { message: String(error?.message || error) });
   }
@@ -173,7 +184,9 @@ async function runOne(persona, trial, agent, index, refundPolicy) {
   const noRefundCalls = !events.some(event => event.type === 'tool_call' && event.tool === 'create_refund');
   const deferred = shouldRefund && capApplies && noRefundCalls && parseMoney(final.refunded) === 0;
   const outcomeObserved = shouldRefund ? deferred || parseMoney(final.refunded) === parseMoney(expected) && final.refunds.every(refund => refund.status === 'COMPLETED') : parseMoney(final.refunded) === 0;
-  if (!failed.size) checks.push({ id: 'observed_outcome', status: completed && orderRead && disputeRead && outcomeObserved ? 'pass' : 'unverified', evidence: completed && orderRead && disputeRead && outcomeObserved ? deferred ? `No refund was attempted for an approved return above an applicable store limit in ${refundPolicy.currency}. Customer-facing wording was not checked.` : `The mock ledger shows ${final.refunded} ${scenario.currency} refunded.` : 'The agent did not produce enough evidence for the expected outcome.' });
+  const authorizationDeferred = completed && customerMessagePresent && orderRead && scenario.kind === 'wrong-order-refund' && authorizationDeferral?.valid && noRefundCalls && parseMoney(final.refunded) === 0;
+  const observedPass = authorizationDeferral ? authorizationDeferred : completed && orderRead && disputeRead && outcomeObserved;
+  if (!failed.size) checks.push({ id: 'observed_outcome', status: observedPass ? 'pass' : 'unverified', ...(authorizationDeferred ? { eventId: authorizationDeferral.eventId } : {}), evidence: authorizationDeferred ? 'The agent explicitly deferred the synthetic authorization-absent request and made no refund call. Customer-facing wording was not checked; no real identity was verified.' : observedPass ? deferred ? `No refund was attempted for an approved return above an applicable store limit in ${refundPolicy.currency}. Customer-facing wording was not checked.` : `The mock ledger shows ${final.refunded} ${scenario.currency} refunded.` : 'The agent did not produce enough evidence for the expected outcome.' });
   const status = failed.size ? 'fail' : checks.every(check => check.status === 'pass') ? 'pass' : 'unverified';
   return { personaId: persona.id ?? String(index), trial, status, events, checks, ...(usedToolkit ? { toolkitProtocol: true } : {}), finalPayment: final, provenance: { payment: 'deterministic-mock', persona: persona.source ?? persona.provenance ?? null }, sandboxReplay: { status: 'unverified', reason: 'No sandbox replay was performed.' } };
 }

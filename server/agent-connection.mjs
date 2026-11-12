@@ -40,7 +40,7 @@ async function readLimited(response) {
   catch { throw new Error('External agent returned invalid JSON.'); }
 }
 
-function parseAction(value, version, customerFollowUp) {
+function parseAction(value, version, customerFollowUp, authorizationDeferral) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || typeof value.content !== 'string' || value.content.length > 5000 || !Object.hasOwn(value, 'tool')) {
     throw new Error('External agent returned an invalid action.');
   }
@@ -50,6 +50,12 @@ function parseAction(value, version, customerFollowUp) {
     return message;
   }
   const tool = value.tool;
+  if (authorizationDeferral && tool?.name === 'defer_refund') {
+    const args = tool.arguments;
+    if (!value.content.trim() || !args || typeof args !== 'object' || Array.isArray(args) || Object.keys(args).join(',') !== 'reason' || args.reason !== 'requester_authorization_unverified' || Object.keys(tool).sort().join(',') !== 'arguments,name') throw new Error('External agent returned an invalid refund deferral.');
+    message.tool_calls = [{ id: randomUUID(), type: 'function', function: { name: tool.name, arguments: JSON.stringify(args) } }];
+    return message;
+  }
   if (customerFollowUp && tool?.name === 'request_refund_confirmation') {
     const args = tool.arguments;
     if (!args || typeof args !== 'object' || Array.isArray(args) || Object.keys(args).sort().join(',') !== 'amount,currency' || typeof args.amount !== 'string' || !/^(?:0|[1-9]\d{0,5})\.\d{2}$/.test(args.amount) || typeof args.currency !== 'string' || !/^[A-Z]{3}$/.test(args.currency) || Object.keys(tool).sort().join(',') !== 'arguments,name') throw new Error('External agent returned an invalid customer confirmation request.');
@@ -73,17 +79,20 @@ function parseAction(value, version, customerFollowUp) {
   return message;
 }
 
-export async function externalAgentChat({ endpoint, messages, version = 1, customerFollowUp = false } = {}) {
+export async function externalAgentChat({ endpoint, messages, version = 1, customerFollowUp = false, authorizationDeferral = false } = {}) {
   const url = endpointUrl(endpoint);
   if (![1, 2, 3].includes(version)) throw new Error('Unsupported external agent protocol version.');
   if (!Array.isArray(messages) || !messages.length) throw new Error('A conversation is required.');
   const baseTools = version === 3 ? toolkitTools : version === 2 ? trialTools : allowedTools;
-  const body = JSON.stringify({ version, messages, tools: customerFollowUp && version !== 1 ? [...baseTools, 'request_refund_confirmation'] : baseTools });
+  const tools = [...baseTools];
+  if (customerFollowUp && version !== 1) tools.push('request_refund_confirmation');
+  if (authorizationDeferral && version === 2) tools.push('defer_refund');
+  const body = JSON.stringify({ version, messages, tools });
   if (Buffer.byteLength(body) > maxBytes) throw new Error('External agent request exceeded the limit.');
   let response;
   try {
     response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body, redirect: 'error', signal: AbortSignal.timeout(60000) });
   } catch { throw new Error('External agent request failed or timed out.'); }
   if (!response.ok) throw new Error(`External agent returned HTTP ${response.status}.`);
-  return parseAction(await readLimited(response), version, customerFollowUp && version !== 1);
+  return parseAction(await readLimited(response), version, customerFollowUp && version !== 1, authorizationDeferral && version === 2);
 }
