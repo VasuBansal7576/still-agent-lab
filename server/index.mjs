@@ -81,7 +81,7 @@ function recordCapture(session, checkout, capture) {
   delete checkout.error;
   session.captures.add(capture.id);
 }
-const files = new Map([['/', ['public/index.html', 'text/html; charset=utf-8']], ['/app.js', ['public/app.js', 'text/javascript; charset=utf-8']], ['/setup', ['public/setup.html', 'text/html; charset=utf-8']], ['/upgrade', ['public/upgrade.html', 'text/html; charset=utf-8']], ['/upgrade.js', ['public/upgrade.js', 'text/javascript; charset=utf-8']], ['/replay', ['public/replay.html', 'text/html; charset=utf-8']]]);
+const files = new Map([['/', ['public/index.html', 'text/html; charset=utf-8']], ['/app.js', ['public/app.js', 'text/javascript; charset=utf-8']], ['/setup', ['public/setup.html', 'text/html; charset=utf-8']], ['/upgrade', ['public/hero.html', 'text/html; charset=utf-8']], ['/hero.js', ['public/hero.js', 'text/javascript; charset=utf-8']], ['/sandbox-retry.json', ['docs/evidence/sandbox-retry.json', 'application/json; charset=utf-8']], ['/lab', ['public/upgrade.html', 'text/html; charset=utf-8']], ['/upgrade.js', ['public/upgrade.js', 'text/javascript; charset=utf-8']], ['/replay', ['public/replay.html', 'text/html; charset=utf-8']]]);
 
 function send(response, status, data) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
