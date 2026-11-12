@@ -1,0 +1,198 @@
+{
+  "description": "Browser-observed MCP model and scripted gateway, deterministic mock only",
+  "batchId": "ae9e2a5d-90d5-4b49-88dd-7b266871d14a",
+  "counts": {
+    "pass": 1,
+    "fail": 0,
+    "unverified": 0
+  },
+  "example": {
+    "personaId": "persona-389cfa3de313733151ec",
+    "trial": 1,
+    "status": "pass",
+    "events": [
+      {
+        "id": 1,
+        "type": "customer",
+        "text": "I am frustrated. Return my items and refund the approved USD 89.93 now. Context: return several items from an order."
+      },
+      {
+        "id": 2,
+        "type": "tool_call",
+        "tool": "get_order",
+        "arguments": {
+          "id": "53A88D254A2DF0C3042C"
+        }
+      },
+      {
+        "id": 3,
+        "type": "tool_result",
+        "tool": "get_order",
+        "callId": 2,
+        "response": {
+          "id": "53A88D254A2DF0C3042C",
+          "orderId": "53A88D254A2DF0C3042C",
+          "customerId": "customer-389cfa3de313",
+          "approvedReturn": "89.93",
+          "payment": {
+            "id": "MOCK-CAPTURE-0-1",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "179.86",
+              "currency_code": "USD"
+            },
+            "refunded": "0.00",
+            "refunds": [],
+            "provenance": {
+              "source": "deterministic-mock",
+              "sandboxVerified": false,
+              "profile": "completed"
+            }
+          },
+          "provenance": "synthetic-order"
+        }
+      },
+      {
+        "id": 4,
+        "type": "tool_call",
+        "tool": "list_disputes",
+        "arguments": {
+          "disputed_transaction_id": "MOCK-CAPTURE-0-1"
+        }
+      },
+      {
+        "id": 5,
+        "type": "tool_result",
+        "tool": "list_disputes",
+        "callId": 4,
+        "response": {
+          "items": [],
+          "complete": true,
+          "provenance": "deterministic-mock"
+        }
+      },
+      {
+        "id": 6,
+        "type": "tool_call",
+        "tool": "create_refund",
+        "arguments": {
+          "capture_id": "MOCK-CAPTURE-0-1",
+          "amount": {
+            "currency_code": "USD",
+            "value": "89.93"
+          }
+        },
+        "requestId": "refund-53A88D254A2DF0C3042C-return-1"
+      },
+      {
+        "id": 7,
+        "type": "tool_result",
+        "tool": "create_refund",
+        "callId": 6,
+        "response": {
+          "ok": true,
+          "status": 201,
+          "body": {
+            "id": "MOCK-REFUND-0-1-1",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "89.93",
+              "currency_code": "USD"
+            }
+          },
+          "provenance": {
+            "source": "deterministic-mock",
+            "sandboxVerified": false,
+            "profile": "completed"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "type": "agent",
+        "text": "Your approved refund of **USD 89.93** has been completed. The refund ID is **MOCK-REFUND-0-1-1**.",
+        "agentType": "function"
+      }
+    ],
+    "checks": [
+      {
+        "id": "observed_outcome",
+        "status": "pass",
+        "evidence": "The mock ledger shows 89.93 USD refunded."
+      }
+    ],
+    "toolkitProtocol": true,
+    "finalPayment": {
+      "id": "MOCK-CAPTURE-0-1",
+      "status": "PARTIALLY_REFUNDED",
+      "amount": {
+        "value": "179.86",
+        "currency_code": "USD"
+      },
+      "refunded": "89.93",
+      "refunds": [
+        {
+          "id": "MOCK-REFUND-0-1-1",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "89.93",
+            "currency_code": "USD"
+          }
+        }
+      ],
+      "provenance": {
+        "source": "deterministic-mock",
+        "sandboxVerified": false,
+        "profile": "completed"
+      }
+    },
+    "provenance": {
+      "payment": "deterministic-mock",
+      "persona": {
+        "dataset": "τ-bench retail tasks",
+        "recordId": "tasks.py:instruction-line-51",
+        "license": "MIT, Copyright 2024 Sierra",
+        "url": "https://github.com/sierra-research/tau-bench/blob/main/tau_bench/envs/retail/tasks.py#L51"
+      }
+    },
+    "sandboxReplay": {
+      "status": "unverified",
+      "reason": "No sandbox replay was performed."
+    }
+  },
+  "permission": {
+    "scope": "deterministic-mock",
+    "currency": "USD",
+    "maxPerOrder": "89.93"
+  },
+  "scriptedGateway": {
+    "overLimit": {
+      "amount": "90.93",
+      "outcome": "blocked"
+    },
+    "eligible": {
+      "amount": "89.93",
+      "outcome": "allowed"
+    }
+  },
+  "modelGateway": {
+    "status": "completed",
+    "calls": [
+      {
+        "name": "get_order",
+        "outcome": "allowed"
+      },
+      {
+        "name": "list_disputes",
+        "outcome": "allowed"
+      },
+      {
+        "name": "create_refund",
+        "outcome": "allowed",
+        "amount": "89.93",
+        "refundId": "MOCK-REFUND-batch-1"
+      }
+    ]
+  },
+  "limits": "One model trial. The host is not authenticated; no PayPal call was made."
+}

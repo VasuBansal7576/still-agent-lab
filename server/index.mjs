@@ -17,6 +17,7 @@ import { generatePersonas } from './personas.mjs';
 import { runTrials } from './trials.mjs';
 import { createExternalTrialAgent, DEFAULT_TRIAL_POLICY } from './trial-agent.mjs';
 import { createMcpTrialAgent } from './mcp-trial-agent.mjs';
+import { runMcpEarnedSession } from './mcp-earned-session.mjs';
 import { normalizeRefundPolicy, refundPolicyInstruction } from './refund-policy.mjs';
 import { importSandboxAccountPersonas } from './account-personas.mjs';
 import { importVerifiedAccountPersonas } from './verified-account-personas.mjs';
@@ -46,12 +47,20 @@ const port = Number(process.env.PORT || 3000);
 const modelReady = await codexReady();
 const mcpModulePath = process.env.STILL_MCP_AGENT_MODULE ? resolve(process.env.STILL_MCP_AGENT_MODULE) : null;
 let mcpHost = null;
+let mcpHostFingerprint = null;
+const mcpHostInstance = randomUUID();
 if (mcpModulePath) {
   try {
+    const fingerprint = createHash('sha256').update(await readFile(mcpModulePath)).digest('hex');
     const module = await import(pathToFileURL(mcpModulePath).href);
     createMcpTrialAgent({ sdk: module.sdk, toolkit: module.toolkit, runAgent: module.runAgent });
     mcpHost = module;
+    mcpHostFingerprint = fingerprint;
   } catch { console.error('Configured MCP host could not be loaded. Check its module and dependencies.'); }
+}
+async function mcpHostMatches(summary) {
+  if (!mcpHost || !mcpModulePath || summary?.agent !== 'mcp' || summary.mcpHostInstance !== mcpHostInstance || summary.mcpHostFingerprint !== mcpHostFingerprint) return false;
+  try { return createHash('sha256').update(await readFile(mcpModulePath)).digest('hex') === mcpHostFingerprint; } catch { return false; }
 }
 let defaultPaypal = null;
 let paypalPersistence = 'none';
@@ -471,7 +480,7 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid batch.' });
       try {
         const summary = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
-        if (summary.agent === 'mcp') return send(response, 400, { error: 'MCP host runs cannot earn a mock permission yet.' });
+        if (summary.agent === 'mcp' && !await mcpHostMatches(summary)) return send(response, 400, { error: 'The configured MCP host changed or Still restarted. Rerun the mock trials before requesting a permission.' });
         if (summary.personaSource === 'sandbox-account') return send(response, 400, { error: 'Account history and dispute coverage are incomplete, so an account-derived run cannot earn a permission.' });
         if (summary.additionalPolicy) return send(response, 400, { error: 'Additional policy instructions are not deterministically checked, so this run cannot earn a permission.' });
         const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary: currencyEvidence(summary, 'USD') });
@@ -483,7 +492,7 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid batch.' });
       try {
         const summary = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
-        if (summary.agent === 'mcp') return send(response, 400, { error: 'MCP host runs cannot replay a mock permission yet.' });
+        if (summary.agent === 'mcp' && !await mcpHostMatches(summary)) return send(response, 400, { error: 'The configured MCP host changed or Still restarted. Rerun the mock trials before using a permission.' });
         if (summary.personaSource === 'sandbox-account') return send(response, 400, { error: 'Account history and dispute coverage are incomplete, so an account-derived run cannot earn a permission.' });
         if (summary.additionalPolicy) return send(response, 400, { error: 'Additional policy instructions are not deterministically checked, so this run cannot earn a permission.' });
         const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary: currencyEvidence(summary, 'USD') });
@@ -504,6 +513,18 @@ http.createServer(async (request, response) => {
         const replay = await gateway.replay(regression);
         return send(response, 200, { provenance: 'deterministic-mock', permission, events: gateway.events(sessionId), replay });
       } catch { return send(response, 400, { error: 'The mock permission replay could not run.' }); }
+    }
+    if (url.pathname === '/api/upgrade/mcp-earned-session') {
+      const input = await body(request);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid batch.' });
+      try {
+        const summary = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        if (!await mcpHostMatches(summary)) return send(response, 400, { error: 'The configured MCP host changed or Still restarted. Rerun the mock trials first.' });
+        const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary: currencyEvidence(summary, 'USD') });
+        if (!permission.create_refund.allowed) return send(response, 400, { error: 'This batch has not earned a USD mock permission.' });
+        const outcome = await runMcpEarnedSession({ host: mcpHost, permission, policy: summary.effectivePolicy || DEFAULT_TRIAL_POLICY });
+        return send(response, 200, { provenance: 'deterministic-mock', permission, ...outcome });
+      } catch { return send(response, 400, { error: 'The MCP mock gateway session could not run.' }); }
     }
     if (url.pathname === '/api/upgrade/shadow-session') {
       const input = await body(request);
@@ -611,6 +632,7 @@ http.createServer(async (request, response) => {
         catch { return send(response, 400, { error: 'Provide a valid loopback agent endpoint.' }); }
       }
       if (agent === 'mcp') {
+        if (!await mcpHostMatches({ agent: 'mcp', mcpHostInstance, mcpHostFingerprint })) return send(response, 503, { error: 'The configured MCP host changed. Restart Still before running trials.' });
         agent = createMcpTrialAgent({ sdk: mcpHost.sdk, toolkit: mcpHost.toolkit, runAgent: mcpHost.runAgent, policy: effectivePolicy });
         agentId = `mcp-local-${createHash('sha256').update(mcpModulePath).digest('hex').slice(0, 24)}`;
       }
@@ -618,7 +640,7 @@ http.createServer(async (request, response) => {
       const id = randomUUID();
       const directory = new URL('../.data/batches/', import.meta.url);
       await mkdir(directory, { recursive: true, mode: 0o700 });
-      await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, protocolVersion, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
+      await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, protocolVersion, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, ...(input.agent === 'mcp' ? { mcpHostInstance, mcpHostFingerprint } : {}), createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
       const { results, ...summary } = result;
       return send(response, 200, { id, agent: input.agent, protocolVersion, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0], firstUnverifiedIndex: results.findIndex(trial => trial.status === 'unverified') });
     }
