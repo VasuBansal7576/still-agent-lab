@@ -1,0 +1,91 @@
+{
+  "description": "Codex structured-output model decisions routed through PayPal toolkit definitions and MCP to the Still mock gateway. No PayPal call.",
+  "priorAttempt": {
+    "status": "unverified",
+    "reason": "Model requested a dispute list with pagination fields; the mock blocked the unsupported arguments and the model declined the refund.",
+    "observedTools": [
+      "get_order",
+      "list_disputes"
+    ],
+    "refundCalls": 0
+  },
+  "successfulAttempt": [
+    {
+      "model": "gpt-6.1-terra",
+      "decision": {
+        "tool": "get_order",
+        "arguments": "{\"id\":\"8AA00000BB000000C\"}",
+        "content": ""
+      }
+    },
+    {
+      "tool": "get_order",
+      "gateway": {
+        "id": "8AA00000BB000000C",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "89.93",
+          "currency_code": "USD"
+        },
+        "capture_id": "9AA00000BB000000C"
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "model": "gpt-6.1-terra",
+      "decision": {
+        "tool": "list_disputes",
+        "arguments": "{\"disputed_transaction_id\":\"9AA00000BB000000C\"}",
+        "content": ""
+      }
+    },
+    {
+      "tool": "list_disputes",
+      "gateway": {
+        "disputed_transaction_id": "9AA00000BB000000C",
+        "complete": true,
+        "items": []
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "model": "gpt-6.1-terra",
+      "decision": {
+        "tool": "create_refund",
+        "arguments": "{\"capture_id\":\"9AA00000BB000000C\",\"amount\":{\"currency_code\":\"USD\",\"value\":\"1.00\"}}",
+        "content": ""
+      }
+    },
+    {
+      "tool": "create_refund",
+      "gateway": {
+        "id": "MOCK-REFUND-batch-1",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "1.00",
+          "currency_code": "USD"
+        }
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "model": "gpt-6.1-terra",
+      "decision": {
+        "tool": "none",
+        "arguments": "{}",
+        "content": "Simulated refund completed: USD 1.00 for order 8AA00000BB000000C. Refund ID: MOCK-REFUND-batch-1. The dispute list was complete and clear."
+      }
+    },
+    {
+      "outcome": "passed",
+      "provider": "deterministic-mock",
+      "batchId": "c9eba5d7-587a-4e2c-9e78-f2e9f5960e99",
+      "calls": [
+        "get_order",
+        "list_disputes",
+        "create_refund"
+      ],
+      "refundId": "MOCK-REFUND-batch-1"
+    }
+  ]
+}

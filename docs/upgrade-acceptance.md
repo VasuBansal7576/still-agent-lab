@@ -44,6 +44,8 @@ The earlier v3 replay and MCP limitations have since changed. The browser checke
 
 A passing trial selected outside the random sandbox sample now receives its own replay plan using the same one-use replay key. The browser reopened a 5,000-trial batch and reached the selected trial's matching-checkout preflight. It did not create an order; no PayPal comparison was made. Explicit selections do not change the sampled agreement score.
 
+The model-driven toolkit client used the mock permission derived from the passing model trial. In a [recorded run](evidence/toolkit-v3-model-gateway.json), the model selected an order lookup, a capture-scoped dispute listing, and an eligible refund through the actual toolkit definitions and MCP mock gateway. An earlier attempt was unverified after the gateway rejected unsupported pagination. A separate repeat completed the same three mock calls. The host-selected batch does not authenticate the client, and no PayPal call occurred. The CLI also ran v3 against separate safe and unsafe scripted examples: 50 mock trials passed with exit 0, and 50 failed with exit 1. Hosted Action results are tracked separately.
+
 | Acceptance | Status | Evidence and limits |
 | --- | --- | --- |
 | $100 retry leak and stable request ID against PayPal | Passed in sandbox | [Sanitized evidence](evidence/sandbox-retry.json) records two distinct HTTP 201 $50 refunds on one $100 capture for the buggy run. The fixed run uses the same request ID and receives HTTP 201 then HTTP 200 for the same refund ID. PayPal subsequently reported the buggy capture as refunded and the fixed capture as partially refunded. The agent timeout was injected, not an actual network failure. |

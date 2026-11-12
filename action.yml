@@ -16,6 +16,9 @@ inputs:
   agent-url:
     description: Loopback HTTP endpoint when agent is external.
     default: ''
+  agent-protocol:
+    description: External agent protocol, 2 or 3. Version 3 uses selected toolkit-shaped calls.
+    default: '2'
   seed:
     description: Persona generation seed.
     default: still
@@ -58,6 +61,7 @@ runs:
         STILL_CONCURRENCY: ${{ inputs.concurrency }}
         STILL_AGENT: ${{ inputs.agent }}
         STILL_AGENT_URL: ${{ inputs.agent-url }}
+        STILL_AGENT_PROTOCOL: ${{ inputs.agent-protocol }}
         STILL_SEED: ${{ inputs.seed }}
         STILL_MOCK_PROFILE: ${{ inputs.mock-profile }}
         STILL_MAX_REFUND: ${{ inputs.max-refund }}
@@ -65,7 +69,7 @@ runs:
         STILL_REFUND_CURRENCY: ${{ inputs.refund-currency }}
         STILL_MIN_PASS_ALL: ${{ inputs.min-pass-all }}
       run: |
-        args=(test --personas "$STILL_PERSONAS" --trials "$STILL_TRIALS" --concurrency "$STILL_CONCURRENCY" --agent "$STILL_AGENT" --seed "$STILL_SEED" --mock-profile "$STILL_MOCK_PROFILE" --min-pass-all "$STILL_MIN_PASS_ALL" --json)
+        args=(test --personas "$STILL_PERSONAS" --trials "$STILL_TRIALS" --concurrency "$STILL_CONCURRENCY" --agent "$STILL_AGENT" --agent-protocol "$STILL_AGENT_PROTOCOL" --seed "$STILL_SEED" --mock-profile "$STILL_MOCK_PROFILE" --min-pass-all "$STILL_MIN_PASS_ALL" --json)
         if [[ -n "$STILL_AGENT_URL" ]]; then args+=(--agent-url "$STILL_AGENT_URL"); fi
         if [[ -n "$STILL_MAX_REFUND" ]]; then args+=(--max-refund "$STILL_MAX_REFUND"); fi
         if [[ -n "$STILL_MAX_ORDER_REFUND" ]]; then args+=(--max-order-refund "$STILL_MAX_ORDER_REFUND"); fi

@@ -18,3 +18,29 @@ jobs:
           max-refund: '100.00'
           max-order-refund: '100.00'
           refund-currency: USD
+  toolkit-agent-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Start the scripted toolkit-definition agent
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/still-toolkit" @paypal/agent-toolkit@1.11.0
+          STILL_TOOLKIT_INSTALL="$RUNNER_TEMP/still-toolkit" AGENT_PORT=8788 node examples/toolkit-trial-agent.mjs > "$RUNNER_TEMP/still-toolkit-agent.log" 2>&1 &
+          for attempt in {1..30}; do
+            if (echo > /dev/tcp/127.0.0.1/8788) 2>/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/still-toolkit-agent.log"
+          exit 1
+      - name: Gate toolkit-style agent against the deterministic mock
+        uses: ./
+        with:
+          agent: external
+          agent-url: http://127.0.0.1:8788/agent
+          agent-protocol: '3'
+          personas: '10'
+          trials: '5'
