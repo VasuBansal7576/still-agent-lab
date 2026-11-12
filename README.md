@@ -6,7 +6,7 @@ Still is a local prototype. It supports one local HTTP agent protocol and five s
 
 ## Start the lab
 
-Use Node.js 22 or later and a Codex CLI signed in with ChatGPT. Start the server with `npm start` and open [the local lab](http://127.0.0.1:3000). Set `PORT` before launch to use a different port.
+Use Node.js 22 or later. Start the server with `npm start` and open [the local lab](http://127.0.0.1:3000). Set `PORT` before launch to use a different port. The scripted driving-test agents do not require a Codex login or PayPal credentials for mock trials. AI-backed agents require a signed-in Codex CLI; actual sandbox payments require sandbox credentials.
 
 For captured-payment scenarios, create a PayPal sandbox REST app linked to a compatible sandbox business account. Enter its client ID and secret at `http://127.0.0.1:3000/setup`. On macOS, Still verifies them with PayPal and saves them in the Mac Keychain so the connection survives a restart. Alternatively, copy `.env.example` to `.env` and enter the credentials there. Never use live credentials. US sandbox buyer and seller accounts support the $50 USD example. The app communicates only with PayPal sandbox.
 
