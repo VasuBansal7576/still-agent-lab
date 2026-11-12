@@ -1,0 +1,73 @@
+{
+  "source": "paypal-sandbox",
+  "observedAt": "2026-11-12T06:27:02.682Z",
+  "checked": 5,
+  "results": [
+    {
+      "captureId": "2TJ9483304451523J",
+      "timing": "immediate-replay",
+      "originalRefundHttp": 503,
+      "captureHttp": 200,
+      "captureStatus": "COMPLETED",
+      "captureAmount": {
+        "value": "421.08",
+        "currency_code": "GBP"
+      },
+      "captureMatches": true,
+      "uncertainRefundOutcome": "unverified"
+    },
+    {
+      "captureId": "77V75765L2479350P",
+      "timing": "immediate-replay",
+      "originalRefundHttp": 503,
+      "captureHttp": 200,
+      "captureStatus": "COMPLETED",
+      "captureAmount": {
+        "value": "131.45",
+        "currency_code": "GBP"
+      },
+      "captureMatches": true,
+      "uncertainRefundOutcome": "unverified"
+    },
+    {
+      "captureId": "7P490480N5737100C",
+      "timing": "immediate-replay",
+      "originalRefundHttp": 503,
+      "captureHttp": 200,
+      "captureStatus": "COMPLETED",
+      "captureAmount": {
+        "value": "275.40",
+        "currency_code": "GBP"
+      },
+      "captureMatches": true,
+      "uncertainRefundOutcome": "unverified"
+    },
+    {
+      "captureId": "3W346493CH184302A",
+      "timing": "immediate-replay",
+      "originalRefundHttp": 503,
+      "captureHttp": 200,
+      "captureStatus": "COMPLETED",
+      "captureAmount": {
+        "value": "378.24",
+        "currency_code": "GBP"
+      },
+      "captureMatches": true,
+      "uncertainRefundOutcome": "unverified"
+    },
+    {
+      "captureId": "32F56517PR2695601",
+      "timing": "delayed-continuation",
+      "originalRefundHttp": 503,
+      "captureHttp": 200,
+      "captureStatus": "PARTIALLY_REFUNDED",
+      "captureAmount": {
+        "value": "623.73",
+        "currency_code": "GBP"
+      },
+      "captureMatches": true,
+      "uncertainRefundOutcome": "unverified"
+    }
+  ],
+  "note": "Read-only capture observations cannot establish whether the 503 refund executed. No refund was sent or retried."
+}
