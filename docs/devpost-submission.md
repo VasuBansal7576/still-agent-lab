@@ -10,7 +10,7 @@ A support agent can say the right thing and still send money twice. In a PayPal 
 
 Still runs customer scenarios against an agent, records its tool calls, and checks payment decisions against deterministic rules. Synthetic personas cite public source records. Repeated mock trials report pass@1, the share of trials that pass, and pass^N, the share of personas that pass every trial. A failure map groups related mistakes and links to example traces.
 
-A passing run can produce a mock-scoped permission file. Still's gateway enforces its amount ceiling and other conditions. A developer can record a mock gateway session and promote it to a regression. The CLI and GitHub Action support repeatable runs. The hosted replay presents saved sandbox evidence without an account.
+A passing run can produce a mock-scoped permission file. Still's gateway enforces its amount ceiling and other conditions. Developers can set checked per-refund and per-order limits, reopen local results, and inspect saved sandbox comparison coverage. A developer can record a connected agent's mock gateway session and promote its calls to a regression. The CLI and GitHub Action support repeatable runs. The hosted replay presents saved sandbox evidence without an account.
 
 ## How we built it
 
@@ -37,8 +37,8 @@ Node.js, JavaScript, PayPal sandbox APIs, PayPal Agent Toolkit, MCP, public reta
 - [Public repository and setup](https://github.com/VasuBansal7576/still-agent-lab)
 - [Saved sandbox replay](https://vasubansal7576.github.io/still-agent-lab/)
 - [Evidence and limitations](https://github.com/VasuBansal7576/still-agent-lab/blob/main/docs/upgrade-acceptance.md)
-- [Demo video file](https://vasubansal7576.github.io/still-agent-lab/still-demo.mp4) (2 minutes 16 seconds). A public YouTube link is still required for submission.
+- [Earlier demo video file](https://vasubansal7576.github.io/still-agent-lab/still-demo.mp4) (2 minutes 16 seconds). It predates the connected-agent workspace; a public YouTube link is still required for submission.
 
 ## Judge setup
 
-Clone the repository with Node.js 22 or later, run `npm start`, and open `http://127.0.0.1:3000/upgrade`. The guided scripted journey needs neither a Codex login nor PayPal credentials. It uses saved sandbox responses and runs fresh mock trials. The public replay works without setup.
+Clone the repository with Node.js 22 or later, run `npm start`, and open `http://127.0.0.1:3000/upgrade`. Select an included scripted example or connect a local HTTP agent. Scripted mock trials need neither a Codex login nor PayPal credentials. Saved sandbox responses are separate from the fresh mock trials; the public replay works without setup.
