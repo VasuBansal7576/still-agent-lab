@@ -154,6 +154,7 @@ export function sandboxReplayPage({ plan, evidence = [], verifyReceipt, offset =
   if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new RangeError('Offset must be nonnegative and limit must be between 1 and 100.');
   const selected = plan.queue.slice(offset, offset + limit);
   const comparison = reconcileSandboxReplays({ plan: { ...plan, queue: selected }, evidence, verifyReceipt });
+  const receipts = new Map(evidence.map(receipt => [receipt.key, receipt]));
   return {
     total: plan.queueCount,
     offset,
@@ -161,7 +162,16 @@ export function sandboxReplayPage({ plan, evidence = [], verifyReceipt, offset =
     nextOffset: offset + selected.length < plan.queueCount ? offset + selected.length : null,
     items: selected.map((item, index) => {
       const spec = comparable(item);
-      return { index: offset + index, personaId: item.personaId, trial: item.trial, selection: item.reason, execution: spec.reason ? 'unsupported' : spec.disputeRequired ? 'requires-sandbox-dispute' : 'supported', reason: spec.reason || (spec.disputeRequired ? 'A real open dispute must be linked to this replay capture.' : null), comparison: comparison.results[index] };
+      const result = comparison.results[index];
+      const receipt = receipts.get(item.key);
+      let authenticated = false;
+      if (receipt?.source === 'paypal-sandbox' && typeof verifyReceipt === 'function') {
+        try { authenticated = verifyReceipt(receipt, item) === true; } catch { authenticated = false; }
+      }
+      const compared = result.status === 'agreed' || result.status === 'disagreed';
+      const execution = compared ? 'recorded' : authenticated ? 'recorded-unverified' : spec.reason ? 'unsupported' : spec.disputeRequired ? 'requires-sandbox-dispute' : 'supported';
+      const reason = compared ? null : authenticated ? 'A sandbox replay was recorded, but its outcome is unverified. Do not automatically repeat it.' : spec.reason || (spec.disputeRequired ? 'A real open dispute must be linked to this replay capture.' : null);
+      return { index: offset + index, personaId: item.personaId, trial: item.trial, selection: item.reason, execution, reason, comparison: result };
     }),
   };
 }
