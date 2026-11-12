@@ -4,6 +4,8 @@ Still lets developers run retail support agents through customer requests and in
 
 Still is the driving test for agents that touch PayPal money. Its driving test uses synthetic personas, repeated mock trials, failure clusters, and earned mock permissions. It is a prototype, not a production payment integration or a measure of real-world failure rates.
 
+Watch the [84-second launch demo](docs/still-launch.mp4) and read the [narration script](docs/demo-script.md). The video separates saved PayPal sandbox evidence from scripted mock trials.
+
 ## Start the lab
 
 Use Node.js 22 or later. Start the server with `npm start` and open [the local lab](http://127.0.0.1:3000). Set `PORT` before launch to use a different port. The scripted driving-test agents do not require a Codex login or PayPal credentials for mock trials. AI-backed agents require a signed-in Codex CLI; actual sandbox payments require sandbox credentials.

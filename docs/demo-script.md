@@ -1,41 +1,41 @@
 # Still demo script
 
-The [finished video](still-demo.mp4) runs 2 minutes 16 seconds. It includes a continuous browser capture and narrated still-frame close-ups. The PayPal segment shows saved sandbox evidence. The trials and permission gateway use a deterministic mock. The delivered narration is an abridged version of this script.
+The [finished video](still-launch.mp4) runs 84.8 seconds. The opening uses saved PayPal sandbox evidence. The app run uses Still's scripted agent and deterministic mock. No real money moved. Narration uses the open-source Kokoro v1.0 `af_heart` voice.
 
-## 0:00 to 0:25. The leak
+## 0:00 to 0:17. The problem
 
-[Open the hosted replay or the saved PayPal sandbox evidence in the driving test.]
+Show the saved sandbox refund responses. Label them "Saved PayPal sandbox evidence" and "Timeout simulated."
 
-"A customer asked for a $50 refund. In PayPal sandbox, the first refund returned 201. We simulated a timeout, and the agent retried with a new request ID. PayPal returned another 201. Two completed $50 refunds on one $100 capture."
+> A customer asked for a 50 dollar refund. The first refund succeeded, but the agent saw a simulated timeout and retried as a new request. PayPal sandbox returned success again. Two 50 dollar refunds came out of one 100 dollar capture.
 
-## 0:25 to 1:00. Run the driving test
+## 0:17 to 0:31. The solution
 
-[Open `/upgrade`. Select **Connect scripted sample agent**, then **Run mock trials**.]
+Show the Still title and the driving-test page.
 
-"Still is the driving test for agents that touch PayPal money. We run 1,000 synthetic personas five times each against an isolated mock. These personas cite public records. No Codex login or PayPal credentials are needed for this demonstration."
+> Meet Still, the driving test for agents that touch PayPal money. Before an agent gets refund access, Still runs customer scenarios, checks its decisions, and shows the evidence behind each result.
 
-[Show pass@1, pass^5 and the failure map. Open the retry cluster.]
+## 0:31 to 0:47. Run the agent
 
-"The buggy example fails all 5,000 mock trials in this selected set. The failure map groups related mistakes, and the trace shows the rule behind the retry failure. These numbers are not real-world failure rates."
+Connect the scripted sample and run 1,000 personas with five trials each. Show the results, failure map, and retry trace. Label the run "Scripted agent. Deterministic mock."
 
-## 1:00 to 1:35. Inspect the sandbox and fix
+> Here we connect Still's buggy sample. We run 1,000 synthetic personas, each five times, against a mock. All 5,000 selected trials fail. The failure map brings us to the retry trace, where the agent makes two refund decisions.
 
-[Show the separate saved sandbox example, then choose **Switch to corrected sample and rerun**.]
+## 0:47 to 1:06. Fix and rerun
 
-"The saved sandbox example confirms that this failure can send money twice. The timeout was injected. The corrected scripted sample reuses the request ID for the same refund decision. In a separate saved sandbox run, PayPal returned the original refund on retry. This button switches Still's sample to corrected behavior. It does not edit your agent."
+Show the saved sandbox evidence, switch to the corrected sample, and rerun. Label the sandbox evidence separately from the mock run.
 
-[Show the corrected run's result.]
+> The saved sandbox responses show why this matters. The corrected sample reuses a stable PayPal request ID for the same refund decision. In a separate sandbox run, the retry returned the original refund. Back in the mock, the corrected sample passes all 5,000 trials.
 
-"The corrected example passes all 5,000 mock trials."
+## 1:06 to 1:21. Earn permission
 
-## 1:35 to 2:00. Earn permission
+Request the mock permission and show the gateway blocking an over-limit refund and allowing an eligible one. Keep "Mock only" visible.
 
-[Issue the permission and try the gateway.]
+> Still issues a mock permission based on the passing run. Its gateway blocks a refund above the earned limit and allows an eligible one. Teams can inspect the traces, connect an agent, and run regression checks in CI.
 
-"Still issues a mock-scoped permission based on observed passing cases. For the current default run, this USD grant uses 22 observed personas and 110 trials. The gateway blocks an over-limit request and allows an eligible mock refund. Production access remains denied."
+## 1:21 to 1:25. Close
 
-## 2:00 to 2:15. Close
+Show the Still title and repository address.
 
-[Show the advanced lab and repository.]
+> Still. Let your agent earn its PayPal keys.
 
-"Teams can connect their own agents, inspect provider evidence, and run regression checks in CI. Before an agent gets refund access, let it earn its keys."
+The figures describe these scripted mock trials, not real-world failure rates. The timeout was injected, and the sandbox replay is saved evidence rather than a new live PayPal run.
