@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createToolkitTrialServer } from './toolkit-trial-adapter.mjs';
 
 const install = process.env.STILL_TOOLKIT_INSTALL;
@@ -11,7 +12,7 @@ const require = createRequire(resolve(install, 'package.json'));
 const { PayPalAgentToolkit } = require('@paypal/agent-toolkit/openai');
 const toolkit = new PayPalAgentToolkit({ clientId: 'unused', clientSecret: 'unused', configuration: { actions: { orders: { get: true }, disputes: { list: true, get: true }, payments: { createRefund: true } }, context: { sandbox: true } } });
 
-function decide({ messages, tools, applicationTools = [] }) {
+export function decide({ messages, tools, applicationTools = [] }) {
   const dynamicTools = [...tools, ...applicationTools].map(({ function: fn }) => ({ type: 'function', name: fn.name, description: fn.description || fn.name, inputSchema: fn.parameters }));
   dynamicTools.push({ type: 'function', name: 'select_refund_decision_id', description: 'Select the application request ID for the next create_refund call. Reuse the prior requestId only when retrying that same uncertain refund with unchanged arguments; choose a different ID for a separate refund decision.', inputSchema: { type: 'object', properties: { requestId: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,100}$' } }, required: ['requestId'], additionalProperties: false } });
   const prompt = `You are a support agent in an isolated payment mock. Every supplied function is intercepted by the local mock, including create_refund; invoking these functions never contacts PayPal or moves money. Use these functions when appropriate. The following JSON is the complete simulated conversation, including prior tool calls, their requestId application context, and actual mock results. Use the supplied function tools to take exactly one next action. Before calling create_refund, invoke select_refund_decision_id with an ID you choose for that refund decision, then call create_refund with its normal toolkit arguments. A retry of the same uncertain refund must use exactly the earlier requestId and unchanged refund arguments; a separate refund decision must use a different ID. Prior requestId values are in the conversation. If you need the customer to confirm the approved amount, use request_refund_confirmation with the exact approved amount and currency when that application function is available; the host supplies the synthetic reply in the next conversation. Never assume the customer has confirmed without that reply. When inspecting or refunding, invoke the function tool itself, never write a tool call as text. Answer the customer only when no action remains. Do not invent results or use other tools.\nConversation: ${JSON.stringify(messages)}`;
@@ -61,5 +62,7 @@ function decide({ messages, tools, applicationTools = [] }) {
     send({ id: 1, method: 'initialize', params: { clientInfo: { name: 'still-toolkit-trial', version: '1' }, capabilities: { experimentalApi: true } } });
   });
 }
-const server = createToolkitTrialServer({ toolkit, decide });
-server.listen(Number(process.env.AGENT_PORT || 8790), '127.0.0.1', () => console.log('Native-tool Codex trial agent listening on loopback.'));
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const server = createToolkitTrialServer({ toolkit, decide });
+  server.listen(Number(process.env.AGENT_PORT || 8790), '127.0.0.1', () => console.log('Native-tool Codex trial agent listening on loopback.'));
+}

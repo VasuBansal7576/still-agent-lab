@@ -5,16 +5,20 @@ import { createExternalTrialAgent, DEFAULT_TRIAL_POLICY } from '../server/trial-
 import { normalizeRefundPolicy, refundPolicyInstruction } from '../server/refund-policy.mjs';
 import { createHash } from 'node:crypto';
 import { runPortableShadow } from '../server/portable-shadow.mjs';
+import { createMcpTrialAgent } from '../server/mcp-trial-agent.mjs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const usage = `Usage: still test [options]
        still regression --file PATH --agent-url URL
 
-Run scripted or local HTTP agents against the deterministic PayPal mock.
+Run scripted, local HTTP or local MCP hosts against the deterministic PayPal mock.
   --personas N       Number of synthetic personas (default 1000)
   --trials N         Trials per persona (default 5)
   --concurrency N    Concurrent trials, 1-500 (default 20)
-  --agent NAME       safe, buggy or external (default safe)
+  --agent NAME       safe, buggy, external or mcp (default safe)
   --agent-url URL    Loopback HTTP endpoint for external agent
+  --agent-module PATH  Trusted local MCP host module when agent is mcp
   --agent-protocol N  External agent protocol, 2 or 3 (default 2)
   --seed VALUE       Reproducible persona seed (default still)
   --mock-profile VALUE  completed or sandbox-test-card (default completed)
@@ -33,7 +37,7 @@ function parse(args) {
   if (args.length === 0 || args.includes('--help')) return null;
   if (args.shift() !== 'test') throw new Error('Expected the test command.');
   const options = { personas: 1000, trials: 5, concurrency: 20, agent: 'safe', agentProtocol: '2', seed: 'still', mockProfile: 'completed', mockRefundOutcome: 'completed', minPassAll: 1, json: false };
-  const names = { '--personas': 'personas', '--trials': 'trials', '--concurrency': 'concurrency', '--agent': 'agent', '--agent-url': 'endpoint', '--agent-protocol': 'agentProtocol', '--seed': 'seed', '--mock-profile': 'mockProfile', '--mock-refund-outcome': 'mockRefundOutcome', '--max-refund': 'maxRefund', '--max-order-refund': 'maxOrderRefund', '--refund-currency': 'refundCurrency', '--min-pass-all': 'minPassAll' };
+  const names = { '--personas': 'personas', '--trials': 'trials', '--concurrency': 'concurrency', '--agent': 'agent', '--agent-url': 'endpoint', '--agent-module': 'agentModule', '--agent-protocol': 'agentProtocol', '--seed': 'seed', '--mock-profile': 'mockProfile', '--mock-refund-outcome': 'mockRefundOutcome', '--max-refund': 'maxRefund', '--max-order-refund': 'maxOrderRefund', '--refund-currency': 'refundCurrency', '--min-pass-all': 'minPassAll' };
   while (args.length) {
     const flag = args.shift();
     if (flag === '--json') { options.json = true; continue; }
@@ -51,7 +55,9 @@ function parse(args) {
   if (!Number.isSafeInteger(options.personas) || options.personas < 1 || options.personas > 100000) throw new Error('--personas must be from 1 to 100000.');
   if (!Number.isSafeInteger(options.trials) || options.trials < 1 || options.trials > 100) throw new Error('--trials must be from 1 to 100.');
   if (!Number.isSafeInteger(options.concurrency) || options.concurrency < 1 || options.concurrency > 500) throw new Error('--concurrency must be from 1 to 500.');
-  if (!['safe', 'buggy', 'external'].includes(options.agent)) throw new Error('--agent must be safe, buggy or external.');
+  if (!['safe', 'buggy', 'external', 'mcp'].includes(options.agent)) throw new Error('--agent must be safe, buggy, external or mcp.');
+  if ((options.agent === 'mcp') !== (options.agentModule !== undefined)) throw new Error('--agent mcp requires --agent-module, which is only valid for mcp.');
+  if (options.endpoint !== undefined && options.agent !== 'external') throw new Error('--agent-url is only valid for external agents.');
   if (!['2', '3'].includes(options.agentProtocol)) throw new Error('--agent-protocol must be 2 or 3.');
   if (options.agentProtocol === '3' && options.agent !== 'external') throw new Error('--agent-protocol 3 requires --agent external.');
   if (!['completed', 'sandbox-test-card'].includes(options.mockProfile)) throw new Error('--mock-profile must be completed or sandbox-test-card.');
@@ -86,8 +92,9 @@ try {
     for (const persona of personas) persona.scenario.mockProfile = options.mockProfile;
     if (options.mockRefundOutcome !== 'completed') for (const persona of personas) persona.scenario.mockRefundOutcome = options.mockRefundOutcome;
     const policy = `${DEFAULT_TRIAL_POLICY}${options.structuredPolicy ? `\n${refundPolicyInstruction(options.structuredPolicy)}` : ''}`;
-    const agent = options.agent === 'external' ? createExternalTrialAgent({ endpoint: options.endpoint, policy, version: Number(options.agentProtocol) }) : options.agent;
-    const agentId = options.agent === 'external' ? `local-${createHash('sha256').update(options.endpoint).digest('hex').slice(0, 24)}` : undefined;
+    const host = options.agent === 'mcp' ? await import(pathToFileURL(resolve(options.agentModule)).href) : null;
+    const agent = host ? createMcpTrialAgent({ sdk: host.sdk, toolkit: host.toolkit, runAgent: host.runAgent, policy }) : options.agent === 'external' ? createExternalTrialAgent({ endpoint: options.endpoint, policy, version: Number(options.agentProtocol) }) : options.agent;
+    const agentId = options.agent === 'external' ? `local-${createHash('sha256').update(options.endpoint).digest('hex').slice(0, 24)}` : host ? `mcp-local-${createHash('sha256').update(resolve(options.agentModule)).digest('hex').slice(0, 24)}` : undefined;
     const run = await runTrials({ personas, trials: options.trials, concurrency: options.concurrency, agent, agentId, structuredPolicy: options.structuredPolicy });
     const criticalFailures = run.failureClusters.reduce((sum, cluster) => sum + cluster.count, 0);
     const passed = run.passAllTrials >= options.minPassAll && criticalFailures === 0 && run.counts.unverified === 0;
@@ -112,7 +119,7 @@ try {
       console.log(`pass@1 ${pct(summary.passAt1)} | pass^${summary.trials} ${pct(summary.passAllTrials)} | required ${pct(summary.minPassAll)}`);
       console.log(`Critical rule failures: ${summary.criticalFailures} (one trial may appear in multiple clusters)`);
       for (const cluster of summary.failureClusters) console.log(`  ${cluster.count} ${cluster.label} [${cluster.id}]`);
-      console.log('Sandbox replay: unverified; no live PayPal calls were made.');
+      console.log('Sandbox replay: unverified; Still routed trial tools to the mock. Trusted host code runs separately.');
     }
     process.exitCode = passed ? 0 : 1;
   }

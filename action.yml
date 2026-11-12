@@ -11,10 +11,13 @@ inputs:
     description: Maximum concurrent trials.
     default: '20'
   agent:
-    description: safe, buggy, or external.
+    description: safe, buggy, external, or mcp.
     default: safe
   agent-url:
     description: Loopback HTTP endpoint when agent is external.
+    default: ''
+  agent-module:
+    description: Trusted local MCP host module path when agent is mcp. Install its dependencies before running the action.
     default: ''
   agent-protocol:
     description: External agent protocol, 2 or 3. Version 3 uses selected toolkit-shaped calls.
@@ -64,6 +67,7 @@ runs:
         STILL_CONCURRENCY: ${{ inputs.concurrency }}
         STILL_AGENT: ${{ inputs.agent }}
         STILL_AGENT_URL: ${{ inputs.agent-url }}
+        STILL_AGENT_MODULE: ${{ inputs.agent-module }}
         STILL_AGENT_PROTOCOL: ${{ inputs.agent-protocol }}
         STILL_REGRESSION_FILE: ${{ inputs.regression-file }}
         STILL_SEED: ${{ inputs.seed }}
@@ -74,6 +78,7 @@ runs:
         STILL_MIN_PASS_ALL: ${{ inputs.min-pass-all }}
       run: |
         if [[ -n "$STILL_REGRESSION_FILE" ]]; then
+          if [[ -n "$STILL_AGENT_MODULE" ]]; then echo 'regression-file cannot be combined with agent-module' >&2; exit 2; fi
           if [[ -z "$STILL_AGENT_URL" ]]; then echo 'regression-file requires agent-url' >&2; exit 2; fi
           set +e
           node "$GITHUB_ACTION_PATH/bin/still.mjs" regression --file "$STILL_REGRESSION_FILE" --agent-url "$STILL_AGENT_URL"
@@ -84,6 +89,7 @@ runs:
         fi
         args=(test --personas "$STILL_PERSONAS" --trials "$STILL_TRIALS" --concurrency "$STILL_CONCURRENCY" --agent "$STILL_AGENT" --agent-protocol "$STILL_AGENT_PROTOCOL" --seed "$STILL_SEED" --mock-profile "$STILL_MOCK_PROFILE" --min-pass-all "$STILL_MIN_PASS_ALL" --json)
         if [[ -n "$STILL_AGENT_URL" ]]; then args+=(--agent-url "$STILL_AGENT_URL"); fi
+        if [[ -n "$STILL_AGENT_MODULE" ]]; then args+=(--agent-module "$STILL_AGENT_MODULE"); fi
         if [[ -n "$STILL_MAX_REFUND" ]]; then args+=(--max-refund "$STILL_MAX_REFUND"); fi
         if [[ -n "$STILL_MAX_ORDER_REFUND" ]]; then args+=(--max-order-refund "$STILL_MAX_ORDER_REFUND"); fi
         if [[ -n "$STILL_REFUND_CURRENCY" ]]; then args+=(--refund-currency "$STILL_REFUND_CURRENCY"); fi

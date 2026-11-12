@@ -48,7 +48,7 @@ The workspace can record a session from your local HTTP agent through its passin
 
 After a qualifying run earns a USD mock permission, **Connect a toolkit agent** shows an MCP stdio configuration for that local batch and the OpenAI toolkit wrapper. The binding supports four selected tools, represents one refund decision per process, and does not authenticate the client or contact PayPal. See [toolkit setup and limits](docs/actual-toolkit.md).
 
-A separate [MCP trial integration](docs/mcp-mock-trials.md) lets an agent host drive isolated mock trials before permission is issued. The host must provide each scenario to its agent and use the supplied MCP client; the app and `still` CLI currently use the HTTP protocol.
+A separate [MCP trial integration](docs/mcp-mock-trials.md) lets a trusted local agent host drive isolated mock trials through the CLI or GitHub Action before permission is issued. The host must provide each scenario to its agent and use the supplied MCP client. The app's agent connection uses the HTTP protocol.
 
 An experimental [toolkit-style trial protocol](docs/toolkit-trials.md) lets an adapted local HTTP agent propose selected toolkit-shaped calls during mock trials. The included example uses PayPal toolkit definitions with scripted decisions. Eligible results can earn a mock-only permission and bind selected toolkit tools to the mock gateway. Selected traces can be checked for sandbox replay eligibility; actual PayPal replay of this protocol remains unverified.
 

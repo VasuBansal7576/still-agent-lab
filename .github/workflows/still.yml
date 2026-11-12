@@ -71,3 +71,21 @@ jobs:
         with:
           agent-url: http://127.0.0.1:8788/agent
           regression-file: examples/toolkit-agent-regression.json
+  mcp-agent-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install example host dependencies
+        run: npm install --prefix "$RUNNER_TEMP/still-mcp" @paypal/agent-toolkit@1.11.0 @modelcontextprotocol/sdk@1.32.2
+      - name: Gate scripted MCP host against the deterministic mock
+        uses: ./
+        env:
+          STILL_TOOLKIT_INSTALL: ${{ runner.temp }}/still-mcp
+        with:
+          agent: mcp
+          agent-module: examples/mcp-scripted-host.mjs
+          personas: '10'
+          trials: '5'
