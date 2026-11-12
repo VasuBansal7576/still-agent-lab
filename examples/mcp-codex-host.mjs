@@ -13,9 +13,9 @@ export async function runAgent({ client, customerRequest, orderId, policy, recor
   for (let step = 0; step < 16; step++) {
     const { message, requestId } = await decide({ messages, tools: definitions });
     messages.push(requestId ? { ...message, requestId } : message);
-    if (message.content) recordAgentMessage?.(message.content);
     const call = message.tool_calls?.[0];
     if (!call) return message.content;
+    if (message.content) recordAgentMessage?.(message.content);
     const result = await client.callTool({ name: call.function.name, arguments: JSON.parse(call.function.arguments), ...(requestId ? { _meta: { stillRequestId: requestId } } : {}) });
     if (result.isError || result.content?.[0]?.type !== 'text') throw new Error('Mock tool failed.');
     messages.push({ role: 'tool', content: result.content[0].text });

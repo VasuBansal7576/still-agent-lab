@@ -1,6 +1,6 @@
 # Run a trial with an MCP agent host
 
-Still can give an agent host an isolated MCP connection for each mock trial, before any permission is issued. The host must already know how to start its agent with a scenario and connect it to the provided MCP client. This is an integration API, not automatic compatibility with an arbitrary unchanged agent. The app's Connect agent screen uses the documented HTTP agent protocol instead.
+Still can give an agent host an isolated MCP connection for each mock trial, before any permission is issued. The host must already know how to start its agent with a scenario and connect it to the provided MCP client. This is an integration API, not automatic compatibility with an arbitrary unchanged agent.
 
 Run the scripted MCP example from the repository root (Node.js 22 or later):
 
@@ -22,6 +22,14 @@ STILL_TOOLKIT_INSTALL=/tmp/still-mcp-deps node bin/still.mjs test \
 The module exports `sdk`, `toolkit` and `runAgent` as described below. It executes as local Node.js code, so use only a host you trust. Still routes calls through its supplied MCP client to the mock; it does not confine the host or prevent it from making other network calls. A displayed `mcp-local-...` ID identifies the module path on that machine, not its contents or a verified agent identity. The GitHub Action accepts the same choice as `agent: mcp` and `agent-module: path/to/host.mjs`; install host dependencies before that step. Paths resolve from the current working directory.
 
 `examples/mcp-codex-host.mjs` is an optional model-backed host using the local signed-in Codex CLI to choose each action. It uses the same mock tools and needs `STILL_TOOLKIT_INSTALL`. Model availability and authentication are required; an unavailable or incomplete model run fails the gate as unverified. It does not prove a PayPal sandbox outcome.
+
+To use a trusted MCP host in the app, start Still with the module configured by the operator, then select **Configured local MCP host** on the driving-test page:
+
+```sh
+STILL_TOOLKIT_INSTALL=/tmp/still-mcp-deps STILL_MCP_AGENT_MODULE=examples/mcp-codex-host.mjs npm start
+```
+
+The module is loaded as trusted Node.js code at server startup. Do not point it at an untrusted file. The browser cannot select or change the module. Start a model-backed host with one persona and one trial; each decision can use a model call. The module path identifies this local configuration, not an authenticated agent. MCP host batches can be inspected and reopened, but they cannot currently issue a permission, start a shadow session, or replay in PayPal sandbox. Their mock results are not PayPal evidence.
 
 To integrate a host, import `createMcpTrialAgent` from `server/mcp-trial-agent.mjs` and pass the resulting function as `agent` to `runTrials`. Provide the SDK's `Server`, `Client`, `InMemoryTransport`, `ListToolsRequestSchema`, and `CallToolRequestSchema`, a `PayPalAgentToolkit` configured with supported actions, and an async `runAgent` callback. Still invokes that callback once per scenario with `client`, `customerRequest`, synthetic `orderId`, and `policy`. The host must start its agent for that scenario, let it discover and call the supplied MCP tools, then return its final customer-facing text. The example shows the callback and complete setup.
 

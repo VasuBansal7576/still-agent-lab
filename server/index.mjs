@@ -1,5 +1,6 @@
 import http from 'node:http';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { randomUUID, createHash } from 'node:crypto';
 import { createPayPalSandbox } from './paypal.mjs';
@@ -15,6 +16,7 @@ import { runExtraLeakDemo } from './extra-leak-demo.mjs';
 import { generatePersonas } from './personas.mjs';
 import { runTrials } from './trials.mjs';
 import { createExternalTrialAgent, DEFAULT_TRIAL_POLICY } from './trial-agent.mjs';
+import { createMcpTrialAgent } from './mcp-trial-agent.mjs';
 import { normalizeRefundPolicy, refundPolicyInstruction } from './refund-policy.mjs';
 import { importSandboxAccountPersonas } from './account-personas.mjs';
 import { importVerifiedAccountPersonas } from './verified-account-personas.mjs';
@@ -42,6 +44,15 @@ import { batchSandboxCoverage } from './batch-evidence.mjs';
 try { process.loadEnvFile('.env'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const port = Number(process.env.PORT || 3000);
 const modelReady = await codexReady();
+const mcpModulePath = process.env.STILL_MCP_AGENT_MODULE ? resolve(process.env.STILL_MCP_AGENT_MODULE) : null;
+let mcpHost = null;
+if (mcpModulePath) {
+  try {
+    const module = await import(pathToFileURL(mcpModulePath).href);
+    createMcpTrialAgent({ sdk: module.sdk, toolkit: module.toolkit, runAgent: module.runAgent });
+    mcpHost = module;
+  } catch { console.error('Configured MCP host could not be loaded. Check its module and dependencies.'); }
+}
 let defaultPaypal = null;
 let paypalPersistence = 'none';
 if (process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET) {
@@ -114,7 +125,7 @@ http.createServer(async (request, response) => {
       response.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
       return response.end(content);
     }
-    if (request.method === 'GET' && url.pathname === '/api/status') return send(response, 200, { ready: Boolean(session.paypal) && modelReady, paypalReady: Boolean(session.paypal), paypalPersistence, modelReady, model: process.env.CODEX_MODEL || 'gpt-6.1-terra', provider: process.env.STILL_SYNTHETIC_PROVIDER === '1' ? 'synthetic-provider-fixture' : 'paypal-sandbox' });
+    if (request.method === 'GET' && url.pathname === '/api/status') return send(response, 200, { ready: Boolean(session.paypal) && modelReady, paypalReady: Boolean(session.paypal), paypalPersistence, modelReady, mcpHostReady: Boolean(mcpHost), model: process.env.CODEX_MODEL || 'gpt-6.1-terra', provider: process.env.STILL_SYNTHETIC_PROVIDER === '1' ? 'synthetic-provider-fixture' : 'paypal-sandbox' });
     if (request.method === 'GET' && url.pathname === '/api/checkout') return send(response, 200, { checkout: publicCheckout(session.checkout) });
     if (request.method === 'GET' && url.pathname === '/api/upgrade/observed-agreement') { try { return send(response, 200, await loadObservedAgreement()); } catch { return send(response, 503, { error: 'Recorded sandbox comparison is unavailable.' }); } }
     if (request.method === 'GET' && url.pathname === '/api/scenarios') return send(response, 200, { scenarios: scenarioCatalog });
@@ -351,6 +362,7 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || typeof input.personaId !== 'string' || input.personaId.length > 200 || !Number.isSafeInteger(input.trial) || input.trial < 1) return send(response, 400, { error: 'Choose a valid batch and trial.' });
       try {
         const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        if (batch.agent === 'mcp') return send(response, 200, { status: 'not-selected', reason: 'Sandbox replay for MCP host trials is not verified.' });
         const selectedPlan = planSelectedSandboxReplay({ batchId: input.batchId, batch, personaId: input.personaId, trial: input.trial });
         if (!selectedPlan) return send(response, 200, { status: 'not-selected', reason: 'The selected trial is missing, ambiguous, or unverified.' });
         const index = 0, item = selectedPlan.queue[0];
@@ -364,6 +376,7 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || !Number.isInteger(input.index) || input.index < 0 || input.index > 100000) return send(response, 400, { error: 'Choose a replay from a valid batch.' });
       try {
         const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        if (batch.agent === 'mcp') return send(response, 400, { error: 'Sandbox replay for MCP host trials is not verified.', noOrderAttempted: true });
         const plan = input.selectionMode === 'explicit' ? planSelectedSandboxReplay({ batchId: input.batchId, batch, personaId: input.personaId, trial: input.trial }) : planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 1, offset: input.index, samplePasses: 10 });
         if (!plan) return send(response, 400, { error: 'The selected trial is missing, ambiguous, or unverified.', noOrderAttempted: true });
         const item = plan.queue.find(entry => entry.queueState === 'ready');
@@ -378,7 +391,7 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || !session.paypal) return send(response, 400, { error: 'Open a valid passing batch and connect PayPal sandbox.' });
       if (session.checkout && session.checkout.state !== 'spent') return send(response, 409, { error: 'Finish the current checkout before starting this demo.' });
       const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
-      if (batch.protocolVersion === 3) return send(response, 400, { error: 'Toolkit-protocol runs cannot earn a sandbox permission; no capture was attempted.' });
+      if (batch.protocolVersion === 3 || batch.agent === 'mcp') return send(response, 400, { error: 'Toolkit and MCP runs cannot earn a sandbox permission; no capture was attempted.' });
       const directory = fileURLToPath(new URL('../.data/replay-ledger/', import.meta.url));
       const ledger = await createReplayLedger({ directory });
       const permission = await earnSandboxPermission({ batchId: input.batchId, batch, ledger });
@@ -411,6 +424,7 @@ http.createServer(async (request, response) => {
       if (!session.paypal) return send(response, 503, { error: 'Connect a PayPal sandbox account first. No replay was attempted.' });
       try {
         const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        if (batch.agent === 'mcp') return send(response, 400, { error: 'Sandbox replay for MCP host trials is not verified.' });
         const plan = input.selectionMode === 'explicit' ? planSelectedSandboxReplay({ batchId: input.batchId, batch, personaId: input.personaId, trial: input.trial }) : planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 1, offset: input.index, samplePasses: 10 });
         if (!plan) return send(response, 400, { error: 'The selected trial is missing, ambiguous, or unverified.' });
         const item = plan.queue.find(entry => entry.queueState === 'ready');
@@ -445,6 +459,8 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid saved batch.' });
       if (input.decisionId !== undefined && (typeof input.decisionId !== 'string' || !/^[A-Za-z0-9_-]{1,127}$/.test(input.decisionId))) return send(response, 400, { error: 'Enter a decision ID using 1 to 127 letters, digits, underscores, or hyphens.' });
       try {
+        const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        if (batch.agent === 'mcp') return send(response, 400, { error: 'MCP host runs cannot issue a toolkit binding yet.' });
         const binding = await createBatchBinding(input.batchId, { decisionId: input.decisionId });
         const v3 = binding.protocolVersion === 3;
         return send(response, 200, { batchId: input.batchId, ...(v3 ? { decisionId: input.decisionId } : {}), protocolVersion: binding.protocolVersion, config: { mcpServers: { still: { command: 'node', args: [fileURLToPath(new URL('./mcp-batch-binding.mjs', import.meta.url)), input.batchId, ...(v3 ? [input.decisionId] : [])] } } }, toolkitModule: new URL('../examples/still-openai-toolkit.mjs', import.meta.url).href, scope: 'deterministic-mock' });
@@ -455,6 +471,7 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid batch.' });
       try {
         const summary = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        if (summary.agent === 'mcp') return send(response, 400, { error: 'MCP host runs cannot earn a mock permission yet.' });
         if (summary.personaSource === 'sandbox-account') return send(response, 400, { error: 'Account history and dispute coverage are incomplete, so an account-derived run cannot earn a permission.' });
         if (summary.additionalPolicy) return send(response, 400, { error: 'Additional policy instructions are not deterministically checked, so this run cannot earn a permission.' });
         const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary: currencyEvidence(summary, 'USD') });
@@ -466,6 +483,7 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid batch.' });
       try {
         const summary = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        if (summary.agent === 'mcp') return send(response, 400, { error: 'MCP host runs cannot replay a mock permission yet.' });
         if (summary.personaSource === 'sandbox-account') return send(response, 400, { error: 'Account history and dispute coverage are incomplete, so an account-derived run cannot earn a permission.' });
         if (summary.additionalPolicy) return send(response, 400, { error: 'Additional policy instructions are not deterministically checked, so this run cannot earn a permission.' });
         const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary: currencyEvidence(summary, 'USD') });
@@ -566,16 +584,17 @@ http.createServer(async (request, response) => {
       const count = Number(input.personas ?? 1000), trials = Number(input.trials ?? 5), concurrency = Number(input.concurrency ?? 20);
       const mockProfile = input.mockProfile ?? 'completed';
       const personaSource = input.personaSource ?? 'public';
-      const protocolVersion = input.protocolVersion ?? 2;
-      if (![2, 3].includes(protocolVersion) || (protocolVersion === 3 && input.agent !== 'external')) return send(response, 400, { error: 'Choose a valid local agent protocol.' });
-      if (!Number.isInteger(count) || count < 1 || count > 5000 || !Number.isInteger(trials) || trials < 1 || trials > 10 || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100 || !['safe', 'buggy', 'external'].includes(input.agent) || !['completed', 'sandbox-test-card'].includes(mockProfile)) return send(response, 400, { error: 'Choose valid trial settings, mock profile and an agent.' });
+      const protocolVersion = input.agent === 'mcp' ? null : input.protocolVersion ?? 2;
+      if ((input.agent === 'mcp' && input.protocolVersion !== undefined) || (input.agent !== 'mcp' && (![2, 3].includes(protocolVersion) || (protocolVersion === 3 && input.agent !== 'external')))) return send(response, 400, { error: 'Choose a valid local agent protocol.' });
+      if (!Number.isInteger(count) || count < 1 || count > 5000 || !Number.isInteger(trials) || trials < 1 || trials > 10 || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100 || !['safe', 'buggy', 'external', 'mcp'].includes(input.agent) || !['completed', 'sandbox-test-card'].includes(mockProfile)) return send(response, 400, { error: 'Choose valid trial settings, mock profile and an agent.' });
+      if (input.agent === 'mcp' && !mcpHost) return send(response, 503, { error: 'No MCP host is configured. Start Still with STILL_MCP_AGENT_MODULE pointing to a trusted host module.' });
       if (!['public', 'sandbox-account'].includes(personaSource)) return send(response, 400, { error: 'Choose a valid persona source.' });
       if (input.policy !== undefined && (input.agent !== 'external' || typeof input.policy !== 'string' || !input.policy.trim() || input.policy.length > 4000)) return send(response, 400, { error: 'A custom agent policy must contain 1 to 4000 characters and requires a local HTTP agent.' });
       let structuredPolicy;
       try { structuredPolicy = normalizeRefundPolicy(input.structuredPolicy); }
       catch { return send(response, 400, { error: 'Choose a positive per-refund or per-order maximum with two decimals and a three-letter currency.' }); }
       const additionalPolicy = input.policy?.trim() || null;
-      const effectivePolicy = input.agent === 'external' ? `${DEFAULT_TRIAL_POLICY}${structuredPolicy ? `\n${refundPolicyInstruction(structuredPolicy)}` : ''}${additionalPolicy ? `\nAdditional store instruction: ${additionalPolicy}` : ''}` : null;
+      const effectivePolicy = ['external', 'mcp'].includes(input.agent) ? `${DEFAULT_TRIAL_POLICY}${structuredPolicy ? `\n${refundPolicyInstruction(structuredPolicy)}` : ''}${additionalPolicy ? `\nAdditional store instruction: ${additionalPolicy}` : ''}` : null;
       let personas;
       let accountImport = null;
       if (personaSource === 'sandbox-account') {
@@ -590,6 +609,10 @@ http.createServer(async (request, response) => {
       if (agent === 'external') {
         try { agent = createExternalTrialAgent({ endpoint: input.endpoint, policy: effectivePolicy, version: protocolVersion }); agentId = `local-${createHash('sha256').update(input.endpoint).digest('hex').slice(0, 24)}`; }
         catch { return send(response, 400, { error: 'Provide a valid loopback agent endpoint.' }); }
+      }
+      if (agent === 'mcp') {
+        agent = createMcpTrialAgent({ sdk: mcpHost.sdk, toolkit: mcpHost.toolkit, runAgent: mcpHost.runAgent, policy: effectivePolicy });
+        agentId = `mcp-local-${createHash('sha256').update(mcpModulePath).digest('hex').slice(0, 24)}`;
       }
       const result = await runTrials({ personas, trials, concurrency, agent, agentId, structuredPolicy });
       const id = randomUUID();

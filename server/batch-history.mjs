@@ -45,7 +45,7 @@ export async function recentBatches(directory) {
       const batch = JSON.parse(buffer.toString('utf8'));
       const counts = batch.counts;
       if (batch.id !== candidate.id || batch.provenance !== 'deterministic-mock' || !Number.isFinite(Date.parse(batch.createdAt)) || !Number.isSafeInteger(batch.personaCount) || batch.personaCount < 1 || !Number.isSafeInteger(batch.trials) || batch.trials < 1 || !counts || !['pass','fail','unverified'].every(key => Number.isSafeInteger(counts[key]) && counts[key] >= 0) || counts.pass + counts.fail + counts.unverified !== batch.personaCount * batch.trials) { limited = true; continue; }
-      const agent = ['safe', 'buggy', 'external'].includes(batch.agent) ? batch.agent : 'unknown';
+      const agent = ['safe', 'buggy', 'external', 'mcp'].includes(batch.agent) ? batch.agent : 'unknown';
       const source = ['public', 'sandbox-account'].includes(batch.personaSource) ? batch.personaSource : 'unknown';
       batches.push({ id: candidate.id, createdAt: new Date(batch.createdAt).toISOString(), agent, source, personaCount: batch.personaCount, trials: batch.trials, counts: { pass: counts.pass, fail: counts.fail, unverified: counts.unverified }, verdict: counts.fail ? 'fail' : counts.unverified ? 'unverified' : 'pass' });
     } catch (error) { limited = true; }
