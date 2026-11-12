@@ -22,11 +22,12 @@ function trialChat(messages) {
     'Act as the support agent in the supplied conversation. Choose one next action or reply to the customer.',
     'Do not use Codex tools, shell, filesystem, network, or browser. Output only the structured response.',
     'Tool calls are proposals. The host executes them and provides the result in the next conversation. Do not invent results.',
+    'get_order takes no arguments and returns the current synthetic order; you do not need to ask the customer for its ID. get_dispute checks that order’s payment.',
     'For a refund, set the fields you intend to supply. Use an empty string for omitted fields. Keep the same requestId and arguments for a retry of the same uncertain refund.',
     `Conversation: ${JSON.stringify(messages)}`
   ].join('\n');
   return new Promise((resolve, reject) => {
-    const child = spawn('codex', ['exec', '--ephemeral', '--ignore-user-config', '--skip-git-repo-check', '--sandbox', 'read-only', '--disable', 'shell_tool', '--disable', 'unified_exec', '--disable', 'apps', '--disable', 'plugins', '--disable', 'browser_use', '--disable', 'code_mode_host', '--model', 'gpt-6.1-terra', '--output-schema', schemaPath, '--json', '-'], { cwd: tmpdir(), stdio: ['pipe', 'pipe', 'ignore'] });
+    const child = spawn('codex', ['exec', '--ephemeral', '--ignore-user-config', '--skip-git-repo-check', '--sandbox', 'read-only', '--disable', 'shell_tool', '--disable', 'unified_exec', '--disable', 'apps', '--disable', 'plugins', '--disable', 'browser_use', '--disable', 'code_mode_host', '-c', 'web_search="disabled"', '--model', 'gpt-6.1-terra', '--output-schema', schemaPath, '--json', '-'], { cwd: tmpdir(), stdio: ['pipe', 'pipe', 'ignore'] });
     let output = '';
     const timer = setTimeout(() => child.kill('SIGKILL'), 55000);
     child.stdout.setEncoding('utf8');
@@ -49,7 +50,7 @@ function trialChat(messages) {
   });
 }
 const port = Number(process.env.AGENT_PORT || 8787);
-if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('AGENT_PORT must be a valid port number.');
+if (!Number.isInteger(port) || port < (process.env.STILL_MANAGED_MODEL === '1' ? 0 : 1) || port > 65535) throw new Error('AGENT_PORT must be a valid port number.');
 
 const server = http.createServer(async (request, response) => {
   const send = (status, value) => {
@@ -95,4 +96,9 @@ const server = http.createServer(async (request, response) => {
     return send(200, { content: message.content || '', tool: { name: calls[0].function.name, arguments: args } });
   } catch { return send(400, { error: 'Could not read agent request.' }); }
 });
-server.listen(port, '127.0.0.1', () => console.log(`Codex agent listening at http://127.0.0.1:${port}/agent`));
+server.listen(port, '127.0.0.1', () => {
+  const actualPort = server.address().port;
+  if (process.env.STILL_MANAGED_MODEL === '1' && process.send) process.send({ type: 'ready', port: actualPort });
+  else console.log(`Codex agent listening at http://127.0.0.1:${actualPort}/agent`);
+});
+if (process.env.STILL_MANAGED_MODEL === '1') process.on('disconnect', () => server.close(() => process.exit(0)));

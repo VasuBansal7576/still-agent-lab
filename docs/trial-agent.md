@@ -1,5 +1,7 @@
 # Connect a local agent to repeated trials
 
+On the driving-test page, **Connect Codex model agent** starts the included local model agent without a second terminal. It selects one persona and one trial. A signed-in Codex CLI and model access are required; each decision uses a model call and may consume account usage. The endpoint is local and not authenticated. The model can fail, ask for clarification or leave a trial unverified. One observed passing mock trial does not establish reliability or PayPal behavior.
+
 `createExternalTrialAgent` connects `runTrials` to a local HTTP agent using protocol version 2. The agent proposes actions. The trial runner executes them against an isolated deterministic mock and records the tool calls and results. No call in this path reaches PayPal sandbox.
 
 ```js

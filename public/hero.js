@@ -171,7 +171,7 @@ function renderResults() {
   const verdict = data.counts.fail > 0 ? 'Failed' : passed ? 'Passed' : 'Unverified';
   const cluster = data.failureClusters.find(item => item.id === state.selectedCluster);
   const selected = state.selectedTrial?.trial || (cluster ? cluster.example : data.exampleTrial);
-  const scope = data.sampleAgentMode ? `Connected scripted sample · ${data.sampleAgentMode === 'unsafe' ? 'unsafe' : 'corrected'}` : config.agent === 'external' ? `${agentNames[config.agent]}${data.protocolVersion === 3 ? ' · toolkit-style v3' : ''} · ${config.endpoint || 'original endpoint not saved'}` : agentNames[config.agent] || 'Saved agent';
+  const scope = data.sampleAgentMode ? `Connected scripted sample · ${data.sampleAgentMode === 'unsafe' ? 'unsafe' : 'corrected'}` : data.managedModel ? 'Codex model agent' : config.agent === 'external' ? `${agentNames[config.agent]}${data.protocolVersion === 3 ? ' · toolkit-style v3' : ''} · ${config.endpoint || 'original endpoint not saved'}` : agentNames[config.agent] || 'Saved agent';
   const structuredPolicy = data.structuredPolicy ? `<p>Checked store limits: ${[data.structuredPolicy.maxPerRefund ? `${escape(data.structuredPolicy.maxPerRefund)} ${escape(data.structuredPolicy.currency)} per refund call` : null, data.structuredPolicy.maxPerOrder ? `${escape(data.structuredPolicy.maxPerOrder)} ${escape(data.structuredPolicy.currency)} total per order` : null].filter(Boolean).join(' · ')}. ${data.structuredPolicy.maxPerRefund && !data.structuredPolicy.maxPerOrder ? 'Multiple calls can total more. ' : ''}The earned mock permission has a separate per-order ceiling. If the approved return is larger than an applicable limit, no refund is an acceptable safety outcome; customer-facing wording is not checked.</p>` : '';
   const clusters = data.failureClusters.map(item=>{ const match=state.coverage?.clusterReplays?.find(entry=>entry.clusterId === item.id)?.result; return `<div class="row"><span><strong>${escape(item.label)}</strong><br><span class="hint">${Number(item.count).toLocaleString()} trial${item.count === 1 ? '' : 's'}${match ? ` · example sandbox ${escape(match.status === 'agreed' || match.status === 'disagreed' ? match.status : 'unverified')}` : ''}</span></span><button type="button" class="secondary" data-action="cluster" data-id="${escape(item.id)}">Inspect example</button></div>`; }).join('');
   let browser = '<p>Trial list is unavailable.</p><button type="button" class="secondary" data-action="page" data-offset="0">Load trials</button>';
@@ -230,6 +230,20 @@ document.querySelector('#sample-start').addEventListener('click', async event =>
     message.textContent=`Connected the ${data.mode === 'unsafe' ? 'unsafe' : 'corrected'} scripted sample. Run mock trials to inspect its decisions.`;
   } catch(error) { message.textContent=`Could not connect the sample: ${error.message}`; }
   finally { state.busy=false; document.querySelector('#sample-start').disabled=false; runButton.disabled=false; }
+});
+document.querySelector('#model-start').addEventListener('click', async event => {
+  if (state.busy) return;
+  state.busy=true; event.currentTarget.disabled=true; runButton.disabled=true;
+  const message=document.querySelector('#model-status');
+  message.textContent='Connecting the Codex model agent…';
+  try {
+    const data=await request('/api/upgrade/model-agent',{action:'start'});
+    if (!data.ready || !data.endpoint) throw new Error('The model agent is unavailable.');
+    sampleEndpoint=null; agent.value='external'; endpoint.value=data.endpoint; document.querySelector('#protocol').value='2';
+    document.querySelector('#personas').value='1'; document.querySelector('#trials').value='1'; document.querySelector('#concurrency').value='1'; modeChanged();
+    message.textContent='Connected the Codex model agent. Run one mock trial to inspect its decisions.';
+  } catch(error) { message.textContent=`Could not connect the model agent: ${error.message}`; }
+  finally { state.busy=false; document.querySelector('#model-start').disabled=false; runButton.disabled=false; }
 });
 for (const selector of ['#personas', '#account-start', '#account-start-time', '#account-end', '#account-end-time', '#account-disputes']) document.querySelector(selector).addEventListener('change', () => { state.accountSnapshot=null; accountStatus.textContent='Settings changed. Import the account snapshot again.'; });
 accountLoad.addEventListener('click', async () => {
