@@ -88,3 +88,7 @@ The guided `/upgrade` path selects a scripted agent, runs 1,000 personas by five
 The [demo video](still-demo.mp4) is 136.49 seconds, with H.264 video and AAC narration. It includes a continuous browser capture of the guided journey followed by narrated close-ups of browser captures. The PayPal results shown are saved sandbox evidence. The mock batches and permission gateway are labeled. Visual frames and non-silent audio were checked after rendering. A prior montage-only version was uploaded privately to YouTube; the final video is not yet public on YouTube.
 
 The guided retry cluster now displays the source attached to that cluster's actual example persona. A browser run showed persona `persona-ec0b086975ca96da7f2f` and the same τ-bench `instruction-line-272` source in both the trace and provenance panel. The corrected mock run and permission gateway then completed. Earlier recordings were made before this provenance correction.
+
+## Fresh-clone checkpoint
+
+A fresh public clone of `f50f706` started at the README's default address. The browser completed the guided journey and displayed the retry example's matching source, the saved sandbox responses, both 5,000-trial mock results, and the mock gateway's block and allow decisions. The downloaded permission file was inspected and specifies the deterministic mock scope, four USD personas, and 20 trials. [Batch summaries and downloaded permission](evidence/fresh-clone-f50.json) preserve the mock evidence. This check did not make a new PayPal payment.
