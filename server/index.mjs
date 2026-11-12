@@ -373,7 +373,6 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || typeof input.personaId !== 'string' || input.personaId.length > 200 || !Number.isSafeInteger(input.trial) || input.trial < 1) return send(response, 400, { error: 'Choose a valid batch and trial.' });
       try {
         const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
-        if (batch.agent === 'mcp') return send(response, 200, { status: 'not-selected', reason: 'Sandbox replay for MCP host trials is not verified.' });
         const selectedPlan = planSelectedSandboxReplay({ batchId: input.batchId, batch, personaId: input.personaId, trial: input.trial });
         if (!selectedPlan) return send(response, 200, { status: 'not-selected', reason: 'The selected trial is missing, ambiguous, or unverified.' });
         const index = 0, item = selectedPlan.queue[0];
@@ -387,7 +386,7 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || !Number.isInteger(input.index) || input.index < 0 || input.index > 100000) return send(response, 400, { error: 'Choose a replay from a valid batch.' });
       try {
         const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
-        if (batch.agent === 'mcp') return send(response, 400, { error: 'Sandbox replay for MCP host trials is not verified.', noOrderAttempted: true });
+        if (batch.agent === 'mcp' && input.selectionMode !== 'explicit') return send(response, 400, { error: 'Select the MCP trial explicitly before creating a sandbox order.', noOrderAttempted: true });
         const plan = input.selectionMode === 'explicit' ? planSelectedSandboxReplay({ batchId: input.batchId, batch, personaId: input.personaId, trial: input.trial }) : planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 1, offset: input.index, samplePasses: 10 });
         if (!plan) return send(response, 400, { error: 'The selected trial is missing, ambiguous, or unverified.', noOrderAttempted: true });
         const item = plan.queue.find(entry => entry.queueState === 'ready');
@@ -435,7 +434,7 @@ http.createServer(async (request, response) => {
       if (!session.paypal) return send(response, 503, { error: 'Connect a PayPal sandbox account first. No replay was attempted.' });
       try {
         const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
-        if (batch.agent === 'mcp') return send(response, 400, { error: 'Sandbox replay for MCP host trials is not verified.' });
+        if (batch.agent === 'mcp' && input.selectionMode !== 'explicit') return send(response, 400, { error: 'Select the MCP trial explicitly before replaying it.' });
         const plan = input.selectionMode === 'explicit' ? planSelectedSandboxReplay({ batchId: input.batchId, batch, personaId: input.personaId, trial: input.trial }) : planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 1, offset: input.index, samplePasses: 10 });
         if (!plan) return send(response, 400, { error: 'The selected trial is missing, ambiguous, or unverified.' });
         const item = plan.queue.find(entry => entry.queueState === 'ready');

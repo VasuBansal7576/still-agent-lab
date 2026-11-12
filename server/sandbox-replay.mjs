@@ -18,7 +18,7 @@ export function planSandboxReplays({ batchId, batch, maxRuns, offset = 0, sample
     const key = keyFor(batchId, result);
     if (seen.has(key)) throw new Error('Duplicate persona and trial identity in batch.');
     seen.add(key);
-    const item = { key, personaId: String(result.personaId), trial: result.trial, status: result.status, events: result.events, finalPayment: result.finalPayment, toolkitProtocol: result.toolkitProtocol === true || batch.protocolVersion === 3 };
+    const item = { key, personaId: String(result.personaId), trial: result.trial, status: result.status, events: result.events, finalPayment: result.finalPayment, toolkitProtocol: result.toolkitProtocol === true || batch.protocolVersion === 3 || batch.agent === 'mcp' };
     if (result.status === 'fail') failures.push(item);
     if (result.status === 'pass') passes.push(item);
   }
@@ -106,7 +106,7 @@ export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } =
     if (!receipt && item.queueState !== 'ready') return unverified(item, 'Deferred by the execution limit.');
     const expected = comparable(item);
     if (expected.reason) return unverified(item, expected.reason);
-    if (!receipt) return unverified(item, 'No executor receipt was supplied.');
+    if (!receipt) return unverified(item, 'No sandbox comparison has been recorded yet.');
     const simulated = receipt.source === 'simulated-provider-fixture' && receipt.simulated === true;
     if (!simulated && (receipt.source !== 'paypal-sandbox' || receipt.executor !== 'trusted-local' || receipt.simulated !== false || receipt.buyerApprovedFreshCapture !== true && receipt.humanApprovedFreshCapture !== true && receipt.funding !== 'paypal-sandbox-test-card')) return unverified(item, 'A trusted local executor must attest to a real sandbox response and a buyer-approved fresh capture.');
     if (!simulated) {

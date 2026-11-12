@@ -1,0 +1,10 @@
+{
+  "selection": "supported",
+  "sandboxBefore": "unverified",
+  "simulatedSource": "simulated-provider-fixture",
+  "simulatedComparison": "simulated-agreed",
+  "sandboxComparisons": 0,
+  "refundCalls": 1,
+  "repeatedCheckout": "unverified",
+  "mismatchedCapture": "unsupported"
+}

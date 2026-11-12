@@ -1,0 +1,8 @@
+{
+  "source": "simulated-provider-fixture",
+  "recordedCalls": 2,
+  "sameRequestId": true,
+  "comparison": "simulated-agreed",
+  "sandboxComparisons": 0,
+  "checkout": "spent"
+}
