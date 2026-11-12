@@ -284,12 +284,12 @@ results.addEventListener('click', async event => {
       const selected = state.selectedTrial?.trial || cluster?.example || state.run.data.exampleTrial;
       state.selectedReplay = await request('/api/upgrade/replay-select',{batchId:runId,personaId:selected.personaId,trial:selected.trial});
     }
-    if (action === 'sandbox-prepare') { const data=await request('/api/upgrade/replay-prepare',{batchId:runId,index:state.selectedReplay.index}); state.selectedReplay.checkout=data.checkout; state.selectedReplay.checkoutMatches=true; }
+    if (action === 'sandbox-prepare') { const selected=state.selectedReplay; const data=await request('/api/upgrade/replay-prepare',{batchId:runId,index:selected.index,selectionMode:selected.selectionMode,personaId:selected.personaId,trial:selected.trial}); state.selectedReplay.checkout=data.checkout; state.selectedReplay.checkoutMatches=true; }
     if (action === 'sandbox-capture') { const data=await request(`/api/orders/${encodeURIComponent(state.selectedReplay.checkout.orderId)}/capture`,{}); state.selectedReplay.checkout=data.checkout; }
     if (action === 'sandbox-dispute') { const data=await request('/api/upgrade/replay-dispute',{disputeId:document.querySelector('#selected-dispute-id').value.trim()}); state.selectedReplay.checkout.replayDisputeId=data.id; }
     if (action === 'sandbox-execute') {
       const old=state.selectedReplay;
-      const result=await request('/api/upgrade/replay-execute',{batchId:runId,index:old.index});
+      const result=await request('/api/upgrade/replay-execute',{batchId:runId,index:old.index,selectionMode:old.selectionMode,personaId:old.personaId,trial:old.trial});
       state.selectedReplay={...old,locked:true,result};
       const updated=await request('/api/upgrade/replay-select',{batchId:runId,personaId:old.personaId,trial:old.trial});
       state.selectedReplay={...updated,locked: !['recorded','recorded-unverified'].includes(updated.execution),result};

@@ -29,6 +29,16 @@ export function planSandboxReplays({ batchId, batch, maxRuns, offset = 0, sample
   return { batchId, seed, maxRuns, offset, samplePassesRequested: samplePasses, failureCount: failures.length, sampledPassCount: Math.min(samplePasses, passes.length), excludedUnverifiedCount: batch.results.filter(item => item.status === 'unverified').length, queueCount: queue.length, readyCount: Math.min(maxRuns, Math.max(0, queue.length - offset)), deferredCount: queue.length - Math.min(maxRuns, Math.max(0, queue.length - offset)), queue: queue.map((item, index) => ({ ...item, queueState: index >= offset && index < offset + maxRuns ? 'ready' : 'deferred' })) };
 }
 
+/** Select one server-owned trial without changing the sampled coverage plan. */
+export function planSelectedSandboxReplay({ batchId, batch, personaId, trial } = {}) {
+  if (typeof personaId !== 'string' || !personaId || personaId.length > 200 || !Number.isSafeInteger(trial) || trial < 1 || !Array.isArray(batch?.results)) throw new TypeError('Choose a valid trial identity.');
+  const matches = batch.results.filter(result => result?.personaId === personaId && result?.trial === trial);
+  if (matches.length !== 1 || !['pass', 'fail'].includes(matches[0].status)) return null;
+  const plan = planSandboxReplays({ batchId, batch: { ...batch, results: matches }, maxRuns: 1, samplePasses: 1 });
+  plan.queue[0].reason = 'selected-trial';
+  return plan;
+}
+
 function comparable(item) {
   const normalized = normalizeToolkitReplay(item);
   if (normalized.reason) return normalized;

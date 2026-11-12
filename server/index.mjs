@@ -20,7 +20,7 @@ import { importSandboxAccountPersonas } from './account-personas.mjs';
 import { importVerifiedAccountPersonas } from './verified-account-personas.mjs';
 import { derivePermission, createGateway } from './gateway.mjs';
 import { createPayPalMock } from './paypal-mock.mjs';
-import { planSandboxReplays, reconcileSandboxReplays, executePlannedSandboxReplay, sandboxReplayPage } from './sandbox-replay.mjs';
+import { planSandboxReplays, planSelectedSandboxReplay, reconcileSandboxReplays, executePlannedSandboxReplay, sandboxReplayPage } from './sandbox-replay.mjs';
 import { summarizeReplayFidelity } from './replay-fidelity.mjs';
 import { summarizeDelayedReplays } from './delayed-replay-reconciliation.mjs';
 import { summarizeFreshReplays } from './fresh-replay-summary.mjs';
@@ -349,14 +349,12 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || typeof input.personaId !== 'string' || input.personaId.length > 200 || !Number.isSafeInteger(input.trial) || input.trial < 1) return send(response, 400, { error: 'Choose a valid batch and trial.' });
       try {
         const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
-        const plan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 0, samplePasses: 10 });
-        const index = plan.queue.findIndex(item => item.personaId === input.personaId && item.trial === input.trial);
-        if (index < 0) return send(response, 200, { status: 'not-selected', reason: 'This trial is not a failure or one of the sampled passing trials in the sandbox queue.' });
-        const selectedPlan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 1, offset: index, samplePasses: 10 });
-        const item = selectedPlan.queue[index];
+        const selectedPlan = planSelectedSandboxReplay({ batchId: input.batchId, batch, personaId: input.personaId, trial: input.trial });
+        if (!selectedPlan) return send(response, 200, { status: 'not-selected', reason: 'The selected trial is missing, ambiguous, or unverified.' });
+        const index = 0, item = selectedPlan.queue[0];
         const ledger = await createReplayLedger({ directory: fileURLToPath(new URL('../.data/replay-ledger/', import.meta.url)) });
         const page = sandboxReplayPage({ plan: selectedPlan, evidence: await ledger.evidence(), verifyReceipt: ledger.verifyReceipt, offset: index, limit: 1 });
-        return send(response, 200, { status: 'selected', batchId: input.batchId, personaId: item.personaId, trial: item.trial, index, ...page.items[0], paypalReady: Boolean(session.paypal), checkout: publicCheckout(session.checkout), checkoutMatches: session.checkout?.replayKey === item.key });
+        return send(response, 200, { status: 'selected', batchId: input.batchId, personaId: item.personaId, trial: item.trial, index, ...page.items[0], selectionMode: 'explicit', paypalReady: Boolean(session.paypal), checkout: publicCheckout(session.checkout), checkoutMatches: session.checkout?.replayKey === item.key });
       } catch { return send(response, 400, { error: 'The selected sandbox replay could not be loaded.' }); }
     }
     if (url.pathname === '/api/upgrade/replay-prepare') {
@@ -364,7 +362,8 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || !Number.isInteger(input.index) || input.index < 0 || input.index > 100000) return send(response, 400, { error: 'Choose a replay from a valid batch.' });
       try {
         const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
-        const plan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 1, offset: input.index, samplePasses: 10 });
+        const plan = input.selectionMode === 'explicit' ? planSelectedSandboxReplay({ batchId: input.batchId, batch, personaId: input.personaId, trial: input.trial }) : planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 1, offset: input.index, samplePasses: 10 });
+        if (!plan) return send(response, 400, { error: 'The selected trial is missing, ambiguous, or unverified.', noOrderAttempted: true });
         const item = plan.queue.find(entry => entry.queueState === 'ready');
         if (!item) return send(response, 400, { error: 'No replay exists at this position.' });
         const result = await createReplayCheckout({ session, item });
@@ -410,7 +409,8 @@ http.createServer(async (request, response) => {
       if (!session.paypal) return send(response, 503, { error: 'Connect a PayPal sandbox account first. No replay was attempted.' });
       try {
         const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
-        const plan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 1, offset: input.index, samplePasses: 10 });
+        const plan = input.selectionMode === 'explicit' ? planSelectedSandboxReplay({ batchId: input.batchId, batch, personaId: input.personaId, trial: input.trial }) : planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 1, offset: input.index, samplePasses: 10 });
+        if (!plan) return send(response, 400, { error: 'The selected trial is missing, ambiguous, or unverified.' });
         const item = plan.queue.find(entry => entry.queueState === 'ready');
         if (!item) return send(response, 400, { error: 'No replay exists at this position.' });
         if (session.checkout?.replayKey !== item.key) return send(response, 409, { error: 'The active checkout belongs to a different replay.' });
