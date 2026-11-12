@@ -1,0 +1,305 @@
+{
+  "source": "paypal-sandbox",
+  "observedAt": "2026-11-12T06:58:21.852Z",
+  "delayed": {
+    "timing": "delayed-continuation",
+    "recorded": 800,
+    "compared": 799,
+    "agreed": 0,
+    "disagreed": 799,
+    "unverified": 1
+  },
+  "freshReplacements": [
+    {
+      "originalKey": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-00233e42116b64126550\",1]",
+      "replacementBatchId": "a707fdaa-32ed-42ac-a079-9ac3abf22fd1",
+      "status": "disagreed",
+      "capture": {
+        "id": "4F596924RA0989445",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "173.43",
+          "currency_code": "GBP"
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "4F596924RA0989445",
+            "amount": "86.71",
+            "currency": "GBP",
+            "requestId": "still-ef7a7568c0ebdf2b5b4ea3651a29fb0c5ed6f45f"
+          },
+          "refund": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "8C0864210H5456030",
+              "status": "PENDING",
+              "amount": {
+                "value": "86.71",
+                "currency_code": "GBP"
+              }
+            }
+          }
+        },
+        {
+          "request": {
+            "captureId": "4F596924RA0989445",
+            "amount": "86.71",
+            "currency": "GBP",
+            "requestId": "still-e18252d15da3ed6954a535a4336724fb5aaedf4b"
+          },
+          "refund": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "92X85362EL884450R",
+              "status": "PENDING",
+              "amount": {
+                "value": "86.71",
+                "currency_code": "GBP"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "originalKey": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-aeb22728711d820bf1af\",3]",
+      "replacementBatchId": "a6c448b2-ace2-4249-9ad6-f7be04a60657",
+      "status": "unverified",
+      "reason": "Not all refund calls have a verified provider response.",
+      "capture": {
+        "id": "35X259462M0711606",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "34.00",
+          "currency_code": "GBP"
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "35X259462M0711606",
+            "amount": "17.00",
+            "currency": "GBP",
+            "requestId": "still-ecb47d25cac33383125a6051c1267ba86e87e1e9"
+          },
+          "refund": {
+            "ok": false,
+            "status": 422,
+            "body": {
+              "name": "UNPROCESSABLE_ENTITY",
+              "details": [
+                {
+                  "issue": "REFUND_FAILED_INSUFFICIENT_FUNDS"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "originalKey": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-aeb22728711d820bf1af\",1]",
+      "replacementBatchId": "6f61f9ec-fff1-488f-954a-6c73bde5d43c",
+      "status": "unverified",
+      "reason": "Not all refund calls have a verified provider response.",
+      "capture": {
+        "id": "2T80316337183841E",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "34.00",
+          "currency_code": "GBP"
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "2T80316337183841E",
+            "amount": "17.00",
+            "currency": "GBP",
+            "requestId": "still-7fdbaf47bc897b3fbac790ea70e0f26f69b10323"
+          },
+          "refund": {
+            "ok": false,
+            "status": 422,
+            "body": {
+              "name": "UNPROCESSABLE_ENTITY",
+              "details": [
+                {
+                  "issue": "REFUND_FAILED_INSUFFICIENT_FUNDS"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "originalKey": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-aeb22728711d820bf1af\",5]",
+      "replacementBatchId": "d3c9d6d6-0aea-4be3-9e3b-cbd059a6d1e6",
+      "status": "unverified",
+      "reason": "Not all refund calls have a verified provider response.",
+      "capture": {
+        "id": "76D246196L016070N",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "34.00",
+          "currency_code": "GBP"
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "76D246196L016070N",
+            "amount": "17.00",
+            "currency": "GBP",
+            "requestId": "still-dedf800c08e63610719ca7407c6e48b5ee9153e5"
+          },
+          "refund": {
+            "ok": false,
+            "status": 422,
+            "body": {
+              "name": "UNPROCESSABLE_ENTITY",
+              "details": [
+                {
+                  "issue": "REFUND_FAILED_INSUFFICIENT_FUNDS"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "originalKey": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-aeb22728711d820bf1af\",2]",
+      "replacementBatchId": "89e4a482-79b5-44d2-91ef-6a59258b9905",
+      "status": "unverified",
+      "reason": "Not all refund calls have a verified provider response.",
+      "capture": {
+        "id": "5WG605755T8379153",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "34.00",
+          "currency_code": "GBP"
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "5WG605755T8379153",
+            "amount": "17.00",
+            "currency": "GBP",
+            "requestId": "still-7c2f118884f4016b20f4c05a750205ca5d364e70"
+          },
+          "refund": {
+            "ok": false,
+            "status": 422,
+            "body": {
+              "name": "UNPROCESSABLE_ENTITY",
+              "details": [
+                {
+                  "issue": "REFUND_FAILED_INSUFFICIENT_FUNDS"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "originalKey": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-aeb22728711d820bf1af\",4]",
+      "replacementBatchId": "ad6f92e8-efce-4125-8a7b-c61c1bf3ae84",
+      "status": "unverified",
+      "reason": "Not all refund calls have a verified provider response.",
+      "capture": {
+        "id": "94U17988AH320192A",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "34.00",
+          "currency_code": "GBP"
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "94U17988AH320192A",
+            "amount": "17.00",
+            "currency": "GBP",
+            "requestId": "still-1489c21838213ac3626ad609b80abcaac1585a57"
+          },
+          "refund": {
+            "ok": false,
+            "status": 422,
+            "body": {
+              "name": "UNPROCESSABLE_ENTITY",
+              "details": [
+                {
+                  "issue": "REFUND_FAILED_INSUFFICIENT_FUNDS"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "originalKey": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-00233e42116b64126550\",3]",
+      "replacementBatchId": "5e33e716-41fe-4dcb-8fbd-ec2eda55f5e1",
+      "status": "disagreed",
+      "capture": {
+        "id": "1JG37025TS363090R",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "173.43",
+          "currency_code": "GBP"
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "1JG37025TS363090R",
+            "amount": "86.71",
+            "currency": "GBP",
+            "requestId": "still-4ac05773efb61e349cf84b0a3442463c754002f6"
+          },
+          "refund": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "7HL562920V5938714",
+              "status": "PENDING",
+              "amount": {
+                "value": "86.71",
+                "currency_code": "GBP"
+              }
+            }
+          }
+        },
+        {
+          "request": {
+            "captureId": "1JG37025TS363090R",
+            "amount": "86.71",
+            "currency": "GBP",
+            "requestId": "still-082cbc61203bb784ec8bb1a1b431c537f1ea33ca"
+          },
+          "refund": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "538044814L5613542",
+              "status": "PENDING",
+              "amount": {
+                "value": "86.71",
+                "currency_code": "GBP"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "limitation": "Fresh sandbox attempts and delayed continuations are separate from original immediate receipts. Pending refunds are not completed; complete external history is not established."
+}
