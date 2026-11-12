@@ -56,7 +56,7 @@ With a qualifying v2 or v3 mock permission open, shadow mode records the connect
 
 After promotion, **Rerun the connected agent** asks the current v2 or v3 endpoint to make decisions again against a fresh mock and compares its calls and outcomes with the recording. A changed result needs inspection; an unavailable agent is unverified.
 
-You can export a supported synthetic mock regression and run it with `still regression` or the GitHub Action. The agent is invoked again, and changed or unverified results fail the gate. The export is a mock fixture; its checksum is not an authenticity signature.
+You can export a supported v2 or v3 synthetic mock regression and run it with `still regression` or the GitHub Action. The agent is invoked again, and changed or unverified results fail the gate. The export is a mock fixture; its checksum is not an authenticity signature.
 
 To revisit a run after a refresh, open it from **Recent runs** or enter an older batch ID. **Show sandbox coverage** reads that batch's saved immediate replay receipts without making a PayPal request. It reports agreements, disagreements and unverified cases separately; an agreement can include a `PENDING` refund, which is not a completed refund. Saved batches are local to the machine that ran them.
 

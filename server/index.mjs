@@ -516,7 +516,7 @@ http.createServer(async (request, response) => {
           return send(response, 200, { regression: await shadowSessions.promote(input.id), replay: await shadowSessions.replay(input.id) });
         }
         if (input.action === 'export-agent') {
-          if (session.shadowDriverPending || !session.shadowIds?.has(input.id) || session.shadowAgentRecord?.id !== input.id || session.shadowAgentRecord.status !== 'completed') return send(response, 400, { error: 'Promote a completed toolkit mock recording in this browser session first.' });
+          if (session.shadowDriverPending || !session.shadowIds?.has(input.id) || session.shadowAgentRecord?.id !== input.id || session.shadowAgentRecord.status !== 'completed') return send(response, 400, { error: 'Promote a completed connected-agent mock recording in this browser session first.' });
           return send(response, 200, { artifact: await exportPortableShadow({ sourceId: input.id, store: shadowSessions }) });
         }
         if (input.action === 'rerun-agent') {

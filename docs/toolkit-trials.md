@@ -25,9 +25,9 @@ For a mock shadow session, open a passing v3 batch, request its mock permission,
 
 After promotion, **Rerun the connected agent** invokes the current local endpoint again against a fresh mock with the recorded scenario and the same batch-derived permission. It compares ordered tool names, arguments, decision-ID reuse patterns and mock gateway outcomes with the recording. A fresh decision ID may differ between sessions, but retries must preserve the same reuse relationships within each session. `Matched` means those observed calls and results matched; `changed` reports differing call positions and does not by itself decide whether a change is unsafe. An unavailable or incomplete agent is unverified. Older sessions without a recorded permission fingerprint cannot be rerun. This action does not contact PayPal or authenticate the agent.
 
-Choose **Export agent regression** after promotion to download the supported synthetic mock scenario, mock permission and recorded calls. The export excludes the conversation and endpoint; decision IDs are hashed for comparison. It supports only the fixed synthetic order and capture, the three documented toolkit calls, and a reproducible recorded gateway outcome. Unsupported or incomplete recordings cannot be exported. Inspect an export before sharing it; it contains the mock permission, amounts and call results.
+Choose **Export agent regression** after promotion to download the supported synthetic mock scenario, mock permission and recorded calls. The export excludes the conversation and endpoint; decision IDs are hashed for comparison. For v3 it supports the fixed synthetic order and capture and the three documented toolkit calls. For v2 it supports the synthetic order, dispute, capture, and the get-order, get-dispute and refund calls. Recorded gateway outcomes must reproduce before export. Unsupported or incomplete recordings cannot be exported. Inspect an export before sharing it; it contains the mock permission, amounts and call results.
 
-Run the downloaded artifact against a running v3 agent:
+Run the downloaded artifact against a running agent using the protocol it was recorded with:
 
 ```sh
 node bin/still.mjs regression --file still-agent-regression.json --agent-url http://127.0.0.1:8788/agent

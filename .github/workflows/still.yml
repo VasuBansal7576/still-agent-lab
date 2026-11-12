@@ -18,6 +18,28 @@ jobs:
           max-refund: '100.00'
           max-order-refund: '100.00'
           refund-currency: USD
+  http-agent-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Start the scripted HTTP agent
+        shell: bash
+        run: |
+          AGENT_PORT=8787 STILL_AGENT_MODE=safe node examples/trial-agent.mjs > "$RUNNER_TEMP/still-http-agent.log" 2>&1 &
+          for attempt in {1..30}; do
+            if (echo > /dev/tcp/127.0.0.1/8787) 2>/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/still-http-agent.log"
+          exit 1
+      - name: Rerun exported HTTP agent regression
+        uses: ./
+        with:
+          agent-url: http://127.0.0.1:8787/agent
+          regression-file: examples/http-agent-regression.json
   toolkit-agent-gate:
     runs-on: ubuntu-latest
     steps:

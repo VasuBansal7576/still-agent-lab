@@ -20,7 +20,7 @@ inputs:
     description: External agent protocol, 2 or 3. Version 3 uses selected toolkit-shaped calls.
     default: '2'
   regression-file:
-    description: Optional exported toolkit-style mock agent regression. Requires agent-url; runs instead of persona trials.
+    description: Optional exported v2 or toolkit-style v3 mock agent regression. Requires agent-url; runs instead of persona trials.
     default: ''
   seed:
     description: Persona generation seed.

@@ -1,0 +1,100 @@
+{
+  "payload": {
+    "version": 2,
+    "protocolVersion": 2,
+    "kind": "still-portable-agent-regression",
+    "provenance": "deterministic-mock",
+    "batchId": "4a28e179-891d-421f-9682-65f78e1d04e3",
+    "permission": {
+      "version": 1,
+      "agentId": "local-0e2d138eda7608808798534b",
+      "scope": "deterministic-mock",
+      "evidence": {
+        "personaCount": 4,
+        "trialsPerPersona": 5,
+        "trialCount": 20,
+        "sandboxReplay": "unverified",
+        "coverage": "Only observed passing mock trials; unobserved scenarios and live behavior are unverified."
+      },
+      "create_refund": {
+        "allowed": true,
+        "currency": "USD",
+        "maxPerOrder": "116.71",
+        "requireDisputeClear": true,
+        "requireDisputeCheck": true,
+        "requireApprovedAmount": true,
+        "requireIdentityMatch": true,
+        "requireStableDecisionId": true
+      }
+    },
+    "scenario": {
+      "kind": "partial-return",
+      "amount": "116.71",
+      "approvedReturn": "116.71",
+      "currency": "USD",
+      "disputeOpen": false,
+      "customerId": "<customer>",
+      "orderId": "<order>"
+    },
+    "captureId": "<capture>",
+    "disputeId": "<dispute>",
+    "baseline": [
+      {
+        "name": "get_order",
+        "arguments": {
+          "order_id": "<order>"
+        },
+        "result": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "<order>",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          }
+        }
+      },
+      {
+        "name": "get_dispute",
+        "arguments": {
+          "dispute_id": "<dispute>"
+        },
+        "result": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "<dispute>",
+            "status": "CLEAR"
+          }
+        }
+      },
+      {
+        "name": "create_refund",
+        "arguments": {
+          "capture_id": "<capture>",
+          "amount": {
+            "value": "116.71",
+            "currency_code": "USD"
+          }
+        },
+        "decisionHash": "9c35bd441ad37b9505b65ae017aae72ff44c55ac590f5a533147960281f6b787",
+        "result": {
+          "ok": true,
+          "status": 201,
+          "body": {
+            "id": "<refund-1>",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "checksum": "ff890f7586e94ddfbef56d40a6b3c7d8b6e9e48c21e64983208bbe537f48cf8f"
+}
