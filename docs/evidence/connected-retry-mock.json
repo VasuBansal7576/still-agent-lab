@@ -441,5 +441,31 @@
       "status": "unverified",
       "reason": "No sandbox replay was performed."
     }
-  }
+  },
+  "fullRuns": [
+    {
+      "id": "bc71c2b1-bf40-4deb-9bfa-2ae3d1aa2a88",
+      "personaCount": 1000,
+      "trials": 5,
+      "counts": {
+        "pass": 0,
+        "fail": 5000,
+        "unverified": 0
+      },
+      "passAt1": 0,
+      "passAllTrials": 0
+    },
+    {
+      "id": "e2c2c7c8-dad6-4f1b-a630-2643cbdf826c",
+      "personaCount": 1000,
+      "trials": 5,
+      "counts": {
+        "pass": 5000,
+        "fail": 0,
+        "unverified": 0
+      },
+      "passAt1": 1,
+      "passAllTrials": 1
+    }
+  ]
 }
