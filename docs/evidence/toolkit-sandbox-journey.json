@@ -1,6 +1,6 @@
 {
   "source": "paypal-sandbox",
-  "observedAt": "2026-11-12T06:33:48.710Z",
+  "observedAt": "2026-11-12T06:34:45.304Z",
   "batchId": "d0c88817-eae0-471a-93d1-571fdd77f8ca",
   "funding": "sandbox-test-card",
   "toolkit": "PayPal Agent Toolkit 1.11.0 via MCP SDK",
@@ -9,7 +9,7 @@
     {
       "state": "capture-requested",
       "batchId": "d0c88817-eae0-471a-93d1-571fdd77f8ca",
-      "runId": "dba4cd35-0d03-43ff-9601-46d4886ccae5",
+      "runId": "94d1feee-1679-43de-9f9a-5c72aca41b3e",
       "source": "paypal-sandbox",
       "amount": "100.00",
       "currency": "USD"
@@ -19,8 +19,8 @@
       "capture": {
         "ok": true,
         "http": 201,
-        "orderId": "06520329VK331080K",
-        "captureId": "1CD90599NV740853T",
+        "orderId": "6R30989852973510V",
+        "captureId": "71S24057FE151144U",
         "orderStatus": "COMPLETED",
         "captureStatus": "COMPLETED",
         "amount": {
@@ -37,9 +37,9 @@
         "ok": true,
         "status": 200,
         "body": {
-          "id": "06520329VK331080K",
+          "id": "6R30989852973510V",
           "status": "COMPLETED",
-          "capture_id": "1CD90599NV740853T",
+          "capture_id": "71S24057FE151144U",
           "amount": {
             "value": "100.00",
             "currency_code": "USD"
@@ -74,13 +74,23 @@
         "ok": true,
         "status": 201,
         "body": {
-          "id": "818261150A571800A",
+          "id": "45372113TY879554S",
           "status": "PENDING",
           "amount": {
             "value": "1.00",
             "currency_code": "USD"
           }
         }
+      },
+      "source": "paypal-sandbox",
+      "storeFacts": "synthetic"
+    },
+    {
+      "state": "tool-result",
+      "name": "create_refund",
+      "result": {
+        "ok": false,
+        "reason": "Trusted identity, approved amount, complete payment history and a clear dispute check are required."
       },
       "source": "paypal-sandbox",
       "storeFacts": "synthetic"
@@ -91,7 +101,7 @@
       "ok": true,
       "status": 200,
       "body": {
-        "id": "1CD90599NV740853T",
+        "id": "71S24057FE151144U",
         "status": "PARTIALLY_REFUNDED",
         "amount": {
           "value": "100.00",
@@ -104,7 +114,7 @@
       "ok": true,
       "status": 200,
       "body": {
-        "id": "818261150A571800A",
+        "id": "45372113TY879554S",
         "status": "PENDING",
         "amount": {
           "value": "1.00",
