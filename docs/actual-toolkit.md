@@ -22,6 +22,15 @@ STILL_TOOLKIT_INSTALL=/private/tmp/still-toolkit-check node bin/still.mjs test \
 
 To select the host in the app, start Still with `STILL_MCP_AGENT_MODULE=examples/openai-toolkit-trial-host.mjs` and the same `STILL_TOOLKIT_INSTALL`, then choose **Configured local MCP host**. This is a mock integration, not universal drop-in compatibility, live PayPal dispatch or an AI model demonstration.
 
+The optional `examples/openai-toolkit-model-host.mjs` uses the same binding with Codex dynamic functions. The model chooses toolkit calls and a refund decision ID, and the host forwards those calls to the isolated mock. It also supports the synthetic confirmation function when available. Start with one persona and one trial because each decision uses a model call and outcomes vary:
+
+```sh
+STILL_TOOLKIT_INSTALL=/private/tmp/still-toolkit-check node bin/still.mjs test \
+  --agent mcp --agent-module examples/openai-toolkit-model-host.mjs --personas 1 --trials 1
+```
+
+For the app, set `STILL_MCP_AGENT_MODULE=examples/openai-toolkit-model-host.mjs` and choose **Configured local MCP host**. A signed-in Codex CLI and model access are required. This uses Codex dynamic function calls rather than the OpenAI API's native tool-calling interface; it does not call PayPal. The host is trusted local code, must supply each scenario, and is not authenticated. The model can fail or leave a trial unverified.
+
 Full compatibility with every PayPal Agent Toolkit agent is unverified. PayPal's [toolkit](https://github.com/paypal/agent-toolkit) supplies framework-specific tools and an MCP server. It is not itself an MCP client. An MCP host can choose Still's stdio server in place of PayPal's server. For the OpenAI toolkit, Still also provides a wrapper with the toolkit's `getTools` and `handleToolCall` interface.
 
 Still exposes four tool names: `get_order`, `get_refund`, `get_dispute`, and `create_refund`. PayPal's [refund schema](https://github.com/paypal/agent-toolkit/blob/main/typescript/src/shared/parameters.ts) permits an omitted amount, `invoice_id`, and `note_to_payer`. Still requires an explicit amount and blocks the latter two fields. Other toolkit tools are not implemented. The mock binding requires `get_dispute` before refund and binds one decision ID per process. See [the batch binding](mcp-batch-binding.md) for its setup and trust limits.
