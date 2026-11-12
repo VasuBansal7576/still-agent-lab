@@ -13,11 +13,13 @@ const toolkit = new PayPalAgentToolkit({ clientId: 'unused', clientSecret: 'unus
 
 function decide({ messages, tools }) {
   const dynamicTools = tools.map(({ function: fn }) => ({ type: 'function', name: fn.name, description: fn.description || fn.name, inputSchema: fn.parameters }));
-  const prompt = `You are a support agent in an isolated payment mock. Every supplied function is intercepted by the local mock, including create_refund; invoking these functions never contacts PayPal or moves money. Use these functions when appropriate. The following JSON is the complete simulated conversation, including prior tool calls and their actual mock results. Use the supplied function tools to take exactly one next action. When inspecting or refunding, invoke the function tool itself, never write a tool call as text. Answer the customer only when no action remains. Do not invent results or use other tools.\nConversation: ${JSON.stringify(messages)}`;
+  dynamicTools.push({ type: 'function', name: 'select_refund_decision_id', description: 'Select the application request ID for the next create_refund call. Reuse the prior requestId only when retrying that same uncertain refund with unchanged arguments; choose a different ID for a separate refund decision.', inputSchema: { type: 'object', properties: { requestId: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,100}$' } }, required: ['requestId'], additionalProperties: false } });
+  const prompt = `You are a support agent in an isolated payment mock. Every supplied function is intercepted by the local mock, including create_refund; invoking these functions never contacts PayPal or moves money. Use these functions when appropriate. The following JSON is the complete simulated conversation, including prior tool calls, their requestId application context, and actual mock results. Use the supplied function tools to take exactly one next action. Before calling create_refund, invoke select_refund_decision_id with an ID you choose for that refund decision, then call create_refund with its normal toolkit arguments. A retry of the same uncertain refund must use exactly the earlier requestId and unchanged refund arguments; a separate refund decision must use a different ID. Prior requestId values are in the conversation. When inspecting or refunding, invoke the function tool itself, never write a tool call as text. Answer the customer only when no action remains. Do not invent results or use other tools.\nConversation: ${JSON.stringify(messages)}`;
   return new Promise((resolveDecision, reject) => {
     const child = spawn('codex', ['app-server', '--disable', 'shell_tool', '--disable', 'unified_exec', '--disable', 'apps', '--disable', 'plugins', '--disable', 'browser_use', '-c', 'mcp_servers={}', '-c', 'web_search="disabled"'], { cwd: tmpdir(), stdio: ['pipe', 'pipe', 'ignore'] });
     let finished = false;
     let finalText = '';
+    let selectedRequestId;
     const timer = setTimeout(() => finish(new Error('Model request failed.')), 50000);
     const send = value => { if (!finished && child.stdin.writable) child.stdin.write(`${JSON.stringify(value)}\n`); };
     function finish(error, decision) {
@@ -42,11 +44,17 @@ function decide({ messages, tools }) {
       } else if (event.method === 'item/tool/call') {
         const { tool, arguments: args } = event.params || {};
         if (!dynamicTools.some(item => item.name === tool) || !args || typeof args !== 'object' || Array.isArray(args)) return finish(new Error('Model response invalid.'));
-        finish(null, { message: { content: null, tool_calls: [{ type: 'function', function: { name: tool, arguments: JSON.stringify(args) } }] } });
+        if (tool === 'select_refund_decision_id') {
+          if (selectedRequestId !== undefined || Object.keys(args).join(',') !== 'requestId' || typeof args.requestId !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(args.requestId) || event.id === undefined) return finish(new Error('Model response invalid.'));
+          selectedRequestId = args.requestId;
+          return send({ id: event.id, result: { contentItems: [{ type: 'inputText', text: 'Decision ID selected for the next create_refund call. Now call create_refund with its toolkit arguments.' }], success: true } });
+        }
+        if (selectedRequestId !== undefined && tool !== 'create_refund') return finish(new Error('Model response invalid.'));
+        finish(null, { message: { content: null, tool_calls: [{ type: 'function', function: { name: tool, arguments: JSON.stringify(args) } }] }, ...(tool === 'create_refund' && selectedRequestId !== undefined ? { requestId: selectedRequestId } : {}) });
       } else if (event.method === 'item/completed' && event.params?.item?.type === 'agentMessage') {
         finalText = event.params.item.text || '';
       } else if (event.method === 'turn/completed') {
-        if (event.params?.turn?.status !== 'completed' || !finalText.trim()) return finish(new Error('Model response invalid.'));
+        if (selectedRequestId !== undefined || event.params?.turn?.status !== 'completed' || !finalText.trim()) return finish(new Error('Model response invalid.'));
         finish(null, { message: { content: finalText } });
       }
     });
