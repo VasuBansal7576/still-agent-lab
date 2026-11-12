@@ -119,7 +119,7 @@ export async function runTrials({ personas, trials = 5, concurrency = 20, agent 
     for (const check of result.checks.filter(item => item.status === 'fail')) {
       if (seen.has(check.id)) continue;
       seen.add(check.id);
-      const cluster = clusters.get(check.id) || { id: check.id, label: failureNames[check.id] || check.id, count: 0, example: { personaId: result.personaId, trial: result.trial, events: result.events, check }, sandboxReplay: { status: 'unverified', reason: 'No sandbox replay was performed.' } };
+      const cluster = clusters.get(check.id) || { id: check.id, label: failureNames[check.id] || check.id, count: 0, example: { personaId: result.personaId, trial: result.trial, provenance: result.provenance.persona, events: result.events, check }, sandboxReplay: { status: 'unverified', reason: 'No sandbox replay was performed.' } };
       cluster.count++;
       clusters.set(check.id, cluster);
     }
