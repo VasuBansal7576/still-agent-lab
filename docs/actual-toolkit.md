@@ -1,5 +1,27 @@
 # PayPal Agent Toolkit compatibility
 
+## Bind an OpenAI toolkit loop during mock trials
+
+Inside an MCP trial host's `runAgent` callback, bind the actual OpenAI toolkit to the supplied per-trial client:
+
+```js
+const bound = await connectStillTrialToolkit(paypalToolkit, {
+  client,
+  refundDecisionId: (call, args) => currentRefundDecisionId(call, args)
+});
+```
+
+Import `connectStillTrialToolkit` from `examples/still-openai-trial-toolkit.mjs`. The result exposes `getTools()` and `handleToolCall(call)`, so an existing toolkit-style dispatch loop can use the bound object. The host must still start the agent for each synthetic request and provide the current trial's client. The resolver belongs to the agent or host: it must return the same ID only for retries of the same refund decision. Omit it if no decision ID is known; Still will not infer one from tool-call IDs. The binding closes with the trial's client, has no direct PayPal fallback, and supports only the tools exposed by that trial. A host remains trusted local code and is not confined or authenticated.
+
+The included `examples/openai-toolkit-trial-host.mjs` demonstrates the interface with scripted decisions, actual PayPal toolkit definitions and an MCP SDK client. With the dependencies installed as below, run:
+
+```sh
+STILL_TOOLKIT_INSTALL=/private/tmp/still-toolkit-check node bin/still.mjs test \
+  --agent mcp --agent-module examples/openai-toolkit-trial-host.mjs --personas 9 --trials 2
+```
+
+To select the host in the app, start Still with `STILL_MCP_AGENT_MODULE=examples/openai-toolkit-trial-host.mjs` and the same `STILL_TOOLKIT_INSTALL`, then choose **Configured local MCP host**. This is a mock integration, not universal drop-in compatibility, live PayPal dispatch or an AI model demonstration.
+
 Full compatibility with every PayPal Agent Toolkit agent is unverified. PayPal's [toolkit](https://github.com/paypal/agent-toolkit) supplies framework-specific tools and an MCP server. It is not itself an MCP client. An MCP host can choose Still's stdio server in place of PayPal's server. For the OpenAI toolkit, Still also provides a wrapper with the toolkit's `getTools` and `handleToolCall` interface.
 
 Still exposes four tool names: `get_order`, `get_refund`, `get_dispute`, and `create_refund`. PayPal's [refund schema](https://github.com/paypal/agent-toolkit/blob/main/typescript/src/shared/parameters.ts) permits an omitted amount, `invoice_id`, and `note_to_payer`. Still requires an explicit amount and blocks the latter two fields. Other toolkit tools are not implemented. The mock binding requires `get_dispute` before refund and binds one decision ID per process. See [the batch binding](mcp-batch-binding.md) for its setup and trust limits.
