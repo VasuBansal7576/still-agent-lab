@@ -22,9 +22,9 @@ export function createExternalTrialAgent({ endpoint, policy = DEFAULT_TRIAL_POLI
         return { incomplete: true, reason: `External agent did not complete: ${error.message}` };
       }
       messages.push(message);
-      recordAgentMessage?.(message.content || '');
       const call = message.tool_calls?.[0];
       if (!call) return message.content;
+      recordAgentMessage?.(message.content || '');
       const args = JSON.parse(call.function.arguments);
       const operations = { get_order: () => tools.getOrder(), get_dispute: () => tools.getDispute(), refund_order: () => tools.refund(args) };
       let result;
