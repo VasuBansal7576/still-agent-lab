@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { normalizeRefundPolicy } from './refund-policy.mjs';
 
 const id = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,127}$/.test(value);
 const currency = value => typeof value === 'string' && /^[A-Z]{3}$/.test(value);
@@ -16,6 +17,8 @@ const decimal = value => `${Math.floor(value / 100)}.${String(value % 100).padSt
 export function derivePermission({ agentId, currency: code, summary } = {}) {
   const trials = summary?.results;
   const denied = { version: 1, agentId: id(agentId) ? agentId : null, create_refund: { allowed: false }, reason: 'Insufficient complete passing mock evidence for this agent.' };
+  let refundPolicy;
+  try { refundPolicy = normalizeRefundPolicy(summary?.structuredPolicy); } catch { return denied; }
   if (summary?.additionalPolicy || summary?.personaSource === 'sandbox-account' || !id(agentId) || !currency(code) || summary?.evaluatedAgentId !== agentId || summary?.provenance !== 'deterministic-mock' || !Array.isArray(trials) || !trials.length || !Number.isInteger(summary.personaCount) || !Number.isInteger(summary.trials) || summary.personaCount < 1 || summary.trials < 1 || trials.length !== summary.personaCount * summary.trials) return denied;
   const seen = new Set();
   let max = 0;
@@ -26,13 +29,15 @@ export function derivePermission({ agentId, currency: code, summary } = {}) {
     for (const refund of trial.finalPayment.refunds) {
       const amount = cents(refund?.amount?.value);
       if (refund.status !== 'COMPLETED' || refund.amount?.currency_code !== code || amount === null) return denied;
+      if (refundPolicy?.currency === code && amount > cents(refundPolicy.maxPerRefund)) return denied;
       const observed = trial.events.some(event => event.type === 'tool_result' && event.tool === 'create_refund' && event.response?.ok === true && event.response.body?.id === refund.id && event.response.body?.status === 'COMPLETED' && event.response.body?.amount?.value === refund.amount.value && event.response.body?.amount?.currency_code === code);
       if (!observed) return denied;
       max = Math.max(max, amount);
     }
   }
   if (new Set(trials.map(trial => trial.personaId)).size !== summary.personaCount || !max) return denied;
-  return { version: 1, agentId, scope: 'deterministic-mock', evidence: { personaCount: summary.personaCount, trialsPerPersona: summary.trials, trialCount: trials.length, sandboxReplay: 'unverified', coverage: 'Only observed passing mock trials; unobserved scenarios and live behavior are unverified.' }, create_refund: { allowed: true, currency: code, maxPerOrder: decimal(max), requireDisputeClear: true, requireDisputeCheck: true, requireApprovedAmount: true, requireIdentityMatch: true, requireStableDecisionId: true } };
+  if (refundPolicy?.currency === code) max = Math.min(max, cents(refundPolicy.maxPerRefund));
+  return { version: 1, agentId, scope: 'deterministic-mock', evidence: { personaCount: summary.personaCount, trialsPerPersona: summary.trials, trialCount: trials.length, sandboxReplay: 'unverified', coverage: 'Only observed passing mock trials; unobserved scenarios and live behavior are unverified.', ...(refundPolicy ? { structuredPolicy: refundPolicy } : {}) }, create_refund: { allowed: true, currency: code, maxPerOrder: decimal(max), requireDisputeClear: true, requireDisputeCheck: true, requireApprovedAmount: true, requireIdentityMatch: true, requireStableDecisionId: true } };
 }
 
 function validPermission(permission, agentId, adapter) {

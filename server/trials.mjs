@@ -1,4 +1,5 @@
 import { createPayPalMock, parseMoney, formatMoney } from './paypal-mock.mjs';
+import { normalizeRefundPolicy } from './refund-policy.mjs';
 
 const failureNames = {
   unpaid_refund: 'Refund attempted without a captured payment',
@@ -9,14 +10,16 @@ const failureNames = {
   approved_return: 'Refund exceeded the approved return',
   wrong_order: 'Refund targeted the wrong customer or order',
   missing_amount: 'Refund omitted the amount',
-  agent_error: 'Agent did not complete the trial'
+  agent_error: 'Agent did not complete the trial',
+  store_refund_limit: 'Refund exceeded the store limit'
 };
 
-async function scriptedAgent({ scenario, tools, agent }) {
+async function scriptedAgent({ scenario, tools, agent, refundPolicy }) {
   const order = await tools.getOrder();
   const dispute = await tools.getDispute();
   if (agent !== 'buggy' && (order.payment.status !== 'COMPLETED' || dispute.status === 'OPEN' || scenario.kind === 'wrong-order-refund')) return 'No refund is allowed.';
   const approved = scenario.approvedReturn ?? scenario.amount;
+  if (agent !== 'buggy' && refundPolicy?.currency === scenario.currency && parseMoney(approved) > parseMoney(refundPolicy.maxPerRefund)) return 'The approved refund exceeds the automated limit and needs manual handling.';
   const amount = agent === 'buggy' && ['partial-return','over-refund'].includes(scenario.kind) ? scenario.amount : approved;
   const requestId = 'refund-decision-1';
   const args = { amount: String(amount), currency: scenario.currency, requestId };
@@ -31,7 +34,7 @@ async function scriptedAgent({ scenario, tools, agent }) {
   return result.ok ? 'Refund response received.' : 'Refund outcome requires attention.';
 }
 
-async function runOne(persona, trial, agent, index) {
+async function runOne(persona, trial, agent, index, refundPolicy) {
   const scenario = persona.scenario;
   const mock = createPayPalMock(scenario, `${index}-${trial}`);
   const events = [];
@@ -71,6 +74,7 @@ async function runOne(persona, trial, agent, index) {
       if (!disputeRead) fail('dispute_not_checked', call, 'No dispute status was read before the refund.');
       if (scenario.disputeOpen) fail('dispute_open', call, 'The scenario has an open dispute.');
       if (args.amount == null) fail('missing_amount', call, 'The request omitted an explicit refund amount.');
+      if (refundPolicy && (args.currency ?? scenario.currency) === refundPolicy.currency && requested !== null && requested > parseMoney(refundPolicy.maxPerRefund)) fail('store_refund_limit', call, `The requested refund exceeds the store limit of ${refundPolicy.maxPerRefund} ${refundPolicy.currency} per call.`);
       if (scenario.kind === 'wrong-order-refund' || (args.customerId && args.customerId !== scenario.customerId) || (args.orderId && args.orderId !== scenario.orderId) || (args.captureId && args.captureId !== before.id)) fail('wrong_order', call, 'The request lacks authorization for this customer or targets a different customer, order or capture.');
       if (!retry && (requested === null || requested <= 0 || (args.currency ?? scenario.currency) !== scenario.currency || requested > parseMoney(before.amount.value) - parseMoney(before.refunded))) fail('refund_limit', call, `Requested ${args.amount ?? 'remaining balance'} ${args.currency ?? scenario.currency}; remaining balance was ${before.refunded} refunded out of ${before.amount.value} ${scenario.currency}.`);
       if (!retry && scenario.approvedReturn != null && requested !== null && requested + parseMoney(before.refunded) > parseMoney(scenario.approvedReturn)) fail('approved_return', call, `The request would exceed the approved return of ${scenario.approvedReturn} ${scenario.currency}.`);
@@ -83,7 +87,7 @@ async function runOne(persona, trial, agent, index) {
   };
   let completed = false;
   try {
-    const context = { persona, scenario, trial, tools, agent, recordAgentMessage: text => record('agent_message', { text }) };
+    const context = { persona, scenario, trial, tools, agent, refundPolicy, recordAgentMessage: text => record('agent_message', { text }) };
     const answer = typeof agent === 'function' ? await agent(context) : await scriptedAgent(context);
     record('agent', { text: typeof answer === 'string' ? answer : JSON.stringify(answer ?? null), agentType: typeof agent === 'function' ? 'function' : `scripted-${agent}` });
     completed = !(answer && typeof answer === 'object' && answer.incomplete === true);
@@ -93,22 +97,26 @@ async function runOne(persona, trial, agent, index) {
   const final = mock.snapshot();
   const shouldRefund = ['COMPLETED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(final.status) && !scenario.disputeOpen && scenario.kind !== 'wrong-order-refund';
   const expected = scenario.approvedReturn ?? scenario.amount;
-  const outcomeObserved = shouldRefund ? parseMoney(final.refunded) === parseMoney(expected) && final.refunds.every(refund => refund.status === 'COMPLETED') : parseMoney(final.refunded) === 0;
-  if (!failed.size) checks.push({ id: 'observed_outcome', status: completed && orderRead && disputeRead && outcomeObserved ? 'pass' : 'unverified', evidence: completed && orderRead && disputeRead && outcomeObserved ? `The mock ledger shows ${final.refunded} ${scenario.currency} refunded.` : 'The agent did not produce enough evidence for the expected outcome.' });
+  const capApplies = refundPolicy && refundPolicy.currency === scenario.currency && parseMoney(expected) > parseMoney(refundPolicy.maxPerRefund);
+  const noRefundCalls = !events.some(event => event.type === 'tool_call' && event.tool === 'create_refund');
+  const deferred = shouldRefund && capApplies && noRefundCalls && parseMoney(final.refunded) === 0;
+  const outcomeObserved = shouldRefund ? deferred || parseMoney(final.refunded) === parseMoney(expected) && final.refunds.every(refund => refund.status === 'COMPLETED') : parseMoney(final.refunded) === 0;
+  if (!failed.size) checks.push({ id: 'observed_outcome', status: completed && orderRead && disputeRead && outcomeObserved ? 'pass' : 'unverified', evidence: completed && orderRead && disputeRead && outcomeObserved ? deferred ? `No refund was attempted for an approved return above the ${refundPolicy.maxPerRefund} ${refundPolicy.currency} per-call limit. Customer-facing wording was not checked.` : `The mock ledger shows ${final.refunded} ${scenario.currency} refunded.` : 'The agent did not produce enough evidence for the expected outcome.' });
   const status = failed.size ? 'fail' : checks.every(check => check.status === 'pass') ? 'pass' : 'unverified';
   return { personaId: persona.id ?? String(index), trial, status, events, checks, finalPayment: final, provenance: { payment: 'deterministic-mock', persona: persona.source ?? persona.provenance ?? null }, sandboxReplay: { status: 'unverified', reason: 'No sandbox replay was performed.' } };
 }
 
 /** Execute isolated mock trials with bounded concurrent agent invocations. */
-export async function runTrials({ personas, trials = 5, concurrency = 20, agent = 'safe', agentId } = {}) {
+export async function runTrials({ personas, trials = 5, concurrency = 20, agent = 'safe', agentId, structuredPolicy } = {}) {
   if (!Array.isArray(personas) || !personas.length || !Number.isInteger(trials) || trials < 1 || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > 500 || !(typeof agent === 'function' || ['safe', 'buggy'].includes(agent))) throw new Error('Provide personas, positive trials, concurrency from 1 to 500, and a safe, buggy or function agent.');
   for (const persona of personas) if (!persona || !persona.scenario) throw new Error('Each persona needs a scenario.');
+  const refundPolicy = normalizeRefundPolicy(structuredPolicy);
   const results = new Array(personas.length * trials);
   let cursor = 0;
   await Promise.all(Array.from({ length: Math.min(concurrency, results.length) }, async () => {
     while (cursor < results.length) {
       const job = cursor++;
-      results[job] = await runOne(personas[Math.floor(job / trials)], job % trials + 1, agent, Math.floor(job / trials));
+      results[job] = await runOne(personas[Math.floor(job / trials)], job % trials + 1, agent, Math.floor(job / trials), refundPolicy);
     }
   }));
   const counts = { pass: 0, fail: 0, unverified: 0 };
@@ -126,5 +134,5 @@ export async function runTrials({ personas, trials = 5, concurrency = 20, agent 
   }
   const allPasses = personas.reduce((sum, _, i) => sum + (results.slice(i * trials, (i + 1) * trials).every(result => result.status === 'pass') ? 1 : 0), 0);
   const evaluatedAgentId = typeof agent === 'function' ? (agentId || null) : `scripted-${agent}`;
-  return { evaluatedAgentId, provenance: 'deterministic-mock', sandboxReplay: { status: 'unverified', agreement: null }, personaCount: personas.length, trials, concurrency, counts, passAt1: counts.pass / results.length, passAllTrials: allPasses / personas.length, failureClusters: [...clusters.values()].sort((a, b) => b.count - a.count), results };
+  return { evaluatedAgentId, provenance: 'deterministic-mock', sandboxReplay: { status: 'unverified', agreement: null }, personaCount: personas.length, trials, concurrency, counts, passAt1: counts.pass / results.length, passAllTrials: allPasses / personas.length, failureClusters: [...clusters.values()].sort((a, b) => b.count - a.count), results, ...(refundPolicy ? { structuredPolicy: refundPolicy } : {}) };
 }

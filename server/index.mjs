@@ -15,6 +15,7 @@ import { runExtraLeakDemo } from './extra-leak-demo.mjs';
 import { generatePersonas } from './personas.mjs';
 import { runTrials } from './trials.mjs';
 import { createExternalTrialAgent, DEFAULT_TRIAL_POLICY } from './trial-agent.mjs';
+import { normalizeRefundPolicy, refundPolicyInstruction } from './refund-policy.mjs';
 import { importSandboxAccountPersonas } from './account-personas.mjs';
 import { importVerifiedAccountPersonas } from './verified-account-personas.mjs';
 import { derivePermission, createGateway } from './gateway.mjs';
@@ -529,8 +530,11 @@ http.createServer(async (request, response) => {
       if (!Number.isInteger(count) || count < 1 || count > 5000 || !Number.isInteger(trials) || trials < 1 || trials > 10 || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100 || !['safe', 'buggy', 'external'].includes(input.agent) || !['completed', 'sandbox-test-card'].includes(mockProfile)) return send(response, 400, { error: 'Choose valid trial settings, mock profile and an agent.' });
       if (!['public', 'sandbox-account'].includes(personaSource)) return send(response, 400, { error: 'Choose a valid persona source.' });
       if (input.policy !== undefined && (input.agent !== 'external' || typeof input.policy !== 'string' || !input.policy.trim() || input.policy.length > 4000)) return send(response, 400, { error: 'A custom agent policy must contain 1 to 4000 characters and requires a local HTTP agent.' });
+      let structuredPolicy;
+      try { structuredPolicy = normalizeRefundPolicy(input.structuredPolicy); }
+      catch { return send(response, 400, { error: 'Choose a positive per-refund maximum with two decimals and a three-letter currency.' }); }
       const additionalPolicy = input.policy?.trim() || null;
-      const effectivePolicy = input.agent === 'external' ? `${DEFAULT_TRIAL_POLICY}${additionalPolicy ? `\nAdditional store instruction: ${additionalPolicy}` : ''}` : null;
+      const effectivePolicy = input.agent === 'external' ? `${DEFAULT_TRIAL_POLICY}${structuredPolicy ? `\n${refundPolicyInstruction(structuredPolicy)}` : ''}${additionalPolicy ? `\nAdditional store instruction: ${additionalPolicy}` : ''}` : null;
       let personas;
       let accountImport = null;
       if (personaSource === 'sandbox-account') {
@@ -546,7 +550,7 @@ http.createServer(async (request, response) => {
         try { agent = createExternalTrialAgent({ endpoint: input.endpoint, policy: effectivePolicy }); agentId = `local-${createHash('sha256').update(input.endpoint).digest('hex').slice(0, 24)}`; }
         catch { return send(response, 400, { error: 'Provide a valid loopback agent endpoint.' }); }
       }
-      const result = await runTrials({ personas, trials, concurrency, agent, agentId });
+      const result = await runTrials({ personas, trials, concurrency, agent, agentId, structuredPolicy });
       const id = randomUUID();
       const directory = new URL('../.data/batches/', import.meta.url);
       await mkdir(directory, { recursive: true, mode: 0o700 });
