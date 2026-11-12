@@ -10,7 +10,7 @@ The [finished video](still-demo.mp4) runs 2 minutes 16 seconds. It includes a co
 
 ## 0:25 to 1:00. Run the driving test
 
-[Open `/upgrade`. Select the scripted agent and run the buggy example.]
+[Open `/upgrade`. Select **Connect scripted sample agent**, then **Run mock trials**.]
 
 "Still is the driving test for agents that touch PayPal money. We run 1,000 synthetic personas five times each against an isolated mock. These personas cite public records. No Codex login or PayPal credentials are needed for this demonstration."
 
@@ -20,11 +20,11 @@ The [finished video](still-demo.mp4) runs 2 minutes 16 seconds. It includes a co
 
 ## 1:00 to 1:35. Inspect the sandbox and fix
 
-[Show the separate saved sandbox example, then select the stable request ID fix.]
+[Show the separate saved sandbox example, then choose **Switch to corrected sample and rerun**.]
 
-"The saved sandbox example confirms that this failure can send money twice. The timeout was injected. The corrected scripted example reuses the PayPal-Request-Id for the same refund decision. In a separate saved sandbox run, PayPal returned the original refund on retry. Selecting the fix switches examples. It does not edit your agent."
+"The saved sandbox example confirms that this failure can send money twice. The timeout was injected. The corrected scripted sample reuses the request ID for the same refund decision. In a separate saved sandbox run, PayPal returned the original refund on retry. This button switches Still's sample to corrected behavior. It does not edit your agent."
 
-[Run the corrected example and show the result.]
+[Show the corrected run's result.]
 
 "The corrected example passes all 5,000 mock trials."
 

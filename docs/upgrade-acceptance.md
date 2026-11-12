@@ -4,6 +4,8 @@ Updated 2026-11-12. The upgrade is incomplete. Sandbox evidence below is distinc
 
 ## Connected-agent checkpoint
 
+The browser can now start Still's separate scripted HTTP sample and switch it to corrected behavior with one click from the retry cluster. In a browser run, 5,000 unsafe mock trials failed and 5,000 corrected mock trials passed. A USD 241.36 mock permission blocked USD 242.36 and allowed USD 241.36; recorded gateway calls and a fresh agent rerun matched. [Evidence](evidence/managed-sample-mock.json). A concurrent switch during a 5,000-trial sample run returned HTTP 409 and the batch retained its unsafe behavior. This switches Still's own sample process; it does not edit a user's agent. No PayPal call was made.
+
 An MCP stdio bridge now lets a trusted agent process receive each synthetic scenario and a standard MCP server configuration. In the browser, a separate scripted SDK client passed four mock trials, earned a mock permission and matched three calls on both shadow replay and agent rerun. A concurrent CLI run passed 50 safe mock trials; an unsafe run failed four. [Evidence](evidence/mcp-stdio-trials-mock.json). The agent launcher must accept Still's scenario and configuration contract, the bridge requires Unix sockets, and the host is not confined or authenticated. This is not universal drop-in compatibility or PayPal evidence.
 
 An experimental Codex process using the native stdio MCP connection produced an unverified mock trial. The agent reported that approval review rejected its order lookup, and the trace contains no tool call. [Evidence](evidence/mcp-native-stdio-unverified.json). The experimental wrapper was removed; no PayPal call was made. The previously documented model-backed in-process host is a separate integration.

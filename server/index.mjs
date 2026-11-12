@@ -43,6 +43,7 @@ import { scenarioCatalog } from './catalog.mjs';
 import { endpointUrl } from './agent-connection.mjs';
 import { createBatchBinding } from './mcp-batch-binding.mjs';
 import { batchSandboxCoverage } from './batch-evidence.mjs';
+import { createSampleAgent } from './sample-agent.mjs';
 
 try { process.loadEnvFile('.env'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const port = Number(process.env.PORT || 3000);
@@ -75,6 +76,8 @@ if (process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET) {
 }
 
 const sessions = new Map();
+const sampleAgent = createSampleAgent();
+process.once('exit', () => sampleAgent.stop());
 const shadowSessions = createShadowSessions({ directory: fileURLToPath(new URL('../.data/shadow-sessions/', import.meta.url)) });
 
 function currencyEvidence(summary, currency) {
@@ -137,6 +140,14 @@ http.createServer(async (request, response) => {
       return response.end(content);
     }
     if (request.method === 'GET' && url.pathname === '/api/status') return send(response, 200, { ready: Boolean(session.paypal) && modelReady, paypalReady: Boolean(session.paypal), paypalPersistence, modelReady, mcpHostReady: Boolean(mcpHost), model: process.env.CODEX_MODEL || 'gpt-6.1-terra', provider: process.env.STILL_SYNTHETIC_PROVIDER === '1' ? 'synthetic-provider-fixture' : 'paypal-sandbox' });
+    if (request.method === 'POST' && url.pathname === '/api/upgrade/sample-agent') {
+      const input = await body(request);
+      try {
+        if (input.action === 'start' && Object.keys(input).length === 1) return send(response, 200, await sampleAgent.start());
+        if (input.action === 'correct' && Object.keys(input).length === 1) return send(response, 200, await sampleAgent.setMode('safe'));
+        return send(response, 400, { error: 'Choose a sample agent action.' });
+      } catch (error) { return send(response, 409, { error: error.message }); }
+    }
     if (request.method === 'GET' && url.pathname === '/api/checkout') return send(response, 200, { checkout: publicCheckout(session.checkout) });
     if (request.method === 'GET' && url.pathname === '/api/upgrade/observed-agreement') { try { return send(response, 200, await loadObservedAgreement()); } catch { return send(response, 503, { error: 'Recorded sandbox comparison is unavailable.' }); } }
     if (request.method === 'GET' && url.pathname === '/api/scenarios') return send(response, 200, { scenarios: scenarioCatalog });
@@ -667,13 +678,20 @@ http.createServer(async (request, response) => {
         agent = createMcpTrialAgent({ sdk: mcpHost.sdk, toolkit: mcpHost.toolkit, runAgent: mcpHost.runAgent, policy: effectivePolicy });
         agentId = `mcp-local-${createHash('sha256').update(mcpModulePath).digest('hex').slice(0, 24)}`;
       }
-      const result = await runTrials({ personas, trials, concurrency, agent, agentId, structuredPolicy });
+      let releaseSample = () => {};
+      try { if (input.agent === 'external') releaseSample = sampleAgent.begin(input.endpoint); }
+      catch { return send(response, 409, { error: 'Wait for the sample agent to finish changing.' }); }
+      const sampleState = sampleAgent.status();
+      const sampleAgentMode = input.agent === 'external' && sampleState.ready && input.endpoint === sampleState.endpoint ? sampleState.mode : null;
+      let result;
+      try { result = await runTrials({ personas, trials, concurrency, agent, agentId, structuredPolicy }); }
+      finally { releaseSample(); }
       const id = randomUUID();
       const directory = new URL('../.data/batches/', import.meta.url);
       await mkdir(directory, { recursive: true, mode: 0o700 });
-      await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, protocolVersion, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, ...(input.agent === 'mcp' ? { mcpHostInstance, mcpHostFingerprint } : {}), createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
+      await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, protocolVersion, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, ...(sampleAgentMode ? { sampleAgentMode } : {}), ...(input.agent === 'mcp' ? { mcpHostInstance, mcpHostFingerprint } : {}), createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
       const { results, ...summary } = result;
-      return send(response, 200, { id, agent: input.agent, protocolVersion, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0], firstUnverifiedIndex: results.findIndex(trial => trial.status === 'unverified') });
+      return send(response, 200, { id, agent: input.agent, protocolVersion, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, ...(sampleAgentMode ? { sampleAgentMode } : {}), ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0], firstUnverifiedIndex: results.findIndex(trial => trial.status === 'unverified') });
     }
     if (url.pathname === '/api/upgrade/dispute-demo') {
       const input = await body(request);

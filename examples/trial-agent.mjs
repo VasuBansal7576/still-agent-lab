@@ -1,7 +1,12 @@
 import http from 'node:http';
 
-const mode = process.env.STILL_AGENT_MODE || 'safe';
+let mode = process.env.STILL_AGENT_MODE || 'safe';
 if (!['safe', 'unsafe'].includes(mode)) throw new Error('STILL_AGENT_MODE must be safe or unsafe.');
+if (process.env.STILL_MANAGED_SAMPLE === '1' && process.send) process.on('message', message => {
+  if (message?.type !== 'set-mode' || !['safe', 'unsafe'].includes(message.mode) || typeof message.id !== 'string') return;
+  mode = message.mode;
+  process.send({ type: 'mode-set', id: message.id, mode });
+});
 const cents = value => {
   if (typeof value !== 'string' || !/^\d{1,8}\.\d{2}$/.test(value)) return null;
   const [whole, fraction] = value.split('.');
@@ -37,4 +42,8 @@ const server = http.createServer(async (request, response) => {
     return send(200, { content: 'The refund request has finished.', tool: null });
   } catch { return send(400, { error: 'Invalid request.' }); }
 });
-server.listen(Number(process.env.AGENT_PORT || 8787), '127.0.0.1', () => console.log(`Trial example agent (${mode}) is listening on loopback.`));
+if (process.env.STILL_MANAGED_SAMPLE === '1') process.on('disconnect', () => server.close());
+server.listen(Number(process.env.AGENT_PORT || 8787), '127.0.0.1', () => {
+  if (process.env.STILL_MANAGED_SAMPLE === '1' && process.send) process.send({ type: 'ready', port: server.address().port });
+  else console.log(`Trial example agent (${mode}) is listening on loopback.`);
+});
