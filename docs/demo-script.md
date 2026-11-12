@@ -4,7 +4,7 @@ The [finished video](still-demo.mp4) runs 2 minutes 16 seconds. It includes a co
 
 ## 0:00 to 0:25. The leak
 
-[Open the hosted replay or step 05 of the guided test.]
+[Open the hosted replay or the saved PayPal sandbox evidence in the driving test.]
 
 "A customer asked for a $50 refund. In PayPal sandbox, the first refund returned 201. We simulated a timeout, and the agent retried with a new request ID. PayPal returned another 201. Two completed $50 refunds on one $100 capture."
 
@@ -32,7 +32,7 @@ The [finished video](still-demo.mp4) runs 2 minutes 16 seconds. It includes a co
 
 [Issue the permission and try the gateway.]
 
-"Still issues a mock-scoped permission based on observed passing cases. This USD grant uses four observed personas and 20 trials. The gateway blocks an over-limit request and allows an eligible mock refund. Production access remains denied."
+"Still issues a mock-scoped permission based on observed passing cases. For the current default run, this USD grant uses 22 observed personas and 110 trials. The gateway blocks an over-limit request and allows an eligible mock refund. Production access remains denied."
 
 ## 2:00 to 2:15. Close
 
