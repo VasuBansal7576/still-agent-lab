@@ -17,7 +17,7 @@ export function planSandboxReplays({ batchId, batch, maxRuns, offset = 0, sample
     const key = keyFor(batchId, result);
     if (seen.has(key)) throw new Error('Duplicate persona and trial identity in batch.');
     seen.add(key);
-    const item = { key, personaId: String(result.personaId), trial: result.trial, status: result.status, events: result.events, finalPayment: result.finalPayment };
+    const item = { key, personaId: String(result.personaId), trial: result.trial, status: result.status, events: result.events, finalPayment: result.finalPayment, toolkitProtocol: result.toolkitProtocol === true || batch.protocolVersion === 3 };
     if (result.status === 'fail') failures.push(item);
     if (result.status === 'pass') passes.push(item);
   }
@@ -29,6 +29,7 @@ export function planSandboxReplays({ batchId, batch, maxRuns, offset = 0, sample
 }
 
 function comparable(item) {
+  if (item.toolkitProtocol) return { reason: 'Toolkit-protocol trace replay is not supported; sandbox agreement is unverified.' };
   if (item.status === 'fail') return replayFailureSpec(item);
   const special = passingReplaySpec(item);
   if (special.kind) return special;

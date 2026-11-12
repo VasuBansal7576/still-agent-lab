@@ -20,6 +20,7 @@ const failed = (key, reason, extra = {}) => ({ key, source: 'unverified-executor
 
 /** Execute one comparable replay. All arguments are supplied by a trusted server-side caller. */
 export async function executeSandboxReplay({ item, sessionId, approval, adapter, reserve, simulated = false } = {}) {
+  if (item?.toolkitProtocol) return failed(item.key, 'Toolkit-protocol sandbox replay is unsupported.');
   if (item?.status === 'fail') return executeFailureReplay({ item, sessionId, approval, adapter, reserve, simulated });
   const passSpec = passingReplaySpec(item);
   if (passSpec.kind === 'stable-retry') return executeFailureReplay({ item: { ...item, status: 'fail' }, sessionId, approval, adapter, reserve, simulated });

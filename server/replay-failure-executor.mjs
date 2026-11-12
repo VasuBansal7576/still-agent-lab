@@ -8,6 +8,7 @@ const safeResponse = response => ({ ok: response?.ok, status: response?.status, 
 export async function executeFailureReplay({ item, sessionId, approval, adapter, reserve, simulated = false }) {
   const key = item.key, spec = replayFailureSpec(item);
   const failed = (reason, extra = {}) => ({ key, source: 'unverified-executor', reason, ...extra });
+  if (item.toolkitProtocol) return failed('Toolkit-protocol sandbox replay is unsupported.');
   if (spec.reason) return failed(spec.reason);
   const captureId = approval?.captureId;
   if (!sessionId || approval?.sessionId !== sessionId || (approval?.buyerApprovedFreshCapture !== true && approval?.funding !== 'paypal-sandbox-test-card') || !validId(captureId)) return failed('A fresh buyer-approved sandbox capture is required.');

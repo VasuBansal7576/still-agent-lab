@@ -15,7 +15,7 @@ function approvalUrl(value) {
 
 // The item must come from a plan built from a server-owned batch, never from the request body.
 export function replayCheckoutAmount(item) {
-  if (!item || item.queueState !== 'ready' || typeof item.key !== 'string' || !item.key || !Array.isArray(item.events)) return null;
+  if (!item || item.toolkitProtocol || item.queueState !== 'ready' || typeof item.key !== 'string' || !item.key || !Array.isArray(item.events)) return null;
   if (item.status === 'fail') { const spec = replayFailureSpec(item); return spec.reason ? null : { amount: spec.captureAmount, currency: spec.currency }; }
   const special = passingReplaySpec(item);
   if (special.kind) return { amount: special.captureAmount, currency: special.currency };

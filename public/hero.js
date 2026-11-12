@@ -63,12 +63,13 @@ function eventSummary(event) {
   if (event.type === 'error') return { label:'Error', text:event.message || 'The agent did not complete.' };
   if (event.type === 'tool_call') {
     const args = event.arguments || {};
-    const amount = args.amount == null ? '' : ` · ${args.amount} ${args.currency || ''}`;
+    const amount = args.amount == null ? '' : typeof args.amount === 'object' ? ` · ${args.amount.value || ''} ${args.amount.currency_code || ''}` : ` · ${args.amount} ${args.currency || ''}`;
     return { label:'Tool call', text:`${event.tool || 'Unknown tool'}${amount}` };
   }
   if (event.type === 'tool_result') {
     const response = event.response || {};
     if (event.tool === 'get_order') return { label:'Mock order', text:`Payment ${response.payment?.status || 'unknown'} · approved return ${response.approvedReturn ?? 'unknown'} ${response.payment?.amount?.currency_code || ''}` };
+    if (event.tool === 'list_disputes') return { label:'Mock dispute list', text:response.complete ? `${response.items?.length || 0} disputes for this capture · complete in mock` : response.error || response.reason || 'Listing unverified' };
     if (event.tool === 'get_dispute') return { label:'Mock dispute', text:`Dispute status: ${response.status || 'unknown'}` };
     const body = response.body || {};
     const value = body.amount ? ` · ${body.amount.value} ${body.amount.currency_code}` : '';
@@ -84,7 +85,7 @@ function traceView(trace, label) {
   const events = (trace.events || []).map(event => {
     const summary = eventSummary(event);
     if (!summary) return '';
-    return `<li><span class="label">${escape(summary.label)} · ${escape(event.id)}</span><p>${escape(summary.text)}</p>${event.type === 'tool_call' || event.type === 'tool_result' ? `<details><summary>Inspect ${event.type === 'tool_call' ? 'arguments' : 'response'}</summary><pre>${json(event.type === 'tool_call' ? event.arguments : event.response)}</pre></details>` : ''}</li>`;
+    return `<li><span class="label">${escape(summary.label)} · ${escape(event.id)}</span><p>${escape(summary.text)}</p>${event.type === 'tool_call' || event.type === 'tool_result' ? `<details><summary>Inspect ${event.type === 'tool_call' ? 'arguments' : 'response'}</summary><pre>${json(event.type === 'tool_call' ? (event.requestId ? { arguments:event.arguments, requestId:event.requestId } : event.arguments) : event.response)}</pre></details>` : ''}</li>`;
   }).join('');
   return `<div id="trace" class="card"><div class="label">${escape(label)} · mock</div><h3>Trace for ${escape(trace.personaId)} · trial ${escape(trace.trial)}</h3><p class="hint">These events come from the selected mock trial, not PayPal sandbox.</p><ul class="timeline">${events || '<li>No events recorded.</li>'}</ul><h3>Rule evidence</h3>${checks.map(check=>`<div class="rule"><strong class="${check.status === 'pass' ? 'good' : 'bad'}">${escape(String(check.status || 'unverified').toUpperCase())}</strong> · ${escape(check.id)}<p>${escape(check.evidence)}</p></div>`).join('') || '<p>Rule evidence is unavailable.</p>'}<details><summary>Persona provenance</summary>${provenance(source)}</details><details><summary>Complete trace</summary><pre>${json(trace)}</pre></details></div>`;
 }
@@ -125,6 +126,7 @@ function comparisonSummary(comparison, result) {
   return `<div class="trace">${rows.map((row,index)=>`<p><strong>Refund ${index+1}</strong><br>Mock: ${escape(comparisonObservation(row.mock))}<br>PayPal sandbox: ${escape(comparisonObservation(row.provider, true))}</p>`).join('')}</div>${pending ? '<p class="hint">PENDING means PayPal received the request; it does not establish a completed refund.</p>' : ''}${comparison?.status !== 'agreed' && comparison?.status !== 'disagreed' ? '<p class="hint">A response is shown, but the sandbox comparison remains unverified.</p>' : ''}`;
 }
 function sandboxReplayView(selected) {
+  if (state.run?.data?.protocolVersion === 3) return '<div class="card"><div class="label">Selected trial · PayPal sandbox</div><h3>Sandbox replay unavailable.</h3><p>Toolkit-style trial traces cannot yet be replayed against PayPal. Sandbox agreement is unverified.</p></div>';
   if (!selected) return '';
   const selectedReplay = state.selectedReplay;
   const intro = '<p class="hint">This sends the recorded mock tool calls to a fresh matching PayPal sandbox capture. It does not rerun the agent. Customer and store facts are synthetic; no real money moves.</p>';
@@ -160,7 +162,7 @@ function renderResults() {
   const verdict = data.counts.fail > 0 ? 'Failed' : passed ? 'Passed' : 'Unverified';
   const cluster = data.failureClusters.find(item => item.id === state.selectedCluster);
   const selected = state.selectedTrial?.trial || (cluster ? cluster.example : data.exampleTrial);
-  const scope = config.agent === 'external' ? `${agentNames[config.agent]} · ${config.endpoint || 'original endpoint not saved'}` : agentNames[config.agent] || 'Saved agent';
+  const scope = config.agent === 'external' ? `${agentNames[config.agent]}${data.protocolVersion === 3 ? ' · toolkit-style v3' : ''} · ${config.endpoint || 'original endpoint not saved'}` : agentNames[config.agent] || 'Saved agent';
   const structuredPolicy = data.structuredPolicy ? `<p>Checked store limits: ${[data.structuredPolicy.maxPerRefund ? `${escape(data.structuredPolicy.maxPerRefund)} ${escape(data.structuredPolicy.currency)} per refund call` : null, data.structuredPolicy.maxPerOrder ? `${escape(data.structuredPolicy.maxPerOrder)} ${escape(data.structuredPolicy.currency)} total per order` : null].filter(Boolean).join(' · ')}. ${data.structuredPolicy.maxPerRefund && !data.structuredPolicy.maxPerOrder ? 'Multiple calls can total more. ' : ''}The earned mock permission has a separate per-order ceiling. If the approved return is larger than an applicable limit, no refund is an acceptable safety outcome; customer-facing wording is not checked.</p>` : '';
   const clusters = data.failureClusters.map(item=>{ const match=state.coverage?.clusterReplays?.find(entry=>entry.clusterId === item.id)?.result; return `<div class="row"><span><strong>${escape(item.label)}</strong><br><span class="hint">${Number(item.count).toLocaleString()} trial${item.count === 1 ? '' : 's'}${match ? ` · example sandbox ${escape(match.status === 'agreed' || match.status === 'disagreed' ? match.status : 'unverified')}` : ''}</span></span><button type="button" class="secondary" data-action="cluster" data-id="${escape(item.id)}">Inspect example</button></div>`; }).join('');
   let browser = '<p>Trial list is unavailable.</p><button type="button" class="secondary" data-action="page" data-offset="0">Load trials</button>';
@@ -171,7 +173,8 @@ function renderResults() {
   }
   if (state.pageError) browser += `<p class="status">${escape(state.pageError)}</p>`;
   let access = '';
-  if (config.personaSource === 'sandbox-account') access = '<p>Account history and dispute coverage are incomplete. Account-derived runs cannot earn a permission.</p>';
+  if (data.protocolVersion === 3) access = '<p>Toolkit-style v3 trials cannot yet earn permissions or replay against PayPal. These results use an isolated mock.</p>';
+  else if (config.personaSource === 'sandbox-account') access = '<p>Account history and dispute coverage are incomplete. Account-derived runs cannot earn a permission.</p>';
   else if (config.policy) access = '<p>Additional instructions are not automatically checked. This run cannot earn a permission.</p>';
   else if (!passed) access = '<p>A permission requires every trial to pass with complete evidence.</p>';
   else if (!state.permission) access = '<p>A fully passing run can request a USD mock-only permission. A grant also requires completed USD refund evidence.</p><button type="button" data-action="permission">Request mock permission</button>';
@@ -196,6 +199,7 @@ function renderSandbox() {
 function modeChanged() {
   const external = agent.value === 'external';
   document.querySelector('#endpoint-label').hidden = !external;
+  document.querySelector('#protocol-label').hidden = !external;
   document.querySelector('#policy-label').hidden = !external;
   document.querySelector('#external-help').hidden = !external;
   endpoint.required = external;
@@ -223,13 +227,13 @@ form.addEventListener('submit', async event => {
   event.preventDefault();
   if (state.busy || !form.reportValidity()) return;
   const values = new FormData(form);
-  const config = { agent:values.get('agent'), endpoint:String(values.get('endpoint') || '').trim(), personas:Number(values.get('personas')), trials:Number(values.get('trials')), concurrency:Number(values.get('concurrency')), profile:values.get('profile'), policy:String(values.get('policy') || '').trim(), personaSource:values.get('personaSource') };
+  const config = { agent:values.get('agent'), endpoint:String(values.get('endpoint') || '').trim(), personas:Number(values.get('personas')), trials:Number(values.get('trials')), concurrency:Number(values.get('concurrency')), profile:values.get('profile'), policy:String(values.get('policy') || '').trim(), personaSource:values.get('personaSource'), protocolVersion:Number(values.get('protocolVersion')) };
   if (config.agent !== 'external') { config.endpoint=''; config.policy=''; }
   const body = { agent:config.agent, personas:config.personas, trials:config.trials, concurrency:config.concurrency, mockProfile:config.profile, personaSource:config.personaSource };
   const maxPerRefund = String(values.get('refundLimit') || '').trim(), maxPerOrder = String(values.get('orderRefundLimit') || '').trim(), limitCurrency = String(values.get('refundLimitCurrency') || '').trim().toUpperCase();
   if (maxPerRefund || maxPerOrder) body.structuredPolicy = { currency: limitCurrency, ...(maxPerRefund ? { maxPerRefund } : {}), ...(maxPerOrder ? { maxPerOrder } : {}) };
   if (config.personaSource === 'sandbox-account') { if (!state.accountSnapshot) { status.textContent='Import sandbox account personas first.'; return; } body.snapshotId=state.accountSnapshot.id; }
-  if (config.agent === 'external') { body.endpoint=config.endpoint; if (config.policy) body.policy=config.policy; }
+  if (config.agent === 'external') { body.protocolVersion=config.protocolVersion; body.endpoint=config.endpoint; if (config.policy) body.policy=config.policy; }
   state.busy=true; runButton.disabled=true;
   status.textContent='Running mock trials. The previous result stays visible until this run finishes.';
   try {
@@ -250,7 +254,7 @@ async function openSavedBatch(id) {
   state.busy=true; document.querySelector('#open-saved-batch').disabled=true; runButton.disabled=true; message.textContent='Opening saved batch…';
   try {
     const [data,page] = await Promise.all([request(`/api/upgrade/batches/${id}`), request(`/api/upgrade/batches/${id}/trials?offset=0&limit=20`)]);
-    const config = { agent:data.agent, endpoint:'', personas:data.personaCount, trials:data.trials, concurrency:data.concurrency, profile:data.mockProfile || 'completed', policy:data.additionalPolicy || '', personaSource:data.personaSource || 'public' };
+    const config = { agent:data.agent, endpoint:'', personas:data.personaCount, trials:data.trials, concurrency:data.concurrency, profile:data.mockProfile || 'completed', policy:data.additionalPolicy || '', personaSource:data.personaSource || 'public', protocolVersion:data.protocolVersion || 2 };
     clearPermission(); state.run={data,config}; state.selectedCluster=null; state.selectedTrial=null; state.selectedReplay=null; state.coverage=null; state.page=page; state.pageError=null; state.explanation=null;
     renderResults(); message.textContent=`Opened saved mock batch ${id}.`; status.textContent='';
   } catch(error) { message.textContent=`Could not open saved batch: ${error.message} The current result is unchanged.`; }

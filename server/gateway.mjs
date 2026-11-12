@@ -19,7 +19,7 @@ export function derivePermission({ agentId, currency: code, summary } = {}) {
   const denied = { version: 1, agentId: id(agentId) ? agentId : null, create_refund: { allowed: false }, reason: 'Insufficient complete passing mock evidence for this agent.' };
   let refundPolicy;
   try { refundPolicy = normalizeRefundPolicy(summary?.structuredPolicy); } catch { return denied; }
-  if (summary?.additionalPolicy || summary?.personaSource === 'sandbox-account' || !id(agentId) || !currency(code) || summary?.evaluatedAgentId !== agentId || summary?.provenance !== 'deterministic-mock' || !Array.isArray(trials) || !trials.length || !Number.isInteger(summary.personaCount) || !Number.isInteger(summary.trials) || summary.personaCount < 1 || summary.trials < 1 || trials.length !== summary.personaCount * summary.trials) return denied;
+  if (summary?.protocolVersion === 3 || summary?.results?.some(result => result.toolkitProtocol === true) || summary?.additionalPolicy || summary?.personaSource === 'sandbox-account' || !id(agentId) || !currency(code) || summary?.evaluatedAgentId !== agentId || summary?.provenance !== 'deterministic-mock' || !Array.isArray(trials) || !trials.length || !Number.isInteger(summary.personaCount) || !Number.isInteger(summary.trials) || summary.personaCount < 1 || summary.trials < 1 || trials.length !== summary.personaCount * summary.trials) return denied;
   const seen = new Set();
   let max = 0;
   for (const trial of trials) {

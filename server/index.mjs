@@ -86,7 +86,7 @@ function recordCapture(session, checkout, capture) {
   delete checkout.error;
   session.captures.add(capture.id);
 }
-const files = new Map([['/', ['public/index.html', 'text/html; charset=utf-8']], ['/app.js', ['public/app.js', 'text/javascript; charset=utf-8']], ['/setup', ['public/setup.html', 'text/html; charset=utf-8']], ['/upgrade', ['public/hero.html', 'text/html; charset=utf-8']], ['/hero.js', ['public/hero.js', 'text/javascript; charset=utf-8']], ['/sandbox-retry.json', ['docs/evidence/sandbox-retry.json', 'application/json; charset=utf-8']], ['/lab', ['public/upgrade.html', 'text/html; charset=utf-8']], ['/upgrade.js', ['public/upgrade.js', 'text/javascript; charset=utf-8']], ['/replay', ['public/replay.html', 'text/html; charset=utf-8']]]);
+const files = new Map([['/', ['public/index.html', 'text/html; charset=utf-8']], ['/app.js', ['public/app.js', 'text/javascript; charset=utf-8']], ['/setup', ['public/setup.html', 'text/html; charset=utf-8']], ['/upgrade', ['public/hero.html', 'text/html; charset=utf-8']], ['/hero.js', ['public/hero.js', 'text/javascript; charset=utf-8']], ['/sandbox-retry.json', ['docs/evidence/sandbox-retry.json', 'application/json; charset=utf-8']], ['/lab', ['public/upgrade.html', 'text/html; charset=utf-8']], ['/upgrade.js', ['public/upgrade.js', 'text/javascript; charset=utf-8']], ['/replay', ['public/replay.html', 'text/html; charset=utf-8']], ['/toolkit-trials', ['docs/toolkit-trials.md', 'text/plain; charset=utf-8']]]);
 
 function send(response, status, data) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
@@ -377,6 +377,7 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '') || !session.paypal) return send(response, 400, { error: 'Open a valid passing batch and connect PayPal sandbox.' });
       if (session.checkout && session.checkout.state !== 'spent') return send(response, 409, { error: 'Finish the current checkout before starting this demo.' });
       const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+      if (batch.protocolVersion === 3) return send(response, 400, { error: 'Toolkit-protocol runs cannot earn a sandbox permission; no capture was attempted.' });
       const directory = fileURLToPath(new URL('../.data/replay-ledger/', import.meta.url));
       const ledger = await createReplayLedger({ directory });
       const permission = await earnSandboxPermission({ batchId: input.batchId, batch, ledger });
@@ -541,6 +542,8 @@ http.createServer(async (request, response) => {
       const count = Number(input.personas ?? 1000), trials = Number(input.trials ?? 5), concurrency = Number(input.concurrency ?? 20);
       const mockProfile = input.mockProfile ?? 'completed';
       const personaSource = input.personaSource ?? 'public';
+      const protocolVersion = input.protocolVersion ?? 2;
+      if (![2, 3].includes(protocolVersion) || (protocolVersion === 3 && input.agent !== 'external')) return send(response, 400, { error: 'Choose a valid local agent protocol.' });
       if (!Number.isInteger(count) || count < 1 || count > 5000 || !Number.isInteger(trials) || trials < 1 || trials > 10 || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100 || !['safe', 'buggy', 'external'].includes(input.agent) || !['completed', 'sandbox-test-card'].includes(mockProfile)) return send(response, 400, { error: 'Choose valid trial settings, mock profile and an agent.' });
       if (!['public', 'sandbox-account'].includes(personaSource)) return send(response, 400, { error: 'Choose a valid persona source.' });
       if (input.policy !== undefined && (input.agent !== 'external' || typeof input.policy !== 'string' || !input.policy.trim() || input.policy.length > 4000)) return send(response, 400, { error: 'A custom agent policy must contain 1 to 4000 characters and requires a local HTTP agent.' });
@@ -561,16 +564,16 @@ http.createServer(async (request, response) => {
       for (const persona of personas) persona.scenario.mockProfile = mockProfile;
       let agent = input.agent, agentId;
       if (agent === 'external') {
-        try { agent = createExternalTrialAgent({ endpoint: input.endpoint, policy: effectivePolicy }); agentId = `local-${createHash('sha256').update(input.endpoint).digest('hex').slice(0, 24)}`; }
+        try { agent = createExternalTrialAgent({ endpoint: input.endpoint, policy: effectivePolicy, version: protocolVersion }); agentId = `local-${createHash('sha256').update(input.endpoint).digest('hex').slice(0, 24)}`; }
         catch { return send(response, 400, { error: 'Provide a valid loopback agent endpoint.' }); }
       }
       const result = await runTrials({ personas, trials, concurrency, agent, agentId, structuredPolicy });
       const id = randomUUID();
       const directory = new URL('../.data/batches/', import.meta.url);
       await mkdir(directory, { recursive: true, mode: 0o700 });
-      await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
+      await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, protocolVersion, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
       const { results, ...summary } = result;
-      return send(response, 200, { id, agent: input.agent, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0] });
+      return send(response, 200, { id, agent: input.agent, protocolVersion, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0] });
     }
     if (url.pathname === '/api/upgrade/dispute-demo') {
       const input = await body(request);

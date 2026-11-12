@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 const maxBytes = 1_000_000;
 const allowedTools = ['get_order', 'cancel_order', 'refund_order', 'propose_fulfillment'];
 const trialTools = ['get_order', 'get_dispute', 'refund_order'];
+const toolkitTools = ['get_order', 'list_disputes', 'get_dispute', 'create_refund'];
 
 export function endpointUrl(endpoint) {
   let url;
@@ -49,6 +50,11 @@ function parseAction(value, version) {
     return message;
   }
   const tool = value.tool;
+  if (version === 3) {
+    if (!tool || typeof tool !== 'object' || Array.isArray(tool) || !toolkitTools.includes(tool.name) || !tool.arguments || typeof tool.arguments !== 'object' || Array.isArray(tool.arguments) || (tool.requestId !== undefined && (tool.name !== 'create_refund' || typeof tool.requestId !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(tool.requestId))) || Object.keys(tool).some(key => !['name', 'arguments', 'requestId'].includes(key))) throw new Error('External agent returned an invalid toolkit proposal.');
+    message.tool_calls = [{ id: randomUUID(), type: 'function', function: { name: tool.name, arguments: JSON.stringify(tool.arguments) }, ...(tool.requestId ? { requestId: tool.requestId } : {}) }];
+    return message;
+  }
   if (!tool || typeof tool !== 'object' || Array.isArray(tool) || !(version === 2 ? trialTools : allowedTools).includes(tool.name) || !tool.arguments || typeof tool.arguments !== 'object' || Array.isArray(tool.arguments)) {
     throw new Error('External agent returned an invalid tool proposal.');
   }
@@ -63,9 +69,9 @@ function parseAction(value, version) {
 
 export async function externalAgentChat({ endpoint, messages, version = 1 } = {}) {
   const url = endpointUrl(endpoint);
-  if (![1, 2].includes(version)) throw new Error('Unsupported external agent protocol version.');
+  if (![1, 2, 3].includes(version)) throw new Error('Unsupported external agent protocol version.');
   if (!Array.isArray(messages) || !messages.length) throw new Error('A conversation is required.');
-  const body = JSON.stringify({ version, messages, tools: version === 2 ? trialTools : allowedTools });
+  const body = JSON.stringify({ version, messages, tools: version === 3 ? toolkitTools : version === 2 ? trialTools : allowedTools });
   if (Buffer.byteLength(body) > maxBytes) throw new Error('External agent request exceeded the limit.');
   let response;
   try {

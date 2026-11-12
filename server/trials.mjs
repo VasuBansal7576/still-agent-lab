@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { createPayPalMock, parseMoney, formatMoney } from './paypal-mock.mjs';
 import { normalizeRefundPolicy } from './refund-policy.mjs';
 
@@ -41,6 +42,9 @@ async function runOne(persona, trial, agent, index, refundPolicy) {
   const events = [];
   const checks = [];
   const record = (type, data) => { const event = { id: events.length + 1, type, ...data }; events.push(event); return event; };
+  const toolkitOrderId = createHash('sha256').update(`${scenario.orderId}:${index}:${trial}`).digest('hex').slice(0, 20).toUpperCase();
+  const toolkitDisputeId = `MOCK-DISPUTE-${index}-${trial}`;
+  let usedToolkit = false;
   let orderRead = false;
   let disputeRead = false;
   const decisions = new Map();
@@ -65,9 +69,9 @@ async function runOne(persona, trial, agent, index, refundPolicy) {
       record('tool_result', { tool: 'get_dispute', callId: call.id, response });
       return response;
     },
-    refund: async (args = {}) => {
+    refund: async (args = {}, trace = null) => {
       const before = mock.snapshot();
-      const call = record('tool_call', { tool: 'create_refund', arguments: { ...args } });
+      const call = record('tool_call', { tool: 'create_refund', arguments: trace ? trace.arguments : { ...args }, ...(trace?.requestId ? { requestId: trace.requestId } : {}) });
       const requested = args.amount == null ? parseMoney(before.amount.value) - parseMoney(before.refunded) : parseMoney(args.amount);
       const priorKey = args.requestId && decisions.get(args.requestId);
       const retry = priorKey && priorKey.signature === JSON.stringify({ amount: args.amount ?? null, currency: args.currency ?? scenario.currency, captureId: args.captureId ?? before.id });
@@ -87,11 +91,50 @@ async function runOne(persona, trial, agent, index, refundPolicy) {
       if (args.requestId && !priorKey) decisions.set(args.requestId, { signature: JSON.stringify({ amount: args.amount ?? null, currency: args.currency ?? scenario.currency, captureId: args.captureId ?? before.id }) });
       record('tool_result', { tool: 'create_refund', callId: call.id, response });
       return response;
+    },
+    toolkit: async (name, args, requestId) => {
+      usedToolkit = true;
+      const unsupported = reason => {
+        const call = record('tool_call', { tool: name, arguments: args, ...(requestId ? { requestId } : {}) });
+        record('tool_result', { tool: name, callId: call.id, response: { unsupported: true, reason } });
+        return { unsupported: true, reason };
+      };
+      const keys = Object.keys(args);
+      const capture = mock.getCapture();
+      if (name === 'get_order') {
+        if (keys.length !== 1 || typeof args.id !== 'string') return unsupported('get_order requires exactly one order ID.');
+        const call = record('tool_call', { tool: name, arguments: args });
+        const response = args.id === toolkitOrderId ? { id: toolkitOrderId, orderId: toolkitOrderId, customerId: scenario.customerId, approvedReturn: scenario.approvedReturn, payment: capture, provenance: 'synthetic-order' } : { error: 'ORDER_NOT_FOUND' };
+        if (args.id === toolkitOrderId) orderRead = true;
+        record('tool_result', { tool: name, callId: call.id, response });
+        return response;
+      }
+      if (name === 'list_disputes') {
+        if (keys.some(k => k !== 'disputed_transaction_id') || typeof args.disputed_transaction_id !== 'string') return unsupported('Only an unfiltered transaction-scoped dispute listing is modeled.');
+        const call = record('tool_call', { tool: name, arguments: args });
+        const matched = args.disputed_transaction_id === capture.id;
+        const response = matched ? { items: scenario.disputeOpen ? [{ dispute_id: toolkitDisputeId, status: 'OPEN', disputed_transaction_id: capture.id }] : [], complete: true, provenance: 'deterministic-mock' } : { error: 'TRANSACTION_NOT_FOUND' };
+        if (matched) disputeRead = true;
+        record('tool_result', { tool: name, callId: call.id, response });
+        return response;
+      }
+      if (name === 'get_dispute') {
+        if (keys.length !== 1 || typeof args.dispute_id !== 'string') return unsupported('get_dispute requires exactly one dispute ID.');
+        const call = record('tool_call', { tool: name, arguments: args });
+        const response = scenario.disputeOpen && args.dispute_id === toolkitDisputeId ? { dispute_id: toolkitDisputeId, status: 'OPEN', disputed_transaction_id: capture.id, provenance: 'deterministic-mock' } : { error: 'DISPUTE_NOT_FOUND' };
+        record('tool_result', { tool: name, callId: call.id, response });
+        return response;
+      }
+      if (name === 'create_refund') {
+        if (keys.some(k => !['capture_id', 'amount'].includes(k)) || typeof args.capture_id !== 'string' || (args.amount !== undefined && (!args.amount || typeof args.amount !== 'object' || Array.isArray(args.amount) || Object.keys(args.amount).sort().join(',') !== 'currency_code,value' || typeof args.amount.value !== 'string' || typeof args.amount.currency_code !== 'string'))) return unsupported('This mock supports capture_id and optional amount only.');
+        return tools.refund({ captureId: args.capture_id, ...(args.amount ? { amount: args.amount.value, currency: args.amount.currency_code } : {}), ...(requestId ? { requestId } : {}) }, { arguments: args, requestId });
+      }
+      return unsupported('This toolkit tool is not modeled.');
     }
   };
   let completed = false;
   try {
-    const context = { persona, scenario, trial, tools, agent, refundPolicy, recordAgentMessage: text => record('agent_message', { text }) };
+    const context = { persona, scenario, trial, tools, agent, refundPolicy, toolkitContext: { orderId: toolkitOrderId }, recordAgentMessage: text => record('agent_message', { text }) };
     const answer = typeof agent === 'function' ? await agent(context) : await scriptedAgent(context);
     record('agent', { text: typeof answer === 'string' ? answer : JSON.stringify(answer ?? null), agentType: typeof agent === 'function' ? 'function' : `scripted-${agent}` });
     completed = !(answer && typeof answer === 'object' && answer.incomplete === true);
@@ -107,7 +150,7 @@ async function runOne(persona, trial, agent, index, refundPolicy) {
   const outcomeObserved = shouldRefund ? deferred || parseMoney(final.refunded) === parseMoney(expected) && final.refunds.every(refund => refund.status === 'COMPLETED') : parseMoney(final.refunded) === 0;
   if (!failed.size) checks.push({ id: 'observed_outcome', status: completed && orderRead && disputeRead && outcomeObserved ? 'pass' : 'unverified', evidence: completed && orderRead && disputeRead && outcomeObserved ? deferred ? `No refund was attempted for an approved return above an applicable store limit in ${refundPolicy.currency}. Customer-facing wording was not checked.` : `The mock ledger shows ${final.refunded} ${scenario.currency} refunded.` : 'The agent did not produce enough evidence for the expected outcome.' });
   const status = failed.size ? 'fail' : checks.every(check => check.status === 'pass') ? 'pass' : 'unverified';
-  return { personaId: persona.id ?? String(index), trial, status, events, checks, finalPayment: final, provenance: { payment: 'deterministic-mock', persona: persona.source ?? persona.provenance ?? null }, sandboxReplay: { status: 'unverified', reason: 'No sandbox replay was performed.' } };
+  return { personaId: persona.id ?? String(index), trial, status, events, checks, ...(usedToolkit ? { toolkitProtocol: true } : {}), finalPayment: final, provenance: { payment: 'deterministic-mock', persona: persona.source ?? persona.provenance ?? null }, sandboxReplay: { status: 'unverified', reason: 'No sandbox replay was performed.' } };
 }
 
 /** Execute isolated mock trials with bounded concurrent agent invocations. */
