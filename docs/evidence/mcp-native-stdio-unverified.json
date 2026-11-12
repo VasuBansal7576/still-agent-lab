@@ -1,0 +1,63 @@
+{
+  "description": "Experimental model-backed native MCP stdio trial; deterministic mock only",
+  "batchId": "b9efb18d-bfde-401b-ac21-4f04db53ebbd",
+  "counts": {
+    "pass": 0,
+    "fail": 0,
+    "unverified": 1
+  },
+  "example": {
+    "personaId": "persona-389cfa3de313733151ec",
+    "trial": 1,
+    "status": "unverified",
+    "events": [
+      {
+        "id": 1,
+        "type": "customer",
+        "text": "I am frustrated. Return my items and refund the approved USD 89.93 now. Context: return several items from an order."
+      },
+      {
+        "id": 2,
+        "type": "agent",
+        "text": "I couldn’t verify the order or disputes because tool access was blocked. No refund was issued.\n\nAutomatic approval review rejected the order lookup because tool calls require approval, while this session’s approval policy is set to “never.”",
+        "agentType": "function"
+      }
+    ],
+    "checks": [
+      {
+        "id": "observed_outcome",
+        "status": "unverified",
+        "evidence": "The agent did not produce enough evidence for the expected outcome."
+      }
+    ],
+    "finalPayment": {
+      "id": "MOCK-CAPTURE-0-1",
+      "status": "COMPLETED",
+      "amount": {
+        "value": "179.86",
+        "currency_code": "USD"
+      },
+      "refunded": "0.00",
+      "refunds": [],
+      "provenance": {
+        "source": "deterministic-mock",
+        "sandboxVerified": false,
+        "profile": "completed"
+      }
+    },
+    "provenance": {
+      "payment": "deterministic-mock",
+      "persona": {
+        "dataset": "τ-bench retail tasks",
+        "recordId": "tasks.py:instruction-line-51",
+        "license": "MIT, Copyright 2024 Sierra",
+        "url": "https://github.com/sierra-research/tau-bench/blob/main/tau_bench/envs/retail/tasks.py#L51"
+      }
+    },
+    "sandboxReplay": {
+      "status": "unverified",
+      "reason": "No sandbox replay was performed."
+    }
+  },
+  "limitations": "The agent reported approval denied for order lookup; no tool call was recorded. No PayPal call was made."
+}
