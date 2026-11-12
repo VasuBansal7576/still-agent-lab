@@ -9,6 +9,9 @@ const policy = document.querySelector('#policy');
 const personaSource = document.querySelector('#persona-source');
 const accountLoad = document.querySelector('#account-load');
 const accountStatus = document.querySelector('#account-status');
+const shadowStart = document.querySelector('#shadow-start');
+const shadowStatus = document.querySelector('#shadow-status');
+const shadowResult = document.querySelector('#shadow-result');
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const json = value => escape(JSON.stringify(value ?? null, null, 2));
 const state = { run: null, selectedCluster: null, selectedTrial: null, page: null, pageError: null, permission: null, permissionUrl: null, replay: null, selectedReplay: null, explanation: null, sandbox: null, accountSnapshot: null, busy: false };
@@ -219,5 +222,34 @@ sandbox.addEventListener('click',async event=>{
   button.disabled=true;
   try { state.sandbox=await request('/sandbox-retry.json'); renderSandbox(); }
   catch(error) { button.disabled=false; status.textContent=`Saved sandbox evidence unavailable: ${error.message}`; const message=document.createElement('p'); message.className='status'; message.setAttribute('role','status'); message.textContent=`Saved sandbox evidence unavailable: ${error.message}`; button.after(message); }
+});
+let shadowRecord = null;
+let shadowBusy = false;
+shadowStart.addEventListener('click', async () => {
+  if (shadowBusy) return;
+  if (agent.value !== 'external') { shadowStatus.textContent='Select Your local HTTP agent above to record its decisions.'; return; }
+  shadowBusy=true; shadowStart.disabled=true; shadowRecord=null; shadowResult.innerHTML='';
+  shadowStatus.textContent='Recording the agent through the mock gateway…';
+  try {
+    const data=await request('/api/upgrade/shadow-session',{action:'record-agent',endpoint:endpoint.value.trim()});
+    shadowRecord=data;
+    const calls=(data.observed || []).map((item,index)=>`<li><span class="label">Decision ${index+1} · ${escape(item.proposal?.name)}</span><p>${escape(item.proposal?.message || '')}</p><p>${item.status === 'recorded' ? (item.result?.blocked ? `Gateway blocked: ${escape(item.result.error)}` : item.result?.ok ? `Mock gateway returned ${escape(item.result.status || 'success')}${item.result.body?.status ? ` · ${escape(item.result.body.status)}` : ''}` : `Mock gateway result: ${escape(item.result?.error || 'unverified')}`) : escape(item.reason || 'Unverified')}</p><details><summary>Inspect decision and gateway result</summary><pre>${json(item)}</pre></details></li>`).join('');
+    shadowResult.innerHTML=`<h3>${data.status === 'completed' ? 'Session recorded' : 'Session unverified'}</h3><p>Session ${escape(data.sessionId)} · ${escape(data.endpoint)} · mock only</p>${data.reason ? `<p>${escape(data.reason)}</p>` : ''}<ul class="timeline">${calls || '<li>No gateway calls were recorded.</li>'}</ul>${data.finalMessage ? `<p>Agent: ${escape(data.finalMessage)}</p>` : ''}${data.status === 'completed' ? '<button type="button" class="secondary" id="shadow-promote">Promote and rerun gateway calls</button>' : ''}<div id="shadow-replay"></div>`;
+    shadowStatus.textContent=data.status === 'completed' ? 'Agent session recorded.' : 'The agent session did not complete; no regression was issued.';
+  } catch(error) { shadowStatus.textContent=`Could not record the agent session: ${error.message}`; }
+  finally { shadowBusy=false; shadowStart.disabled=false; }
+});
+shadowResult.addEventListener('click',async event=>{
+  const button=event.target.closest('#shadow-promote');
+  if (!button || shadowBusy || !shadowRecord) return;
+  shadowBusy=true; button.disabled=true; shadowStatus.textContent='Promoting and replaying recorded mock gateway calls…';
+  try {
+    const data=await request('/api/upgrade/shadow-session',{action:'promote-agent',id:shadowRecord.sessionId});
+    const comparison=data.replay?.comparison;
+    const outcome=comparison?.status === 'matched' ? `Matched across ${comparison.callsCompared} calls.` : comparison?.status === 'changed' ? `Changed: ${comparison.differences.length} call outcomes differ.` : 'Replay outcome is unverified.';
+    document.querySelector('#shadow-replay').innerHTML=`<div class="trace"><strong>Mock regression · ${escape(comparison?.status || 'unverified')}</strong><p>${escape(outcome)} The replay repeats recorded calls; it does not rerun the agent or contact PayPal.</p><details><summary>Inspect regression and replay</summary><pre>${json(data)}</pre></details></div>`;
+    shadowStatus.textContent='Mock regression replay completed.';
+  } catch(error) { shadowStatus.textContent=`Regression replay unverified: ${error.message}`; }
+  finally { shadowBusy=false; button.disabled=false; }
 });
 modeChanged();
