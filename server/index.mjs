@@ -22,6 +22,7 @@ import { createPayPalMock } from './paypal-mock.mjs';
 import { planSandboxReplays, reconcileSandboxReplays, executePlannedSandboxReplay, sandboxReplayPage } from './sandbox-replay.mjs';
 import { summarizeReplayFidelity } from './replay-fidelity.mjs';
 import { summarizeDelayedReplays } from './delayed-replay-reconciliation.mjs';
+import { summarizeFreshReplays } from './fresh-replay-summary.mjs';
 import { createReplayLedger } from './replay-ledger.mjs';
 import { createShadowSessions } from './shadow-sessions.mjs';
 import { createReplayCheckout } from './replay-checkout.mjs';
@@ -254,12 +255,16 @@ http.createServer(async (request, response) => {
         const batch = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
         const plan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 10, samplePasses: 10 });
         const ledger = await createReplayLedger({ directory: fileURLToPath(new URL('../.data/replay-ledger/', import.meta.url)) });
-        const comparison = reconcileSandboxReplays({ plan, evidence: await ledger.evidence(), verifyReceipt: ledger.verifyReceipt });
+        const evidence = await ledger.evidence();
+        const comparison = reconcileSandboxReplays({ plan, evidence, verifyReceipt: ledger.verifyReceipt });
         let delayed;
         try { delayed = await summarizeDelayedReplays(input.batchId); }
         catch { delayed = { status: 'unverified', reason: 'Delayed sandbox evidence could not be reconciled.' }; }
+        let freshReplacements;
+        try { freshReplacements = await summarizeFreshReplays({ batchId: input.batchId, batch, evidence, verifyReceipt: ledger.verifyReceipt, directory: fileURLToPath(new URL('../.data/batches/', import.meta.url)) }); }
+        catch { freshReplacements = { status: 'unverified', reason: 'Fresh replacement evidence could not be reconciled.' }; }
         const clusterReplays = (batch.failureClusters || []).map(cluster => ({ clusterId: cluster.id, result: comparison.results.find(result => result.personaId === cluster.example?.personaId && result.trial === cluster.example?.trial) || { status: 'unverified', reason: 'Example not in the current replay window.' } }));
-        return send(response, 200, { clusterReplays, failureCount: plan.failureCount, sampledPassCount: plan.sampledPassCount, queueCount: plan.queueCount, readyCount: plan.readyCount, deferredCount: plan.deferredCount, agreement: comparison.agreement, compared: comparison.compared, agreed: comparison.agreed, disagreed: comparison.disagreed, unverified: comparison.unverified, fidelity: summarizeReplayFidelity(comparison), delayed, status: comparison.unverified || !comparison.compared ? 'unverified' : 'compared', reason: comparison.unverified || !comparison.compared ? 'Some cases have no comparable sandbox evidence, or have uncertain or incomplete provider responses. External refund history remains unestablished.' : undefined });
+        return send(response, 200, { clusterReplays, failureCount: plan.failureCount, sampledPassCount: plan.sampledPassCount, queueCount: plan.queueCount, readyCount: plan.readyCount, deferredCount: plan.deferredCount, agreement: comparison.agreement, compared: comparison.compared, agreed: comparison.agreed, disagreed: comparison.disagreed, unverified: comparison.unverified, fidelity: summarizeReplayFidelity(comparison), delayed, freshReplacements, status: comparison.unverified || !comparison.compared ? 'unverified' : 'compared', reason: comparison.unverified || !comparison.compared ? 'Some cases have no comparable sandbox evidence, or have uncertain or incomplete provider responses. External refund history remains unestablished.' : undefined });
       } catch { return send(response, 400, { error: 'Replay plan could not be prepared.' }); }
     }
     if (url.pathname === '/api/upgrade/replay-page') {
