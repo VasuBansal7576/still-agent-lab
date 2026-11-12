@@ -34,6 +34,7 @@ import { codexReady, codexChat } from './codex-model.mjs';
 import { listRuns, readRun, saveRun } from './store.mjs';
 import { scenarioCatalog } from './catalog.mjs';
 import { endpointUrl } from './agent-connection.mjs';
+import { createBatchBinding } from './mcp-batch-binding.mjs';
 import { batchSandboxCoverage } from './batch-evidence.mjs';
 
 try { process.loadEnvFile('.env'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -435,6 +436,14 @@ http.createServer(async (request, response) => {
         if (!model.content?.trim()) throw new Error('No explanation');
         return send(response, 200, { explanation: model.content.slice(0, 2000), provenance: 'model-explanation-of-mock', verdict: 'unchanged' });
       } catch { return send(response, 503, { error: 'The AI explanation could not be generated. The rule verdict is unchanged.' }); }
+    }
+    if (url.pathname === '/api/upgrade/toolkit-config') {
+      const input = await body(request);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid saved batch.' });
+      try {
+        await createBatchBinding(input.batchId);
+        return send(response, 200, { batchId: input.batchId, config: { mcpServers: { still: { command: 'node', args: [fileURLToPath(new URL('./mcp-batch-binding.mjs', import.meta.url)), input.batchId] } } }, toolkitModule: new URL('../examples/still-openai-toolkit.mjs', import.meta.url).href, scope: 'deterministic-mock' });
+      } catch { return send(response, 400, { error: 'This saved batch cannot start the USD mock toolkit binding. A fully passing batch with qualifying USD refund evidence is required.' }); }
     }
     if (url.pathname === '/api/upgrade/permission') {
       const input = await body(request);

@@ -1,0 +1,47 @@
+{
+  "description": "Actual PayPal Agent Toolkit OpenAI definitions dispatched through Still MCP and a saved mock permission; no PayPal call.",
+  "batchId": "619ef2c9-486e-442f-bd8c-58a5ab63a56f",
+  "toolkitVersion": "1.11.0",
+  "source": "deterministic-mock",
+  "events": [
+    {
+      "tools": [
+        "get_dispute",
+        "create_refund"
+      ],
+      "source": "actual PayPal Agent Toolkit definitions"
+    },
+    {
+      "name": "get_dispute",
+      "message": {
+        "role": "tool",
+        "tool_call_id": "check",
+        "content": "{\"id\":\"batch-dispute\",\"status\":\"CLEAR\"}"
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "name": "create_refund",
+      "message": {
+        "role": "tool",
+        "tool_call_id": "refund",
+        "content": "{\"id\":\"MOCK-REFUND-batch-1\",\"status\":\"COMPLETED\",\"amount\":{\"value\":\"1.00\",\"currency_code\":\"USD\"}}"
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "name": "create_refund",
+      "message": {
+        "role": "tool",
+        "tool_call_id": "retry",
+        "content": "{\"id\":\"MOCK-REFUND-batch-1\",\"status\":\"COMPLETED\",\"amount\":{\"value\":\"1.00\",\"currency_code\":\"USD\"}}"
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "outcome": "passed",
+      "provider": "deterministic-mock",
+      "refundId": "MOCK-REFUND-batch-1"
+    }
+  ]
+}

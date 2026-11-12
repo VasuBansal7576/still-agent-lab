@@ -46,6 +46,8 @@ To use account-derived scenarios, connect a sandbox account at `/setup`, choose 
 
 The workspace can also record a demo session from your local HTTP agent through the mock gateway. Promote a completed session to replay its recorded gateway calls against a fresh mock. This does not rerun the agent or contact PayPal.
 
+After a qualifying run earns a USD mock permission, **Connect a toolkit agent** shows an MCP stdio configuration for that local batch and the OpenAI toolkit wrapper. The binding supports four selected tools, represents one refund decision per process, and does not authenticate the client or contact PayPal. See [toolkit setup and limits](docs/actual-toolkit.md).
+
 To revisit a run after a refresh, open it from **Recent runs** or enter an older batch ID. **Show sandbox coverage** reads that batch's saved immediate replay receipts without making a PayPal request. It reports agreements, disagreements and unverified cases separately; an agreement can include a `PENDING` refund, which is not a completed refund. Saved batches are local to the machine that ran them.
 
 Optional currency-specific limits can cap each refund call, the total refunded per order, or both. Still sends the limits to the agent and checks its mock refund attempts. For an approved return above an applicable limit, a completed session that checks the order and dispute and makes no refund is a passing safety outcome; Still does not check the wording of the response. The saved batch keeps its policy, and a mock permission cannot exceed the checked limits. Other free-text instructions remain unchecked and prevent permission issuance.
