@@ -21,4 +21,6 @@ The endpoint must implement [protocol version 2](agent-protocol.md#repeated-tria
 
 The agent chooses its refund request ID. A retry of the same uncertain operation must reuse the ID and the same arguments. The adapter does not invent an ID or infer customer, order, or capture identities. The tool result can report an unknown outcome after a timeout. A missing ID is passed through to the mock without an idempotency key. A missing amount requests the remaining balance and is checked as an unsafe proposal.
 
+When an amount-free scenario offers `request_refund_confirmation`, the model agent can request confirmation of the exact approved amount and currency. The predetermined synthetic customer response is added to the conversation only after a matching request. A free-text question alone does not produce a reply, and unsupported or mismatched requests remain unverified.
+
 The runner labels results as mock evidence. A successful mock trial does not prove PayPal sandbox behavior. Transport errors, invalid proposals, and exhausted action limits return an incomplete result; the runner must mark it unverified unless an observed policy failure already establishes a failure. Use the driving-test page to select Local HTTP agent, or run `still test --agent external --agent-url http://127.0.0.1:8787/agent --personas 1000 --trials 5`.
