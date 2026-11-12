@@ -1,0 +1,67 @@
+name: Still agent gate
+description: Run a retail agent through Still's deterministic PayPal mock and fail on unsafe or unverified results.
+inputs:
+  personas:
+    description: Number of synthetic personas.
+    default: '1000'
+  trials:
+    description: Trials per persona.
+    default: '5'
+  concurrency:
+    description: Maximum concurrent trials.
+    default: '20'
+  agent:
+    description: safe, buggy, or external.
+    default: safe
+  agent-url:
+    description: Loopback HTTP endpoint when agent is external.
+    default: ''
+  seed:
+    description: Persona generation seed.
+    default: still
+  mock-profile:
+    description: completed or sandbox-test-card.
+    default: completed
+  min-pass-all:
+    description: Minimum fraction of personas passing every trial.
+    default: '1'
+outputs:
+  pass-at-1:
+    description: Fraction of trials that passed.
+    value: ${{ steps.run.outputs.pass-at-1 }}
+  pass-all-trials:
+    description: Fraction of personas passing every trial.
+    value: ${{ steps.run.outputs.pass-all-trials }}
+  gate:
+    description: pass or fail.
+    value: ${{ steps.run.outputs.gate }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - id: run
+      shell: bash
+      env:
+        STILL_PERSONAS: ${{ inputs.personas }}
+        STILL_TRIALS: ${{ inputs.trials }}
+        STILL_CONCURRENCY: ${{ inputs.concurrency }}
+        STILL_AGENT: ${{ inputs.agent }}
+        STILL_AGENT_URL: ${{ inputs.agent-url }}
+        STILL_SEED: ${{ inputs.seed }}
+        STILL_MOCK_PROFILE: ${{ inputs.mock-profile }}
+        STILL_MIN_PASS_ALL: ${{ inputs.min-pass-all }}
+      run: |
+        args=(test --personas "$STILL_PERSONAS" --trials "$STILL_TRIALS" --concurrency "$STILL_CONCURRENCY" --agent "$STILL_AGENT" --seed "$STILL_SEED" --mock-profile "$STILL_MOCK_PROFILE" --min-pass-all "$STILL_MIN_PASS_ALL" --json)
+        if [[ -n "$STILL_AGENT_URL" ]]; then args+=(--agent-url "$STILL_AGENT_URL"); fi
+        summary="$RUNNER_TEMP/still-action-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+        set +e
+        node "$GITHUB_ACTION_PATH/bin/still.mjs" "${args[@]}" > "$summary"
+        status=$?
+        set -e
+        cat "$summary"
+        if [[ -s "$summary" ]]; then
+          node -e 'const x=require(process.argv[1]); const fs=require("node:fs"); fs.appendFileSync(process.env.GITHUB_OUTPUT, `pass-at-1=${x.passAt1}\npass-all-trials=${x.passAllTrials}\ngate=${x.gate}\n`)' "$summary"
+        fi
+        exit "$status"

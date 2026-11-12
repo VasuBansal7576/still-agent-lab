@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
       - name: Run scripted agent against the deterministic mock
-        run: node bin/still.mjs test --personas 1000 --trials 5
+        uses: ./
+        with:
+          personas: '1000'
+          trials: '5'
