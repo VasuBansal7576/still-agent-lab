@@ -37,4 +37,4 @@ Node.js, JavaScript, PayPal sandbox APIs, PayPal Agent Toolkit, MCP, public reta
 - [Public repository and setup](https://github.com/VasuBansal7576/still-agent-lab)
 - [Saved sandbox replay](https://vasubansal7576.github.io/still-agent-lab/)
 - [Evidence and limitations](upgrade-acceptance.md)
-- Demo video: not yet recorded or published.
+- [Demo video file](still-demo.mp4) (2 minutes 16 seconds). A public YouTube link is still required for submission.

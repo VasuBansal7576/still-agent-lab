@@ -1,6 +1,6 @@
 # Still demo script
 
-Target duration: under three minutes. The PayPal segment shows saved sandbox evidence. The trials and permission gateway use a deterministic mock.
+The [finished video](still-demo.mp4) runs 2 minutes 16 seconds. It includes a continuous browser capture and narrated still-frame close-ups. The PayPal segment shows saved sandbox evidence. The trials and permission gateway use a deterministic mock. The delivered narration is an abridged version of this script.
 
 ## 0:00 to 0:25. The leak
 

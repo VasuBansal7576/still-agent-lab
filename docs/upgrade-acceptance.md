@@ -82,3 +82,7 @@ The requested one-click end-to-end journey is not complete. The failure cluster 
 ## Guided hero checkpoint
 
 The guided `/upgrade` path selects a scripted agent, runs 1,000 personas by five mock trials, opens the retry cluster, displays a separate saved PayPal sandbox example, selects the corrected scripted example, reruns, issues a USD mock permission, and exercises the mock gateway. The browser observed 5,000 buggy failures and 5,000 corrected passes, then a blocked over-limit refund and an allowed eligible refund. The saved sandbox traces are historical and do not claim a new replay of the selected mock persona. The permission is derived from four observed USD personas and 20 trials in this run, not all 1,000 personas. The advanced lab remains at `/lab`.
+
+## Demo video checkpoint
+
+The [demo video](still-demo.mp4) is 136.49 seconds, with H.264 video and AAC narration. It includes a continuous browser capture of the guided journey followed by narrated close-ups of browser captures. The PayPal results shown are saved sandbox evidence. The mock batches and permission gateway are labeled. Visual frames and non-silent audio were checked after rendering. A prior montage-only version was uploaded privately to YouTube; the final video is not yet public on YouTube.
