@@ -1,0 +1,95 @@
+{
+  "state": "observed",
+  "source": "paypal-sandbox",
+  "timing": "changed-capture-state",
+  "claimId": "0015c73cd2f1923722fc93fd27569797eb79b1fcf7e5aae8fb3609f87f2cb60d",
+  "captureId": "8RF55986DE2220356",
+  "disputeId": "PP-R-KEA-10199440",
+  "priorCaptureStatus": "COMPLETED",
+  "currentCapture": {
+    "ok": true,
+    "status": 200,
+    "body": {
+      "id": "8RF55986DE2220356",
+      "status": "PENDING",
+      "amount": {
+        "value": "340.90",
+        "currency_code": "GBP"
+      },
+      "final_capture": true
+    }
+  },
+  "dispute": {
+    "verified": true,
+    "source": "paypal-sandbox",
+    "httpStatus": 200,
+    "id": "PP-R-KEA-10199440",
+    "status": "WAITING_FOR_SELLER_RESPONSE",
+    "captureId": "8RF55986DE2220356",
+    "amount": {
+      "value": "340.90",
+      "currency_code": "GBP"
+    },
+    "observedAt": "2026-11-12T06:26:13.033Z"
+  },
+  "originalMock": {
+    "status": 201,
+    "outcome": "COMPLETED",
+    "amount": {
+      "value": "170.45",
+      "currency_code": "GBP"
+    },
+    "id": "MOCK-REFUND-249-5-1",
+    "timeoutInjected": false
+  },
+  "request": {
+    "amount": "170.45",
+    "currency": "GBP"
+  },
+  "response": {
+    "ok": false,
+    "status": 422,
+    "body": {
+      "name": "UNPROCESSABLE_ENTITY",
+      "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+      "details": [
+        {
+          "issue": "REFUND_NOT_PERMITTED_DUE_TO_CHARGEBACK",
+          "description": "Refunds are not allowed on this capture due to a chargeback on the card. Please contact the payee to resolve the chargeback."
+        }
+      ]
+    },
+    "debugId": "f607711ba5204"
+  },
+  "limitation": "A pending capture differs from the completed mock capture. This observation does not replace the original unverified replay or establish complete external refund history.",
+  "after": {
+    "capture": {
+      "ok": true,
+      "status": 200,
+      "body": {
+        "id": "8RF55986DE2220356",
+        "status": "PENDING",
+        "amount": {
+          "value": "340.90",
+          "currency_code": "GBP"
+        },
+        "final_capture": true
+      }
+    },
+    "dispute": {
+      "ok": true,
+      "status": 200,
+      "body": {
+        "id": "PP-R-KEA-10199440",
+        "status": "WAITING_FOR_SELLER_RESPONSE",
+        "amount": {
+          "value": "340.90",
+          "currency_code": "GBP"
+        },
+        "sellerTransactionIds": [
+          "8RF55986DE2220356"
+        ]
+      }
+    }
+  }
+}

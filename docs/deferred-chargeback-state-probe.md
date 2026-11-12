@@ -1,0 +1,9 @@
+# Deferred chargeback state probe
+
+On November 12, 2026, Still re-read ten deferred sandbox card-chargeback captures. All ten returned HTTP 200 `PENDING`, although their original journals recorded completed captures before the chargeback simulator ran. This is an observation about these ten captures, not a claim about every deferred case. PayPal documents that a pending capture cannot be refunded in its [PENDING_CAPTURE error reference](https://developer.paypal.com/api/payments/v2/errors/pending_capture/).
+
+One guarded probe used a prior completed capture `8RF55986DE2220356`. PayPal then returned that capture as `PENDING` and independently verified its linked dispute `PP-R-KEA-10199440` as `WAITING_FOR_SELLER_RESPONSE`. Still's local claim showed that no replay refund had been attempted. The probe acquired one-use claim and capture reservations, then requested the original mock's GBP 170.45 sandbox refund exactly once. PayPal returned HTTP 422 with `REFUND_NOT_PERMITTED_DUE_TO_CHARGEBACK`. Subsequent reads again showed the capture as pending and the dispute as waiting for seller response. [Sanitized evidence](evidence/deferred-chargeback-state-probe.json) contains the provider responses.
+
+This is a **changed-state observation**, not a comparable replay of the original mock, which used a completed capture. The original immediate result remains unverified. The local reservations prevent Still from repeating the probe; they do not establish complete PayPal refund history or exclusive account access. The tool uses PayPal sandbox only and must stop after an uncertain response.
+
+The repeatable script is `server/probe-deferred-chargeback-state.mjs`. It is deliberately one-use for each eligible claim. Invoking it again on this claim is refused by the reservations. Do not delete reservations to force a retry.
