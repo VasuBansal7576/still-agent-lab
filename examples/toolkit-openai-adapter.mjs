@@ -30,7 +30,15 @@ export async function createStillToolkitAdapter({ toolkit, client }) {
       // Calls are serialized because a decision may depend on an earlier inspection.
       for (const call of parsed) {
         const result = await client.callTool({ name: call.name, arguments: call.arguments });
-        messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
+        const text = result?.content?.length === 1 && result.content[0]?.type === 'text' ? result.content[0].text : null;
+        let gatewayResult;
+        try { gatewayResult = JSON.parse(text); } catch { throw new Error('Invalid Still gateway response.'); }
+        if (!gatewayResult || typeof gatewayResult !== 'object' || Array.isArray(gatewayResult)) throw new Error('Invalid Still gateway response.');
+        const output = result.isError || gatewayResult.ok !== true
+          ? { error: { type: 'still_gateway_error', message: gatewayResult.reason || 'Still blocked or could not complete the tool call.', ...(Number.isInteger(gatewayResult.status) ? { status: gatewayResult.status } : {}) }, ...(gatewayResult.body ? { details: gatewayResult.body } : {}) }
+          : gatewayResult.body;
+        if (!output || typeof output !== 'object' || Array.isArray(output)) throw new Error('Invalid Still gateway response body.');
+        messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(output) });
       }
       return messages;
     }

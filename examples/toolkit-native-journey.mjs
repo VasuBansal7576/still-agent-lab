@@ -21,13 +21,12 @@ try {
   const results = [];
   for (const call of calls) {
     const message = await toolkit.handleToolCall(call);
-    const content = JSON.parse(message.content);
-    const value = JSON.parse(content.content[0].text);
+    const value = JSON.parse(message.content);
     results.push(value);
     console.log(JSON.stringify({ name: call.function.name, message, provider: 'deterministic-mock' }));
   }
-  if (results[0].body?.status !== 'CLEAR' || results[1].status !== 201 || results[1].body?.id !== results[2].body?.id) throw new Error('The mock gateway journey did not complete.');
-  console.log(JSON.stringify({ outcome: 'passed', provider: 'deterministic-mock', refundId: results[1].body.id }));
+  if (results[0].status !== 'CLEAR' || results[1].status !== 'COMPLETED' || results[1].id !== results[2].id) throw new Error('The mock gateway journey did not complete.');
+  console.log(JSON.stringify({ outcome: 'passed', provider: 'deterministic-mock', refundId: results[1].id }));
 } finally {
   await toolkit.close();
 }

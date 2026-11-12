@@ -34,13 +34,13 @@ try {
     messages.push(reply);
     console.log(JSON.stringify(reply));
   }
-  const results = messages.filter(message => message.role === 'tool').map(message => JSON.parse(JSON.parse(message.content).content[0].text));
-  assert.equal(results[0].body.status, 'CLEAR');
-  assert.equal(results[1].status, 201);
-  assert.equal(results[1].body.id, 'MOCK-REFUND-toolkit-1');
-  assert.equal(results[2].body.id, results[1].body.id);
+  const results = messages.filter(message => message.role === 'tool').map(message => JSON.parse(message.content));
+  assert.equal(results[0].status, 'CLEAR');
+  assert.equal(results[1].status, 'COMPLETED');
+  assert.equal(results[1].id, 'MOCK-REFUND-toolkit-1');
+  assert.equal(results[2].id, results[1].id);
   const [denied] = await adapter.dispatch([{ id: 'denied', type: 'function', function: { name: 'create_refund', arguments: JSON.stringify({ capture_id: 'MOCK-CAPTURE-toolkit' }) } }]);
-  assert.equal(JSON.parse(denied.content).isError, true);
+  assert.equal(JSON.parse(denied.content).error.type, 'still_gateway_error');
   await assert.rejects(adapter.dispatch([{ id: 'bad', type: 'function', function: { name: 'send_money', arguments: '{}' } }]), /Unsupported/);
   await assert.rejects(createStillToolkitAdapter({ toolkit: { getTools: () => [{ type: 'function', function: { name: 'send_money' } }] }, client }), /cannot bind/);
   console.log(JSON.stringify({ gatewayDenial: 'returned to agent', unsupportedTool: 'rejected', messageCount: messages.length }));

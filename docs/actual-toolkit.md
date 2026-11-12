@@ -74,7 +74,9 @@ for (let turn = 0; turn < 10; turn++) {
 }
 ```
 
-The adapter preserves the toolkit's actual OpenAI tool definitions. It validates all calls in a response before dispatching any of them, rejects unsupported or malformed calls, and sends supported calls sequentially through MCP. It returns OpenAI tool messages with the MCP result encoded as JSON, including `isError`, so the model can see gateway denials. The gateway enforces its own narrower arguments and permissions. Transport errors reject the dispatch; handle them in the agent instead of falling back to the PayPal client. Repeated calls represent the same decision only within the binding's documented process lifetime.
+The adapter preserves the toolkit's actual OpenAI tool definitions. It validates all calls in a response before dispatching any of them, rejects unsupported or malformed calls, and sends supported calls sequentially through MCP. Successful OpenAI tool-message content is the JSON response body, matching the installed toolkit's `handleToolCall` shape. A gateway denial is returned as an `error` object with type `still_gateway_error`. Malformed or unavailable transport responses reject dispatch. The gateway enforces its own narrower arguments and permissions, and there is no PayPal fallback. Repeated calls represent the same decision only within the binding's documented process lifetime.
+
+On November 12, the earlier wrapper was observed to return a nested MCP envelope where the PayPal toolkit returns a response body. The corrected wrapper was driven through the real toolkit 1.11.0 and MCP SDK: the scripted and `gpt-6.1-terra` journeys read a clear dispute and a completed mock refund directly from `content`, and the scripted retry returned the same mock refund ID. A denied call returned a `still_gateway_error`. These are deterministic mock results, not PayPal sandbox responses; other toolkit frameworks and tools remain unverified.
 
 The pinned bridge uses scripted assistant messages. The separate model-driven mock journey above exercises the same adapter with model-generated decisions. Tool schemas and behavior may change in other toolkit versions.
 

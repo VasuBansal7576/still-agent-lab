@@ -53,12 +53,10 @@ try {
     console.log(JSON.stringify({ gateway: JSON.parse(reply.content) }));
     observed.push({ name: decision.tool, result: JSON.parse(reply.content) });
   }
-  const dispute = observed.find(item => item.name === 'get_dispute' && !item.result.isError);
-  const refund = observed.find(item => item.name === 'create_refund' && !item.result.isError);
+  const dispute = observed.find(item => item.name === 'get_dispute' && !item.result.error);
+  const refund = observed.find(item => item.name === 'create_refund' && !item.result.error);
   if (!finished || !dispute || !refund || observed.indexOf(dispute) >= observed.indexOf(refund)) throw new Error('Model did not complete the ordered gateway journey.');
-  const disputeBody = JSON.parse(dispute.result.content[0].text);
-  const refundBody = JSON.parse(refund.result.content[0].text);
-  if (disputeBody.body.status !== 'CLEAR' || refundBody.status !== 201 || refundBody.body.id !== 'MOCK-REFUND-batch-1') throw new Error('Gateway results did not match the expected mock journey.');
+  if (dispute.result.status !== 'CLEAR' || refund.result.status !== 'COMPLETED' || refund.result.id !== 'MOCK-REFUND-batch-1') throw new Error('Gateway results did not match the expected mock journey.');
   console.log(JSON.stringify({ outcome: 'mock journey passed', calls: observed.map(item => item.name) }));
 } finally {
   await toolkit.close();
