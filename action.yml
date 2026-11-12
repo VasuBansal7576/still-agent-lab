@@ -23,7 +23,7 @@ inputs:
     description: External agent protocol, 2 or 3. Version 3 uses selected toolkit-shaped calls.
     default: '2'
   regression-file:
-    description: Optional exported v2 or toolkit-style v3 mock agent regression. Requires agent-url; runs instead of persona trials.
+    description: Optional exported HTTP or MCP mock regression. Requires exactly one of agent-url or agent-module.
     default: ''
   seed:
     description: Persona generation seed.
@@ -78,10 +78,11 @@ runs:
         STILL_MIN_PASS_ALL: ${{ inputs.min-pass-all }}
       run: |
         if [[ -n "$STILL_REGRESSION_FILE" ]]; then
-          if [[ -n "$STILL_AGENT_MODULE" ]]; then echo 'regression-file cannot be combined with agent-module' >&2; exit 2; fi
-          if [[ -z "$STILL_AGENT_URL" ]]; then echo 'regression-file requires agent-url' >&2; exit 2; fi
+          if [[ -n "$STILL_AGENT_URL" && -n "$STILL_AGENT_MODULE" ]] || [[ -z "$STILL_AGENT_URL" && -z "$STILL_AGENT_MODULE" ]]; then echo 'regression-file requires exactly one of agent-url or agent-module' >&2; exit 2; fi
+          regression_args=(regression --file "$STILL_REGRESSION_FILE")
+          if [[ -n "$STILL_AGENT_MODULE" ]]; then regression_args+=(--agent-module "$STILL_AGENT_MODULE"); else regression_args+=(--agent-url "$STILL_AGENT_URL"); fi
           set +e
-          node "$GITHUB_ACTION_PATH/bin/still.mjs" regression --file "$STILL_REGRESSION_FILE" --agent-url "$STILL_AGENT_URL"
+          node "$GITHUB_ACTION_PATH/bin/still.mjs" "${regression_args[@]}"
           status=$?
           set -e
           if [[ "$status" -eq 0 ]]; then echo 'gate=pass' >> "$GITHUB_OUTPUT"; else echo 'gate=fail' >> "$GITHUB_OUTPUT"; fi

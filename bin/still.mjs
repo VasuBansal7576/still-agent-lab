@@ -5,12 +5,13 @@ import { createExternalTrialAgent, DEFAULT_TRIAL_POLICY } from '../server/trial-
 import { normalizeRefundPolicy, refundPolicyInstruction } from '../server/refund-policy.mjs';
 import { createHash } from 'node:crypto';
 import { runPortableShadow } from '../server/portable-shadow.mjs';
+import { runMcpPortable } from '../server/mcp-portable-shadow.mjs';
 import { createMcpTrialAgent } from '../server/mcp-trial-agent.mjs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const usage = `Usage: still test [options]
-       still regression --file PATH --agent-url URL
+       still regression --file PATH (--agent-url URL | --agent-module PATH)
 
 Run scripted, local HTTP or local MCP hosts against the deterministic PayPal mock.
   --personas N       Number of synthetic personas (default 1000)
@@ -76,13 +77,13 @@ try {
     const options = {};
     while (args.length) {
       const flag = args.shift();
-      if (!['--file', '--agent-url'].includes(flag) || !args.length || args[0].startsWith('--') || options[flag]) throw new Error(`Invalid regression option: ${flag}`);
+      if (!['--file', '--agent-url', '--agent-module'].includes(flag) || !args.length || args[0].startsWith('--') || options[flag]) throw new Error(`Invalid regression option: ${flag}`);
       options[flag] = args.shift();
     }
-    if (!options['--file'] || !options['--agent-url']) throw new Error('Regression requires --file and --agent-url.');
-    const result = await runPortableShadow({ path: options['--file'], endpoint: options['--agent-url'] });
+    if (!options['--file'] || Boolean(options['--agent-url']) === Boolean(options['--agent-module'])) throw new Error('Regression requires --file and exactly one of --agent-url or --agent-module.');
+    const result = options['--agent-module'] ? await runMcpPortable({ path: options['--file'], agentModule: options['--agent-module'] }) : await runPortableShadow({ path: options['--file'], endpoint: options['--agent-url'] });
     console.log(JSON.stringify(result, null, 2));
-    console.log('Deterministic mock only. The endpoint is not authenticated. No PayPal call was made.');
+    console.log('Deterministic mock only. The agent is not authenticated. Trusted host code runs separately.');
     process.exitCode = result.status === 'matched' ? 0 : 1;
   } else {
   const options = parse(args);

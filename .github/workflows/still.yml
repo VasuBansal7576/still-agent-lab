@@ -89,3 +89,10 @@ jobs:
           agent-module: examples/mcp-scripted-host.mjs
           personas: '10'
           trials: '5'
+      - name: Rerun exported MCP regression
+        uses: ./
+        env:
+          STILL_TOOLKIT_INSTALL: ${{ runner.temp }}/still-mcp
+        with:
+          agent-module: examples/mcp-scripted-host.mjs
+          regression-file: examples/mcp-agent-regression.json

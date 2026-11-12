@@ -19,6 +19,7 @@ import { createExternalTrialAgent, DEFAULT_TRIAL_POLICY } from './trial-agent.mj
 import { createMcpTrialAgent } from './mcp-trial-agent.mjs';
 import { runMcpEarnedSession } from './mcp-earned-session.mjs';
 import { createMcpShadow, readMcpShadow, promoteMcpShadow, rerunMcpShadow } from './mcp-shadow.mjs';
+import { exportMcpPortable } from './mcp-portable-shadow.mjs';
 import { normalizeRefundPolicy, refundPolicyInstruction } from './refund-policy.mjs';
 import { importSandboxAccountPersonas } from './account-personas.mjs';
 import { importVerifiedAccountPersonas } from './verified-account-personas.mjs';
@@ -552,6 +553,7 @@ http.createServer(async (request, response) => {
         if (input.action === 'get') return send(response, 200, record);
         if (input.action === 'promote') return send(response, 200, await promoteMcpShadow(record, permission));
         if (input.action === 'rerun') return send(response, 200, await rerunMcpShadow(record, { host: mcpHost, permission, policy, hostMatches }));
+        if (input.action === 'export') return send(response, 200, await exportMcpPortable({ record, permission }));
         return send(response, 400, { error: 'Unknown MCP shadow action.' });
       } catch { return send(response, 400, { error: 'MCP shadow operation could not complete.' }); }
       finally { session.mcpShadowPending = false; }

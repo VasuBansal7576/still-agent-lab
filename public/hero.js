@@ -327,7 +327,7 @@ let shadowBusy = false;
 function renderMcpShadow(data) {
   shadowRecord={ kind:'mcp', sessionId:data.id };
   const calls=(data.events || []).map(item=>`<li>${escape(item.name)} · ${item.result?.blocked ? 'blocked' : item.result?.ok ? 'allowed' : 'unverified'}</li>`).join('');
-  const replay=data.regression ? '<p>Promoted mock regression saved in this browser session.</p><button type="button" class="secondary" id="mcp-shadow-rerun">Rerun the MCP agent</button><div id="mcp-shadow-rerun-result"></div>' : '';
+  const replay=data.regression ? '<p>Promoted mock regression saved in this browser session.</p><button type="button" class="secondary" id="mcp-shadow-rerun">Rerun the MCP agent</button><button type="button" class="secondary" id="mcp-shadow-export">Export MCP regression</button><div id="mcp-shadow-rerun-result"></div>' : '';
   shadowResult.innerHTML=`<h3>${data.status === 'completed' ? 'MCP session recorded' : 'MCP session unverified'}</h3><p>Session ${escape(data.id)} · deterministic mock. The host is trusted local code and is not authenticated.</p><ul class="timeline">${calls || '<li>No gateway calls were recorded.</li>'}</ul>${data.answer ? `<p>Agent: ${escape(data.answer)}</p>` : ''}${data.status === 'completed' ? `<button type="button" class="secondary" id="mcp-shadow-promote">${data.regression ? 'Replay recorded gateway calls' : 'Promote and replay gateway calls'}</button>` : ''}<div id="mcp-shadow-replay">${replay}</div>`;
 }
 document.querySelector('#mcp-shadow-open').addEventListener('click',async event=>{
@@ -365,16 +365,27 @@ shadowStart.addEventListener('click', async () => {
   finally { shadowBusy=false; shadowStart.disabled=false; }
 });
 shadowResult.addEventListener('click',async event=>{
-  const button=event.target.closest('#mcp-shadow-promote, #mcp-shadow-rerun');
+  const button=event.target.closest('#mcp-shadow-promote, #mcp-shadow-rerun, #mcp-shadow-export');
   if (!button || shadowBusy || shadowRecord?.kind !== 'mcp') return;
   shadowBusy=true; button.disabled=true;
+  if (button.id === 'mcp-shadow-export') {
+    shadowStatus.textContent='Preparing mock regression export…';
+    try {
+      const data=await request('/api/upgrade/mcp-shadow',{action:'export',id:shadowRecord.sessionId});
+      const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+      const link=document.createElement('a'); link.href=url; link.download='still-mcp-regression.json'; link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),60000); shadowStatus.textContent='MCP mock regression downloaded. Run it with still regression --agent-module.';
+    } catch(error) { shadowStatus.textContent=`Could not export MCP regression: ${error.message}`; }
+    finally { shadowBusy=false; button.disabled=false; }
+    return;
+  }
   const promote=button.id === 'mcp-shadow-promote';
   shadowStatus.textContent=promote ? 'Promoting and replaying recorded mock calls…' : 'Rerunning the MCP agent against a fresh mock…';
   try {
     const data=await request('/api/upgrade/mcp-shadow',{action:promote ? 'promote' : 'rerun',id:shadowRecord.sessionId});
     const result=promote ? data.comparison : data;
     const text=result.status === 'matched' ? `Matched across ${result.callsCompared} calls.` : result.status === 'changed' ? `${result.differences.length} call positions changed.` : result.reason || 'The outcome is unverified.';
-    if (promote) document.querySelector('#mcp-shadow-replay').innerHTML=`<div class="trace"><strong>Recorded-call replay · ${escape(result.status)}</strong><p>${escape(text)} This repeats the saved calls; it does not rerun the agent or contact PayPal.</p><details><summary>Inspect regression and replay</summary><pre>${json(data)}</pre></details><button type="button" class="secondary" id="mcp-shadow-rerun">Rerun the MCP agent</button><div id="mcp-shadow-rerun-result"></div></div>`;
+    if (promote) document.querySelector('#mcp-shadow-replay').innerHTML=`<div class="trace"><strong>Recorded-call replay · ${escape(result.status)}</strong><p>${escape(text)} This repeats the saved calls; it does not rerun the agent or contact PayPal.</p><details><summary>Inspect regression and replay</summary><pre>${json(data)}</pre></details><button type="button" class="secondary" id="mcp-shadow-rerun">Rerun the MCP agent</button><button type="button" class="secondary" id="mcp-shadow-export">Export MCP regression</button><div id="mcp-shadow-rerun-result"></div></div>`;
     else document.querySelector('#mcp-shadow-rerun-result').innerHTML=`<div class="trace"><strong>MCP agent rerun · ${escape(result.status)}</strong><p>${escape(text)} The agent ran against a fresh mock; this is not PayPal.</p><details><summary>Inspect agent rerun</summary><pre>${json(data)}</pre></details></div>`;
     shadowStatus.textContent=result.status === 'unverified' ? 'MCP regression is unverified.' : 'MCP regression completed.';
   } catch(error) { shadowStatus.textContent=`MCP regression unverified: ${error.message}`; }

@@ -31,7 +31,16 @@ STILL_TOOLKIT_INSTALL=/tmp/still-mcp-deps STILL_MCP_AGENT_MODULE=examples/mcp-co
 
 The module is loaded as trusted Node.js code at server startup. Do not point it at an untrusted file. The browser cannot select or change the module. Start a model-backed host with one persona and one trial; each decision can use a model call. A fully passing batch can request a USD mock permission if its refund evidence includes an explicit decision ID, order lookup and complete dispute check. The workspace can then run that host against a fresh mock gateway. It can also run a separate scripted over-limit and eligible-refund demonstration.
 
-After requesting a mock permission, select **Record agent session** to run the configured MCP host through a fresh mock gateway. A completed, nonempty session can be promoted. Promotion saves its calls and outcomes and compares their replay on a fresh mock. **Rerun the MCP agent** starts the agent again and compares its decisions and gateway results with the recording. Decision IDs may differ between sessions; the comparison checks their reuse pattern within each session. Changed decisions are reported as changed; incomplete runs are unverified. The local session and regression are stored in `.data/mcp-shadow/`. After a page reload, **Open last MCP session** reopens the most recent session in the same browser and running server. They are mock-only and are not a portable CLI regression.
+After requesting a mock permission, select **Record agent session** to run the configured MCP host through a fresh mock gateway. A completed, nonempty session can be promoted. Promotion saves its calls and outcomes and compares their replay on a fresh mock. **Rerun the MCP agent** starts the agent again and compares its decisions and gateway results with the recording. Decision IDs may differ between sessions; the comparison checks their reuse pattern within each session. Changed decisions are reported as changed; incomplete runs are unverified. The local session and regression are stored in `.data/mcp-shadow/`. After a page reload, **Open last MCP session** reopens the most recent session in the same browser and running server.
+
+Select **Export MCP regression** after promotion to download a portable synthetic mock regression. Run it after Still stops:
+
+```sh
+STILL_TOOLKIT_INSTALL=/tmp/still-mcp-deps node bin/still.mjs regression \
+  --file still-mcp-regression.json --agent-module examples/mcp-scripted-host.mjs
+```
+
+The GitHub Action accepts `regression-file` and `agent-module` together after the host dependencies are installed. A changed, unavailable or incomplete host fails the gate. The export contains a synthetic scenario, mock permission and normalized calls, not the agent conversation. Its checksum detects corruption, not intentional modification or agent identity. The local host executes trusted code and is not confined or prevented from making other network calls. Only supported synthetic mock calls can be exported.
 
 The issuing server checks that it is still running the same loaded host and that the configured module file has not changed. Restarting Still or changing that file requires a new batch. This check does not authenticate the agent, detect changes to imported dependencies or confine its code. PayPal sandbox replay is not available for MCP host runs. Mock results are not PayPal evidence.
 
