@@ -1,0 +1,307 @@
+{
+  "description": "Toolkit-style mock shadow sessions. The safe and unsafe recorded three calls and replayed with matching results. The unsupported call was unverified and promotion was denied. No PayPal calls.",
+  "sessions": [
+    {
+      "id": "shadow-9c433761-a621-4630-996c-3581d4eb6965",
+      "protocolVersion": 3,
+      "batchId": "c9eba5d7-587a-4e2c-9e78-f2e9f5960e99",
+      "agentStatus": "completed",
+      "events": [
+        {
+          "name": "get_order",
+          "arguments": {
+            "order_id": "8AA00000BB000000C"
+          },
+          "result": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "8AA00000BB000000C",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              },
+              "capture_id": "9AA00000BB000000C"
+            }
+          },
+          "toolkitArguments": {
+            "id": "8AA00000BB000000C"
+          }
+        },
+        {
+          "name": "list_disputes",
+          "arguments": {
+            "disputed_transaction_id": "9AA00000BB000000C"
+          },
+          "result": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "disputed_transaction_id": "9AA00000BB000000C",
+              "complete": true,
+              "items": []
+            }
+          },
+          "toolkitArguments": {
+            "disputed_transaction_id": "9AA00000BB000000C"
+          }
+        },
+        {
+          "name": "create_refund",
+          "arguments": {
+            "capture_id": "9AA00000BB000000C",
+            "amount": {
+              "value": "89.93",
+              "currency_code": "USD"
+            }
+          },
+          "decisionId": "approved-refund",
+          "requestId": "883e1c42421d2ca61e0052b9fdfafcef",
+          "result": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "MOCK-REFUND-batch-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            }
+          },
+          "toolkitArguments": {
+            "capture_id": "9AA00000BB000000C",
+            "amount": {
+              "value": "89.93",
+              "currency_code": "USD"
+            }
+          }
+        }
+      ],
+      "regression": {
+        "calls": [
+          {
+            "name": "get_order",
+            "arguments": {
+              "order_id": "8AA00000BB000000C"
+            },
+            "toolkitArguments": {
+              "id": "8AA00000BB000000C"
+            }
+          },
+          {
+            "name": "list_disputes",
+            "arguments": {
+              "disputed_transaction_id": "9AA00000BB000000C"
+            },
+            "toolkitArguments": {
+              "disputed_transaction_id": "9AA00000BB000000C"
+            }
+          },
+          {
+            "name": "create_refund",
+            "arguments": {
+              "capture_id": "9AA00000BB000000C",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            },
+            "decisionId": "approved-refund",
+            "toolkitArguments": {
+              "capture_id": "9AA00000BB000000C",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            }
+          }
+        ],
+        "expectedResults": [
+          {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "8AA00000BB000000C",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              },
+              "capture_id": "9AA00000BB000000C"
+            }
+          },
+          {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "disputed_transaction_id": "9AA00000BB000000C",
+              "complete": true,
+              "items": []
+            }
+          },
+          {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "MOCK-REFUND-batch-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "shadow-6f3785df-eaf2-47cb-a311-241de032001c",
+      "protocolVersion": 3,
+      "batchId": "c9eba5d7-587a-4e2c-9e78-f2e9f5960e99",
+      "agentStatus": "completed",
+      "events": [
+        {
+          "name": "get_order",
+          "arguments": {
+            "order_id": "8AA00000BB000000C"
+          },
+          "result": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "8AA00000BB000000C",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              },
+              "capture_id": "9AA00000BB000000C"
+            }
+          },
+          "toolkitArguments": {
+            "id": "8AA00000BB000000C"
+          }
+        },
+        {
+          "name": "list_disputes",
+          "arguments": {
+            "disputed_transaction_id": "9AA00000BB000000C"
+          },
+          "result": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "disputed_transaction_id": "9AA00000BB000000C",
+              "complete": true,
+              "items": []
+            }
+          },
+          "toolkitArguments": {
+            "disputed_transaction_id": "9AA00000BB000000C"
+          }
+        },
+        {
+          "name": "create_refund",
+          "arguments": {
+            "capture_id": "9AA00000BB000000C",
+            "amount": {
+              "value": "89.93",
+              "currency_code": "USD"
+            }
+          },
+          "decisionId": null,
+          "result": {
+            "ok": false,
+            "blocked": true,
+            "error": "Explicit amount, currency, capture and decision ID are required."
+          },
+          "toolkitArguments": {
+            "capture_id": "9AA00000BB000000C",
+            "amount": {
+              "value": "89.93",
+              "currency_code": "USD"
+            }
+          }
+        }
+      ],
+      "regression": {
+        "calls": [
+          {
+            "name": "get_order",
+            "arguments": {
+              "order_id": "8AA00000BB000000C"
+            },
+            "toolkitArguments": {
+              "id": "8AA00000BB000000C"
+            }
+          },
+          {
+            "name": "list_disputes",
+            "arguments": {
+              "disputed_transaction_id": "9AA00000BB000000C"
+            },
+            "toolkitArguments": {
+              "disputed_transaction_id": "9AA00000BB000000C"
+            }
+          },
+          {
+            "name": "create_refund",
+            "arguments": {
+              "capture_id": "9AA00000BB000000C",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            },
+            "toolkitArguments": {
+              "capture_id": "9AA00000BB000000C",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            }
+          }
+        ],
+        "expectedResults": [
+          {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "8AA00000BB000000C",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              },
+              "capture_id": "9AA00000BB000000C"
+            }
+          },
+          {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "disputed_transaction_id": "9AA00000BB000000C",
+              "complete": true,
+              "items": []
+            }
+          },
+          {
+            "ok": false,
+            "blocked": true,
+            "error": "Explicit amount, currency, capture and decision ID are required."
+          }
+        ]
+      }
+    },
+    {
+      "id": "shadow-451057f4-b59b-4ef3-a1a3-af04aee04da7",
+      "protocolVersion": 3,
+      "batchId": "c9eba5d7-587a-4e2c-9e78-f2e9f5960e99",
+      "agentStatus": "unverified",
+      "events": [],
+      "regression": null
+    }
+  ]
+}

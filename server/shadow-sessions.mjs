@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { createGateway, derivePermission } from './gateway.mjs';
 import { createPayPalMock } from './paypal-mock.mjs';
 import { runTrials } from './trials.mjs';
+import { createBatchBinding } from './mcp-batch-binding.mjs';
 
 const MAX_SESSIONS = 200;
 const MAX_CALLS = 100;
@@ -12,6 +13,11 @@ const sourceValues = new Set(['demo', 'local-agent']);
 const money = value => typeof value === 'string' && /^(?:0|[1-9]\d{0,5})\.\d{2}$/.test(value) && Number(value) > 0;
 
 async function binding(record) {
+  if (record.protocolVersion === 3) {
+    const result = await createBatchBinding(record.batchId, { decisionId: 'shadow-binding' });
+    if (result.protocolVersion !== 3) throw new Error('A toolkit-style passing batch is required.');
+    return result.gateway;
+  }
   const { scenario, id } = record;
   const summary = await runTrials({ personas: [{ id: 'shadow-permission', scenario }], trials: 1, agent: 'safe' });
   const permission = derivePermission({ agentId: 'scripted-safe', currency: scenario.currency, summary });
@@ -34,6 +40,12 @@ function validateCall(record, input) {
   if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(key => !['name', 'arguments', 'decisionId'].includes(key))) throw new Error('Invalid tool call.');
   const args = input.arguments;
   if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Tool arguments must be an object.');
+  if (record.protocolVersion === 3) {
+    if (input.name === 'get_order' && Object.keys(args).length === 1 && typeof args.id === 'string' && /^[A-Za-z0-9_-]{1,127}$/.test(args.id) && input.decisionId === undefined) return { name: input.name, arguments: { order_id: args.id } };
+    if (input.name === 'list_disputes' && Object.keys(args).length === 1 && typeof args.disputed_transaction_id === 'string' && /^[A-Za-z0-9_-]{1,127}$/.test(args.disputed_transaction_id) && input.decisionId === undefined) return { name: input.name, arguments: { ...args } };
+    if (input.name === 'create_refund' && Object.keys(args).every(key => ['capture_id', 'amount'].includes(key)) && typeof args.capture_id === 'string' && /^[A-Za-z0-9_-]{1,127}$/.test(args.capture_id) && args.amount && typeof args.amount === 'object' && !Array.isArray(args.amount) && Object.keys(args.amount).sort().join(',') === 'currency_code,value' && money(args.amount.value) && /^[A-Z]{3}$/.test(args.amount.currency_code) && (input.decisionId === undefined || (typeof input.decisionId === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(input.decisionId)))) return { name: input.name, arguments: structuredClone(args), ...(input.decisionId ? { decisionId: input.decisionId } : {}) };
+    throw new Error('Unsupported toolkit call or invalid arguments.');
+  }
   const ids = { get_order: ['order_id', record.scenario.orderId], get_dispute: ['dispute_id', record.disputeId] };
   if (ids[input.name]) {
     const [key, expected] = ids[input.name];
@@ -81,8 +93,23 @@ export function createShadowSessions({ directory } = {}) {
     for (const name of names.filter(name => /^shadow-[a-f0-9-]{36}\.json$/.test(name)).slice(0, MAX_SESSIONS)) records.push(await get(name.slice(0, -5)));
     return records.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
-  function create({ source, amount = '100.00', approvedReturn = '50.00', currency = 'USD', disputeOpen = false } = {}) {
+  function create({ source, amount = '100.00', approvedReturn = '50.00', currency = 'USD', disputeOpen = false, protocolVersion = 2, batchId } = {}) {
     return serial(async () => {
+      if (protocolVersion === 3) {
+        if (source !== 'local-agent' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(batchId || '')) throw new Error('A saved toolkit-style batch is required.');
+        const selected = await createBatchBinding(batchId, { decisionId: 'shadow-binding' });
+        if (selected.protocolVersion !== 3) throw new Error('A toolkit-style batch is required.');
+        const order = await selected.gateway.call({ sessionId: 'shadow-setup', name: 'get_order', arguments: { order_id: '8AA00000BB000000C' } });
+        if (!order.ok || !money(order.body?.amount?.value) || order.body.amount.currency_code !== 'USD' || order.body.capture_id !== '9AA00000BB000000C') throw new Error('Mock order is unavailable.');
+        if ((await list()).length >= MAX_SESSIONS) throw new Error('Shadow session limit reached.');
+        const id = `shadow-${randomUUID()}`;
+        const scenario = { kind: 'partial-return', amount: order.body.amount.value, approvedReturn: order.body.amount.value, currency: 'USD', disputeOpen: false, customerId: 'batch-customer', orderId: '8AA00000BB000000C' };
+        const record = { version: 1, id, source, protocolVersion: 3, batchId, provenance: 'deterministic-mock', createdAt: new Date().toISOString(), scenario, captureId: '9AA00000BB000000C', events: [], agentStatus: 'recording', regression: null };
+        await save(record);
+        gateways.set(id, selected.gateway);
+        return record;
+      }
+      if (protocolVersion !== 2) throw new Error('Unsupported shadow protocol.');
       if (!sourceValues.has(source) || !money(amount) || !money(approvedReturn) || Number(approvedReturn) > Number(amount) || !/^[A-Z]{3}$/.test(currency) || typeof disputeOpen !== 'boolean') throw new Error('Invalid mock session configuration.');
       if ((await list()).length >= MAX_SESSIONS) throw new Error('Shadow session limit reached.');
       const id = `shadow-${randomUUID()}`;
@@ -98,8 +125,11 @@ export function createShadowSessions({ directory } = {}) {
       if (record.events.length >= MAX_CALLS) throw new Error('Shadow call limit reached.');
       const safeCall = validateCall(record, input);
       const gateway = await restored(record);
+      const before = gateway.events(id).length;
       const result = await gateway.call({ sessionId: id, ...safeCall });
-      record.events = gateway.events(id).map(event => structuredClone(event));
+      if (record.protocolVersion === 3 && gateway.events(id).length !== before + 1) throw new Error('The toolkit call could not be recorded.');
+      const previous = record.events;
+      record.events = gateway.events(id).map((event, index) => ({ ...structuredClone(event), ...(record.protocolVersion === 3 ? { toolkitArguments: index < previous.length ? previous[index].toolkitArguments : structuredClone(input.arguments) } : {}) }));
       try { await save(record); } catch (error) { gateways.delete(id); throw error; }
       return { result, session: record };
     });
@@ -107,8 +137,9 @@ export function createShadowSessions({ directory } = {}) {
   function promote(id) {
     return serial(async () => {
       const record = await get(id);
+      if (record.protocolVersion === 3 && record.agentStatus !== 'completed') throw new Error('Complete the toolkit agent session before promotion.');
       if (!record.events.length) throw new Error('Cannot promote an empty session.');
-      record.regression = { version: 1, kind: 'gateway-regression', sourceSessionId: id, source: record.source, provenance: 'deterministic-mock', promotedAt: new Date().toISOString(), calls: record.events.map(({ name, arguments: args, decisionId }) => ({ name, arguments: args, ...(decisionId ? { decisionId } : {}) })), expectedResults: record.events.map(event => event.result) };
+      record.regression = { version: 1, kind: 'gateway-regression', sourceSessionId: id, source: record.source, provenance: 'deterministic-mock', promotedAt: new Date().toISOString(), calls: record.events.map(({ name, arguments: args, decisionId, toolkitArguments }) => ({ name, arguments: args, ...(decisionId ? { decisionId } : {}), ...(toolkitArguments ? { toolkitArguments } : {}) })), expectedResults: record.events.map(event => event.result) };
       await save(record);
       return record.regression;
     });
@@ -130,5 +161,13 @@ export function createShadowSessions({ directory } = {}) {
       return { provenance: 'deterministic-mock', sourceSessionId: id, ...replay, events: gateway.events(replay.sessionId), comparison };
     });
   }
-  return { create, call, get, list, promote, replay };
+  function finish(id, status) {
+    return serial(async () => {
+      const record = await get(id);
+      if (record.protocolVersion !== 3 || record.agentStatus !== 'recording' || !['completed', 'unverified'].includes(status)) throw new Error('Invalid shadow session state.');
+      record.agentStatus = status;
+      await save(record);
+    });
+  }
+  return { create, call, get, list, promote, replay, finish };
 }

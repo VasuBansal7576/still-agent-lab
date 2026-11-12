@@ -490,14 +490,18 @@ http.createServer(async (request, response) => {
       try {
         if (input.action === 'record-agent') {
           try { endpointUrl(input.endpoint); } catch { return send(response, 400, { error: 'Provide a valid loopback agent endpoint.' }); }
+          const protocolVersion = input.protocolVersion ?? 2;
+          if (![2, 3].includes(protocolVersion)) return send(response, 400, { error: 'Choose a supported agent protocol.' });
+          if (protocolVersion === 3 && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(input.batchId || '')) return send(response, 400, { error: 'Open a passing toolkit-style batch with an earned mock permission first.' });
           if (session.shadowDriverPending) return send(response, 409, { error: 'A mock shadow recording is already running.' });
           session.shadowDriverPending = true;
           try {
-            const record = await shadowSessions.create({ source: 'local-agent' });
+            const record = await shadowSessions.create({ source: 'local-agent', protocolVersion, ...(protocolVersion === 3 ? { batchId: input.batchId } : {}) });
             session.shadowIds ??= new Set(); session.shadowIds.add(record.id);
             const outcome = await recordShadowAgent({ endpoint: input.endpoint, session: record, store: shadowSessions });
+            if (protocolVersion === 3) await shadowSessions.finish(record.id, outcome.status);
             session.shadowAgentRecord = { id: record.id, status: outcome.status };
-            return send(response, 200, { provenance: 'deterministic-mock', sessionId: record.id, endpoint: input.endpoint, ...outcome });
+            return send(response, 200, { provenance: 'deterministic-mock', sessionId: record.id, endpoint: input.endpoint, protocolVersion, ...(protocolVersion === 3 ? { batchId: input.batchId } : {}), ...outcome });
           } finally { session.shadowDriverPending = false; }
         }
         if (input.action === 'promote-agent') {

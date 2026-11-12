@@ -52,6 +52,8 @@ An experimental [toolkit-style trial protocol](docs/toolkit-trials.md) lets an a
 
 The [model-driven gateway example](docs/toolkit-v3-model-gateway.md) uses a qualifying local batch and Codex to choose toolkit calls through that mock binding. The CLI and GitHub Action also accept `agent-protocol: '3'` for an external toolkit-style agent. These paths do not authenticate the agent or call PayPal.
 
+With a qualifying v3 mock permission open, shadow mode can record the connected toolkit-style agent's calls and promote them to a mock regression. The replay repeats recorded calls; it does not rerun the agent. See [toolkit shadow setup](docs/toolkit-trials.md).
+
 To revisit a run after a refresh, open it from **Recent runs** or enter an older batch ID. **Show sandbox coverage** reads that batch's saved immediate replay receipts without making a PayPal request. It reports agreements, disagreements and unverified cases separately; an agreement can include a `PENDING` refund, which is not a completed refund. Saved batches are local to the machine that ran them.
 
 Optional currency-specific limits can cap each refund call, the total refunded per order, or both. Still sends the limits to the agent and checks its mock refund attempts. For an approved return above an applicable limit, a completed session that checks the order and dispute and makes no refund is a passing safety outcome; Still does not check the wording of the response. The saved batch keeps its policy, and a mock permission cannot exceed the checked limits. Other free-text instructions remain unchecked and prevent permission issuance.
