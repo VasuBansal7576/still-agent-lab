@@ -32,6 +32,7 @@ import { codexReady, codexChat } from './codex-model.mjs';
 import { listRuns, readRun, saveRun } from './store.mjs';
 import { scenarioCatalog } from './catalog.mjs';
 import { endpointUrl } from './agent-connection.mjs';
+import { batchSandboxCoverage } from './batch-evidence.mjs';
 
 try { process.loadEnvFile('.env'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const port = Number(process.env.PORT || 3000);
@@ -113,6 +114,19 @@ http.createServer(async (request, response) => {
     if (request.method === 'GET' && url.pathname === '/api/upgrade/observed-agreement') { try { return send(response, 200, await loadObservedAgreement()); } catch { return send(response, 503, { error: 'Recorded sandbox comparison is unavailable.' }); } }
     if (request.method === 'GET' && url.pathname === '/api/scenarios') return send(response, 200, { scenarios: scenarioCatalog });
     if (request.method === 'GET' && url.pathname === '/api/runs') return send(response, 200, { runs: await listRuns() });
+    const batchSummary = url.pathname.match(/^\/api\/upgrade\/batches\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(\/sandbox-coverage)?$/);
+    if (request.method === 'GET' && batchSummary) {
+      let batch;
+      try { batch = JSON.parse(await readFile(new URL(`../.data/batches/${batchSummary[1]}.json`, import.meta.url), 'utf8')); }
+      catch { return send(response, 404, { error: 'Batch not found.' }); }
+      if (batch.id !== batchSummary[1] || !Array.isArray(batch.results) || !batch.results.length || !Array.isArray(batch.failureClusters) || !batch.counts) return send(response, 500, { error: 'Batch results are unavailable.' });
+      if (batchSummary[2]) {
+        try { return send(response, 200, await batchSandboxCoverage({ batch, batchId: batch.id, ledgerDirectory: fileURLToPath(new URL('../.data/replay-ledger/', import.meta.url)) })); }
+        catch { return send(response, 503, { error: 'Saved sandbox coverage is unavailable; no provider request was made.' }); }
+      }
+      const { results, ...summary } = batch;
+      return send(response, 200, { ...summary, exampleTrial: results[0] });
+    }
     const batchTrials = url.pathname.match(/^\/api\/upgrade\/batches\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/trials(?:\/(\d+))?$/);
     if (request.method === 'GET' && batchTrials) {
       let batch;
