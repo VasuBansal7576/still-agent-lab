@@ -24,6 +24,8 @@ The workspace now sends and deterministically checks an optional maximum per ref
 
 The CLI and reusable GitHub Action accept the same checked limit. A local CLI run with USD 100 passed 50 trials with the safe scripted agent and failed 50 with the buggy agent, including ten store-limit failures; an incomplete pair of limit options exited with an input error. The included local HTTP agent also passed 50 mock trials through the CLI with the limit in its instructions. A fresh public clone passed the CLI's 1,000 × 5 run with the limit. The [hosted GitHub Action](https://github.com/VasuBansal7576/still-agent-lab/actions/runs/43240499793) passed on `62a28f4`; its logs show the USD 100 policy and 5,000 mock passes.
 
+One browser trial with the local GPT-6.1 Terra agent and a USD 50 per-call limit passed in the mock. The model checked the order and dispute, then requested USD 50.00 and USD 39.93 as separate mock refunds; the resulting mock permission was USD 50 per order. [Trace](evidence/model-checked-policy.json). This policy limits individual calls, not their aggregate. The permission gateway applies its separate per-order ceiling. One model run does not establish reliability, and no PayPal call occurred.
+
 | Acceptance | Status | Evidence and limits |
 | --- | --- | --- |
 | $100 retry leak and stable request ID against PayPal | Passed in sandbox | [Sanitized evidence](evidence/sandbox-retry.json) records two distinct HTTP 201 $50 refunds on one $100 capture for the buggy run. The fixed run uses the same request ID and receives HTTP 201 then HTTP 200 for the same refund ID. PayPal subsequently reported the buggy capture as refunded and the fixed capture as partially refunded. The agent timeout was injected, not an actual network failure. |
