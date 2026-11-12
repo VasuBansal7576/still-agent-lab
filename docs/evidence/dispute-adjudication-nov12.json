@@ -1,0 +1,64 @@
+{
+  "source": "paypal-sandbox",
+  "records": [
+    {
+      "state": "reserved",
+      "before": {
+        "capture": {
+          "http": 200,
+          "status": "PENDING",
+          "actions": [
+            "self",
+            "refund",
+            "up"
+          ],
+          "id": "7TF93436A04568915"
+        },
+        "dispute": {
+          "http": 200,
+          "status": "UNDER_REVIEW",
+          "actions": [
+            "self",
+            "adjudicate",
+            "require_evidence",
+            "provide_supporting_info"
+          ],
+          "id": "PP-R-JJJ-10199975"
+        }
+      },
+      "at": "2026-11-12T09:00:30.929Z",
+      "adjudication": "SELLER_FAVOR"
+    },
+    {
+      "state": "response",
+      "http": 200,
+      "issues": []
+    },
+    {
+      "state": "after",
+      "after": {
+        "capture": {
+          "http": 200,
+          "status": "PENDING",
+          "actions": [
+            "self",
+            "refund",
+            "up"
+          ],
+          "id": "7TF93436A04568915"
+        },
+        "dispute": {
+          "http": 200,
+          "status": "UNDER_REVIEW",
+          "actions": [
+            "self",
+            "provide_supporting_info"
+          ],
+          "id": "PP-R-JJJ-10199975"
+        }
+      },
+      "at": "2026-11-12T09:00:35.796Z"
+    }
+  ],
+  "limitation": "The capture remains pending and the dispute under review; adjudication does not prove an open-dispute refund or settle the original replay."
+}

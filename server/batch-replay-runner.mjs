@@ -42,6 +42,21 @@ async function tokenFor(credentials) {
   return result.access_token;
 }
 
+export async function replaySandboxCredentials() {
+  if (process.env.STILL_REPLAY_USE_ENV_CREDENTIALS === '1') {
+    const { PAYPAL_CLIENT_ID: clientId, PAYPAL_CLIENT_SECRET: clientSecret } = process.env;
+    if (!/^[A-Za-z0-9_-]{10,256}$/.test(clientId || '') || !/^[A-Za-z0-9_-]{10,256}$/.test(clientSecret || '')) throw new Error('Both isolated PayPal sandbox environment credentials are required.');
+    return { clientId, clientSecret };
+  }
+  const credentials = await loadSandboxCredentials();
+  if (!credentials) throw new Error('Connect a PayPal sandbox account before reserving a fresh replay.');
+  return credentials;
+}
+
+export async function authenticateReplaySandbox(credentials) {
+  await tokenFor(credentials);
+}
+
 async function captureWithTestCard(token, amount, currency, requestId) {
   const response = await fetch(`${base}/v2/checkout/orders`, {
     method: 'POST', redirect: 'error', signal: AbortSignal.timeout(30000),
@@ -127,13 +142,13 @@ export async function resumeConfirmedChargebacks({ batchId, limit = 1 } = {}) {
 }
 
 // This runner only loads server-owned batches and cannot be supplied a payment source or endpoint.
-export async function runSandboxReplayBatch({ batchId, limit = 1, concurrency = 1, samplePasses = 10, mode = 'all', onProgress = () => {} } = {}) {
+export async function runSandboxReplayBatch({ batchId, limit = 1, concurrency = 1, samplePasses = 10, mode = 'all', onProgress = () => {}, replayCredentials } = {}) {
   if (!uuid.test(batchId || '') || !Number.isSafeInteger(limit) || limit < 1 || limit > 100000 || !Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 8 || !['all', 'disputes'].includes(mode)) throw new TypeError('Provide a batch UUID, positive limit, concurrency from 1 to 8 and valid mode.');
   const batch = JSON.parse(await readFile(new URL(`../.data/batches/${batchId}.json`, import.meta.url), 'utf8'));
   const plan = planSandboxReplays({ batchId, batch, maxRuns: batch.results.length, samplePasses });
   const ledger = await createReplayLedger({ directory: '.data/replay-ledger' });
   const prior = new Set((await ledger.evidence()).map(item => item.key));
-  const credentials = await loadSandboxCredentials();
+  const credentials = replayCredentials || await replaySandboxCredentials();
   const token = await tokenFor(credentials);
   const adapter = createPayPalSandbox(credentials);
   const directory = join('.data', 'bulk-replay-claims');
