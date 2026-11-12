@@ -6,16 +6,24 @@ export function normalizeToolkitReplay(item) {
   if (!Array.isArray(item.events)) return deny('the recorded events are missing.');
   if (item.events.some((e, i) => !Number.isSafeInteger(e.id) || e.id < 1 || (i && e.id <= item.events[i - 1].id))) return deny('the recorded event order is invalid.');
   const calls = item.events.filter(e => e.type === 'tool_call');
-  if (calls.some(e => e.tool === 'get_refund')) return deny('refund lookups cannot yet map mock refund IDs to PayPal IDs. No sandbox order can be created for this trace.');
-  if (calls.some(e => !['get_order', 'list_disputes', 'create_refund'].includes(e.tool))) return deny('a tool is not supported for sandbox replay.');
+  if (calls.some(e => !['get_order', 'list_disputes', 'create_refund', 'get_refund'].includes(e.tool))) return deny('a tool is not supported for sandbox replay.');
   const orders = calls.filter(e => e.tool === 'get_order');
   const lists = calls.filter(e => e.tool === 'list_disputes');
   const refunds = calls.filter(e => e.tool === 'create_refund');
+  const lookups = calls.filter(e => e.tool === 'get_refund');
   if (orders.length !== 1 || lists.length !== 1 || refunds.length > 2) return deny('one order lookup, one dispute listing, and at most two refunds are required.');
   const responseFor = call => {
     const results = item.events.filter(e => e.type === 'tool_result' && e.tool === call.tool && e.callId === call.id);
     return results.length === 1 ? results[0] : null;
   };
+  let toolkitRefundLookup;
+  if (lookups.length) {
+    if (item.status !== 'pass' || refunds.length !== 1 || lookups.length !== 1) return deny('refund lookup replay requires one completed refund followed by one lookup.');
+    const refund = refunds[0], lookup = lookups[0], refundResult = responseFor(refund), lookupResult = responseFor(lookup);
+    const mock = refundResult?.response, observed = lookupResult?.response, mockId = mock?.body?.id;
+    if (!refundResult || !lookupResult || Object.keys(lookup.arguments || {}).join(',') !== 'refund_id' || typeof mockId !== 'string' || !/^MOCK-REFUND-[A-Za-z0-9_-]+$/.test(mockId) || lookup.arguments.refund_id !== mockId || refund.id >= refundResult.id || refundResult.id >= lookup.id || lookup.id >= lookupResult.id || mock?.ok !== true || mock.status !== 201 || mock.body?.status !== 'COMPLETED' || observed?.ok !== true || observed.status !== 200 || observed.body?.id !== mockId || observed.body?.status !== 'COMPLETED' || observed.body?.amount?.value !== mock.body?.amount?.value || observed.body?.amount?.currency_code !== mock.body?.amount?.currency_code || !Array.isArray(item.finalPayment?.refunds) || item.finalPayment.refunds.length !== 1 || item.finalPayment.refunds[0]?.id !== mockId) return deny('the lookup must follow one uniquely identified completed mock refund.');
+    toolkitRefundLookup = { mockRefundId: mockId, status: observed.status, outcome: observed.body.status, amount: observed.body.amount };
+  }
   const orderResult = responseFor(orders[0]);
   const listResult = responseFor(lists[0]);
   const order = orderResult?.response;
@@ -38,5 +46,5 @@ export function normalizeToolkitReplay(item) {
     if (!responseFor(call)) return deny('a refund result is missing or ambiguous.');
     rewritten.set(call.id, { ...call, toolkitNoRequestId: call.requestId === undefined, arguments: { ...(amount ? { amount: amount.value } : {}), currency, ...(call.requestId === undefined ? {} : { requestId: call.requestId }) } });
   }
-  return { item: { ...item, toolkitProtocol: false, events: item.events.map(event => rewritten.get(event.id) || event) } };
+  return { item: { ...item, toolkitProtocol: false, ...(toolkitRefundLookup ? { toolkitRefundLookup } : {}), events: item.events.map(event => rewritten.get(event.id) || event) } };
 }

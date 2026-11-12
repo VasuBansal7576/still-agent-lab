@@ -1,0 +1,132 @@
+{
+  "provenance": "simulated-provider-fixture",
+  "note": "No PayPal calls. These local adapter responses and IDs are invented for integration verification and do not establish PayPal behavior.",
+  "trace": "docs/evidence/toolkit-refund-lookup-mock.json",
+  "cases": [
+    {
+      "mode": "success",
+      "providerCalls": [
+        "capture",
+        "refund",
+        "lookup:REFUND-1",
+        "capture"
+      ],
+      "receiptSource": "simulated-provider-fixture",
+      "receiptStatus": "completed",
+      "reason": null,
+      "savedCount": 1,
+      "receiptAuthenticated": true,
+      "repeatSource": "unverified-executor",
+      "repeatReason": "Capture or replay was already reserved.",
+      "comparison": "simulated-agreed",
+      "comparisonReason": null
+    },
+    {
+      "mode": "missing-id",
+      "providerCalls": [
+        "capture",
+        "refund",
+        "capture"
+      ],
+      "receiptSource": "unverified-executor",
+      "receiptStatus": null,
+      "reason": "Provider response is not a confirmed comparable success or rejection.",
+      "savedCount": 1,
+      "receiptAuthenticated": true,
+      "repeatSource": "unverified-executor",
+      "repeatReason": "Capture or replay was already reserved.",
+      "comparison": "unverified",
+      "comparisonReason": "A trusted local executor must attest to a real sandbox response and a buyer-approved fresh capture."
+    },
+    {
+      "mode": "pending",
+      "providerCalls": [
+        "capture",
+        "refund",
+        "capture"
+      ],
+      "receiptSource": "unverified-executor",
+      "receiptStatus": null,
+      "reason": "The refund was not confirmed completed; its lookup is unverified. Do not retry the refund automatically.",
+      "savedCount": 1,
+      "receiptAuthenticated": true,
+      "repeatSource": "unverified-executor",
+      "repeatReason": "Capture or replay was already reserved.",
+      "comparison": "unverified",
+      "comparisonReason": "A trusted local executor must attest to a real sandbox response and a buyer-approved fresh capture."
+    },
+    {
+      "mode": "refund-error",
+      "providerCalls": [
+        "capture",
+        "refund",
+        "capture"
+      ],
+      "receiptSource": "unverified-executor",
+      "receiptStatus": null,
+      "reason": "Refund outcome is uncertain. Do not retry automatically.",
+      "savedCount": 1,
+      "receiptAuthenticated": true,
+      "repeatSource": "unverified-executor",
+      "repeatReason": "Capture or replay was already reserved.",
+      "comparison": "unverified",
+      "comparisonReason": "A trusted local executor must attest to a real sandbox response and a buyer-approved fresh capture."
+    },
+    {
+      "mode": "lookup-error",
+      "providerCalls": [
+        "capture",
+        "refund",
+        "lookup:REFUND-1",
+        "capture"
+      ],
+      "receiptSource": "unverified-executor",
+      "receiptStatus": null,
+      "reason": "Refund lookup failed. Do not retry the refund automatically.",
+      "savedCount": 1,
+      "receiptAuthenticated": true,
+      "repeatSource": "unverified-executor",
+      "repeatReason": "Capture or replay was already reserved.",
+      "comparison": "unverified",
+      "comparisonReason": "A trusted local executor must attest to a real sandbox response and a buyer-approved fresh capture."
+    },
+    {
+      "mode": "wrong-id",
+      "providerCalls": [
+        "capture",
+        "refund",
+        "lookup:REFUND-1",
+        "capture"
+      ],
+      "receiptSource": "unverified-executor",
+      "receiptStatus": null,
+      "reason": "The provider refund lookup is incomplete or differs from the refund response. Do not retry the refund automatically.",
+      "savedCount": 1,
+      "receiptAuthenticated": true,
+      "repeatSource": "unverified-executor",
+      "repeatReason": "Capture or replay was already reserved.",
+      "comparison": "unverified",
+      "comparisonReason": "A trusted local executor must attest to a real sandbox response and a buyer-approved fresh capture."
+    },
+    {
+      "mode": "missing-lookup",
+      "providerCalls": [
+        "capture",
+        "refund",
+        "lookup:REFUND-1",
+        "capture"
+      ],
+      "receiptSource": "simulated-provider-fixture",
+      "receiptStatus": "completed",
+      "reason": null,
+      "savedCount": 1,
+      "receiptAuthenticated": true,
+      "repeatSource": "unverified-executor",
+      "repeatReason": "Capture or replay was already reserved.",
+      "comparison": "unverified",
+      "comparisonReason": "A matching completed provider refund lookup is required; do not repeat the refund automatically."
+    }
+  ],
+  "invalidLookupCheckout": null,
+  "invalidOrderingCheckout": null
+}
