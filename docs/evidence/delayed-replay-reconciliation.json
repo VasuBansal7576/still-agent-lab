@@ -1,0 +1,310 @@
+{
+  "batchId": "40f79126-1d0a-4152-b23d-5ef9c221e7ce",
+  "source": "paypal-sandbox",
+  "timing": "delayed-continuation",
+  "recorded": 769,
+  "compared": 768,
+  "agreed": 0,
+  "disagreed": 768,
+  "unverified": 1,
+  "agreement": 0,
+  "unverifiedReasons": [
+    {
+      "reason": "The delayed refund response is uncertain or unavailable.",
+      "count": 1
+    }
+  ],
+  "examples": [
+    {
+      "key": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-13a8a240a8fc30855514\",4]",
+      "source": "paypal-sandbox",
+      "status": "disagreed",
+      "timing": "delayed-continuation",
+      "comparisons": [
+        {
+          "mock": {
+            "status": null,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "215.24",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-887-4-1",
+            "timeoutInjected": true
+          },
+          "provider": {
+            "http": 201,
+            "ok": true,
+            "id": "25087208AE229942C",
+            "status": "PENDING",
+            "amount": {
+              "value": "215.24",
+              "currency_code": "GBP"
+            },
+            "name": null
+          },
+          "match": false
+        },
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "215.24",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-887-4-2",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "http": 201,
+            "ok": true,
+            "id": "8MM89717LX5553259",
+            "status": "PENDING",
+            "amount": {
+              "value": "215.24",
+              "currency_code": "GBP"
+            },
+            "name": null
+          },
+          "match": false,
+          "sameRefundIdentityMatches": true
+        }
+      ],
+      "limitation": "The second call occurred later than the recorded mock. Pending refunds are not completed. This separate report does not replace the immutable original receipt or enter the aggregate agreement score."
+    },
+    {
+      "key": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-d0fdc0f362c52d86bd26\",1]",
+      "source": "paypal-sandbox",
+      "status": "disagreed",
+      "timing": "delayed-continuation",
+      "comparisons": [
+        {
+          "mock": {
+            "status": null,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "167.66",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-356-1-1",
+            "timeoutInjected": true
+          },
+          "provider": {
+            "http": 201,
+            "ok": true,
+            "id": "2M675163H5445240E",
+            "status": "PENDING",
+            "amount": {
+              "value": "167.66",
+              "currency_code": "GBP"
+            },
+            "name": null
+          },
+          "match": false
+        },
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "167.66",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-356-1-2",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "http": 201,
+            "ok": true,
+            "id": "43C718719K988235L",
+            "status": "PENDING",
+            "amount": {
+              "value": "167.66",
+              "currency_code": "GBP"
+            },
+            "name": null
+          },
+          "match": false,
+          "sameRefundIdentityMatches": true
+        }
+      ],
+      "limitation": "The second call occurred later than the recorded mock. Pending refunds are not completed. This separate report does not replace the immutable original receipt or enter the aggregate agreement score."
+    },
+    {
+      "key": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-52a5c257c5563e8300c8\",5]",
+      "source": "paypal-sandbox",
+      "status": "disagreed",
+      "timing": "delayed-continuation",
+      "comparisons": [
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "149.30",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-856-5-1",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "http": 201,
+            "ok": true,
+            "id": "9WR36099W7658573G",
+            "status": "PENDING",
+            "amount": {
+              "value": "149.30",
+              "currency_code": "GBP"
+            },
+            "name": null
+          },
+          "match": false
+        },
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "149.30",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-856-5-2",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "http": 201,
+            "ok": true,
+            "id": "3V951451R1408894X",
+            "status": "PENDING",
+            "amount": {
+              "value": "149.30",
+              "currency_code": "GBP"
+            },
+            "name": null
+          },
+          "match": false,
+          "sameRefundIdentityMatches": true
+        }
+      ],
+      "limitation": "The second call occurred later than the recorded mock. Pending refunds are not completed. This separate report does not replace the immutable original receipt or enter the aggregate agreement score."
+    },
+    {
+      "key": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-579185d65aed59afaabb\",3]",
+      "source": "paypal-sandbox",
+      "status": "disagreed",
+      "timing": "delayed-continuation",
+      "comparisons": [
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "153.25",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-847-3-1",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "http": 201,
+            "ok": true,
+            "id": "2XN180234Y073292T",
+            "status": "PENDING",
+            "amount": {
+              "value": "153.25",
+              "currency_code": "GBP"
+            },
+            "name": null
+          },
+          "match": false
+        },
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "153.25",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-847-3-2",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "http": 201,
+            "ok": true,
+            "id": "0EG27464AG4790157",
+            "status": "PENDING",
+            "amount": {
+              "value": "153.25",
+              "currency_code": "GBP"
+            },
+            "name": null
+          },
+          "match": false,
+          "sameRefundIdentityMatches": true
+        }
+      ],
+      "limitation": "The second call occurred later than the recorded mock. Pending refunds are not completed. This separate report does not replace the immutable original receipt or enter the aggregate agreement score."
+    },
+    {
+      "key": "[\"40f79126-1d0a-4152-b23d-5ef9c221e7ce\",\"persona-2110b36cdc174b4cf5ba\",1]",
+      "source": "paypal-sandbox",
+      "status": "disagreed",
+      "timing": "delayed-continuation",
+      "comparisons": [
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "110.30",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-775-1-1",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "http": 201,
+            "ok": true,
+            "id": "9PK27999C1608263N",
+            "status": "PENDING",
+            "amount": {
+              "value": "110.30",
+              "currency_code": "GBP"
+            },
+            "name": null
+          },
+          "match": false
+        },
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "COMPLETED",
+            "amount": {
+              "value": "110.30",
+              "currency_code": "GBP"
+            },
+            "id": "MOCK-REFUND-775-1-2",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "http": 201,
+            "ok": true,
+            "id": "38S6292390809813C",
+            "status": "PENDING",
+            "amount": {
+              "value": "110.30",
+              "currency_code": "GBP"
+            },
+            "name": null
+          },
+          "match": false,
+          "sameRefundIdentityMatches": true
+        }
+      ],
+      "limitation": "The second call occurred later than the recorded mock. Pending refunds are not completed. This separate report does not replace the immutable original receipt or enter the aggregate agreement score."
+    }
+  ],
+  "limitation": "The second refund call was delayed relative to the mock. These comparisons do not replace the original receipts or their immediate agreement score. Pending refunds are not completed."
+}
