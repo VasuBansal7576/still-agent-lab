@@ -119,10 +119,12 @@ export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } =
         if (refund.ok && (![200, 201].includes(refund.status) || typeof refund.body?.id !== 'string' || !refund.body.id || !['PENDING', 'COMPLETED'].includes(refund.body.status) || !refund.body.amount || parseMoney(refund.body.amount.value) === null || !/^[A-Z]{3}$/.test(refund.body.amount.currency_code || ''))) return unverified(item, 'The PayPal success response does not contain a complete observable refund.');
         if (!refund.ok && (refund.status < 400 || refund.status >= 500 || typeof refund.body?.name !== 'string' || !refund.body.name || !Array.isArray(refund.body.details) || !refund.body.details.some(detail => typeof detail?.issue === 'string' && detail.issue))) return unverified(item, 'A comparable provider rejection needs a 4xx response and an identifiable issue.');
         const statusMatch = step.mock.timeoutInjected ? refund.ok === true && [200, 201].includes(refund.status) : refund.status === step.mock.status;
-        const match = statusMatch && refund.body?.status === step.mock.outcome && parseMoney(refund.body?.amount?.value) === parseMoney(step.mock.amount.value) && refund.body?.amount?.currency_code === step.mock.amount.currency_code;
+        const match = step.mock.issue
+          ? statusMatch && refund.ok === false && refund.body?.details?.some(detail => detail.issue === step.mock.issue)
+          : statusMatch && refund.ok === true && refund.body?.status === step.mock.outcome && parseMoney(refund.body?.amount?.value) === parseMoney(step.mock.amount.value) && refund.body?.amount?.currency_code === step.mock.amount.currency_code;
         comparisons.push({ mock: step.mock, provider: refund, ...(expected.disputeRequired ? { dispute: attempt.dispute } : {}), match });
       }
-      if (expected.steps.length === 2) {
+      if (expected.steps.length === 2 && expected.steps.every(step => step.mock.id) && receipt.attempts.every(attempt => attempt.refund.body?.id)) {
         const mockSame = expected.steps[0].mock.id === expected.steps[1].mock.id;
         const providerSame = receipt.attempts[0].refund.body?.id === receipt.attempts[1].refund.body?.id;
         comparisons[1].match = comparisons[1].match && mockSame === providerSame;

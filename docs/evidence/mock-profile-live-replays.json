@@ -1,0 +1,134 @@
+{
+  "batchId": "33cb70bc-8811-45c2-91fe-438fc4998e61",
+  "at": "2026-11-12T03:42:29.301Z",
+  "profile": "sandbox-test-card",
+  "source": "paypal-sandbox",
+  "compared": 10,
+  "agreed": 10,
+  "disagreed": 0,
+  "unverified": 0,
+  "examples": [
+    {
+      "key": "[\"33cb70bc-8811-45c2-91fe-438fc4998e61\",\"persona-04ff29305dd06aa2aa4f\",1]",
+      "personaId": "persona-04ff29305dd06aa2aa4f",
+      "trial": 1,
+      "status": "agreed",
+      "source": "paypal-sandbox",
+      "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+      "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+      "comparisons": [
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "PENDING",
+            "amount": {
+              "value": "233.42",
+              "currency_code": "USD"
+            },
+            "id": "MOCK-REFUND-3-1-1",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "38D86380191451718",
+              "status": "PENDING",
+              "amount": {
+                "value": "233.42",
+                "currency_code": "USD"
+              }
+            }
+          },
+          "match": true
+        }
+      ]
+    },
+    {
+      "key": "[\"33cb70bc-8811-45c2-91fe-438fc4998e61\",\"persona-389cfa3de313733151ec\",1]",
+      "personaId": "persona-389cfa3de313733151ec",
+      "trial": 1,
+      "status": "agreed",
+      "source": "paypal-sandbox",
+      "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+      "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+      "comparisons": [
+        {
+          "mock": {
+            "status": 201,
+            "outcome": "PENDING",
+            "amount": {
+              "value": "179.86",
+              "currency_code": "USD"
+            },
+            "id": "MOCK-REFUND-0-1-1",
+            "timeoutInjected": false
+          },
+          "provider": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "9T9610599N2571645",
+              "status": "PENDING",
+              "amount": {
+                "value": "179.86",
+                "currency_code": "USD"
+              }
+            }
+          },
+          "match": true
+        }
+      ]
+    },
+    {
+      "key": "[\"33cb70bc-8811-45c2-91fe-438fc4998e61\",\"persona-a21b496bc20f105bd430\",1]",
+      "personaId": "persona-a21b496bc20f105bd430",
+      "trial": 1,
+      "status": "agreed",
+      "source": "paypal-sandbox",
+      "comparison": "Refund outcome, amount, currency, retry identity and observable HTTP status",
+      "limitation": "Sandbox-only. Any timeout is injected after the real provider response. Refund history and exclusive access are not established. Synthetic order and customer facts do not establish real identity.",
+      "disputeKind": "sandbox-card-chargeback",
+      "comparisons": [
+        {
+          "mock": {
+            "status": 422,
+            "issue": "REFUND_NOT_PERMITTED_DUE_TO_CHARGEBACK",
+            "amount": {
+              "value": "184.58",
+              "currency_code": "GBP"
+            },
+            "timeoutInjected": false
+          },
+          "provider": {
+            "ok": false,
+            "status": 422,
+            "body": {
+              "name": "UNPROCESSABLE_ENTITY",
+              "details": [
+                {
+                  "issue": "REFUND_NOT_PERMITTED_DUE_TO_CHARGEBACK"
+                }
+              ]
+            }
+          },
+          "dispute": {
+            "verified": true,
+            "source": "paypal-sandbox",
+            "httpStatus": 200,
+            "id": "PP-R-LRK-10199680",
+            "status": "UNDER_REVIEW",
+            "captureId": "2YT782014J3028235",
+            "amount": {
+              "value": "369.17",
+              "currency_code": "GBP"
+            },
+            "observedAt": "2026-11-12T03:42:22.144Z"
+          },
+          "match": true
+        }
+      ]
+    }
+  ],
+  "note": "Fresh test-card sandbox replays. Pending refunds are not completed. This small selected sample does not establish general sandbox agreement or real-world rates."
+}

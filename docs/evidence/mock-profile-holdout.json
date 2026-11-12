@@ -1,0 +1,22 @@
+{
+  "source": "authenticated-sandbox-replay-receipts",
+  "batchId": "40f79126-1d0a-4152-b23d-5ef9c221e7ce",
+  "selection": "SHA-256 key first hex digit 0; pilot examples excluded",
+  "scope": "First provider refund response only, not full trace or final settlement",
+  "ledgerReceipts": 4510,
+  "excluded": {
+    "outsideBatch": 15,
+    "pilot": 3,
+    "hashSplit": 4209,
+    "untrusted": 0,
+    "nonTestCard": 0,
+    "incompleteOrUnsupported": 0
+  },
+  "eligible": 283,
+  "completed": 0,
+  "sandboxTestCard": 283,
+  "pending": 272,
+  "chargeback": 11,
+  "other": 0,
+  "limitation": "Retrospective selected sandbox test-card cases, not a random merchant population or proof of production behavior."
+}

@@ -21,6 +21,7 @@ import { derivePermission, createGateway } from './gateway.mjs';
 import { createPayPalMock } from './paypal-mock.mjs';
 import { planSandboxReplays, reconcileSandboxReplays, executePlannedSandboxReplay, sandboxReplayPage } from './sandbox-replay.mjs';
 import { summarizeReplayFidelity } from './replay-fidelity.mjs';
+import { summarizeDelayedReplays } from './delayed-replay-reconciliation.mjs';
 import { createReplayLedger } from './replay-ledger.mjs';
 import { createShadowSessions } from './shadow-sessions.mjs';
 import { createReplayCheckout } from './replay-checkout.mjs';
@@ -254,8 +255,11 @@ http.createServer(async (request, response) => {
         const plan = planSandboxReplays({ batchId: input.batchId, batch, maxRuns: 10, samplePasses: 10 });
         const ledger = await createReplayLedger({ directory: fileURLToPath(new URL('../.data/replay-ledger/', import.meta.url)) });
         const comparison = reconcileSandboxReplays({ plan, evidence: await ledger.evidence(), verifyReceipt: ledger.verifyReceipt });
+        let delayed;
+        try { delayed = await summarizeDelayedReplays(input.batchId); }
+        catch { delayed = { status: 'unverified', reason: 'Delayed sandbox evidence could not be reconciled.' }; }
         const clusterReplays = (batch.failureClusters || []).map(cluster => ({ clusterId: cluster.id, result: comparison.results.find(result => result.personaId === cluster.example?.personaId && result.trial === cluster.example?.trial) || { status: 'unverified', reason: 'Example not in the current replay window.' } }));
-        return send(response, 200, { clusterReplays, failureCount: plan.failureCount, sampledPassCount: plan.sampledPassCount, queueCount: plan.queueCount, readyCount: plan.readyCount, deferredCount: plan.deferredCount, agreement: comparison.agreement, compared: comparison.compared, agreed: comparison.agreed, disagreed: comparison.disagreed, unverified: comparison.unverified, fidelity: summarizeReplayFidelity(comparison), status: comparison.unverified || !comparison.compared ? 'unverified' : 'compared', reason: comparison.unverified || !comparison.compared ? 'Some cases have no comparable sandbox evidence, or have uncertain or incomplete provider responses. External refund history remains unestablished.' : undefined });
+        return send(response, 200, { clusterReplays, failureCount: plan.failureCount, sampledPassCount: plan.sampledPassCount, queueCount: plan.queueCount, readyCount: plan.readyCount, deferredCount: plan.deferredCount, agreement: comparison.agreement, compared: comparison.compared, agreed: comparison.agreed, disagreed: comparison.disagreed, unverified: comparison.unverified, fidelity: summarizeReplayFidelity(comparison), delayed, status: comparison.unverified || !comparison.compared ? 'unverified' : 'compared', reason: comparison.unverified || !comparison.compared ? 'Some cases have no comparable sandbox evidence, or have uncertain or incomplete provider responses. External refund history remains unestablished.' : undefined });
       } catch { return send(response, 400, { error: 'Replay plan could not be prepared.' }); }
     }
     if (url.pathname === '/api/upgrade/replay-page') {
@@ -420,8 +424,10 @@ http.createServer(async (request, response) => {
     if (url.pathname === '/api/upgrade/batch') {
       const input = await body(request);
       const count = Number(input.personas ?? 1000), trials = Number(input.trials ?? 5), concurrency = Number(input.concurrency ?? 20);
-      if (!Number.isInteger(count) || count < 1 || count > 5000 || !Number.isInteger(trials) || trials < 1 || trials > 10 || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100 || !['safe', 'buggy', 'external'].includes(input.agent)) return send(response, 400, { error: 'Choose valid trial settings and an agent.' });
+      const mockProfile = input.mockProfile ?? 'completed';
+      if (!Number.isInteger(count) || count < 1 || count > 5000 || !Number.isInteger(trials) || trials < 1 || trials > 10 || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100 || !['safe', 'buggy', 'external'].includes(input.agent) || !['completed', 'sandbox-test-card'].includes(mockProfile)) return send(response, 400, { error: 'Choose valid trial settings, mock profile and an agent.' });
       const personas = generatePersonas({ count, seed: 'still-upgrade' });
+      for (const persona of personas) persona.scenario.mockProfile = mockProfile;
       let agent = input.agent, agentId;
       if (agent === 'external') {
         try { agent = createExternalTrialAgent({ endpoint: input.endpoint }); agentId = `local-${createHash('sha256').update(input.endpoint).digest('hex').slice(0, 24)}`; }
@@ -431,9 +437,9 @@ http.createServer(async (request, response) => {
       const id = randomUUID();
       const directory = new URL('../.data/batches/', import.meta.url);
       await mkdir(directory, { recursive: true, mode: 0o700 });
-      await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
+      await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, mockProfile, createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
       const { results, ...summary } = result;
-      return send(response, 200, { id, agent: input.agent, ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0] });
+      return send(response, 200, { id, agent: input.agent, mockProfile, ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0] });
     }
     if (url.pathname === '/api/upgrade/dispute-demo') {
       const input = await body(request);
