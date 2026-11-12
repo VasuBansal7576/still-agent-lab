@@ -1,0 +1,282 @@
+{
+  "description": "Browser-observed MCP shadow and regression; deterministic mock, no PayPal calls",
+  "scripted": {
+    "session": {
+      "version": 1,
+      "id": "mcp-shadow-83104f07-8e58-451e-9205-fcdf7a5af7c3",
+      "batchId": "8137298b-e811-4ce8-b08f-7e30e7412512",
+      "provenance": "deterministic-mock",
+      "createdAt": "2026-11-12T17:44:02.447Z",
+      "status": "completed",
+      "events": [
+        {
+          "name": "get_order",
+          "arguments": {
+            "order_id": "8AA00000BB000000C"
+          },
+          "result": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "8AA00000BB000000C",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "116.71",
+                "currency_code": "USD"
+              },
+              "capture_id": "9AA00000BB000000C"
+            }
+          }
+        },
+        {
+          "name": "list_disputes",
+          "arguments": {
+            "disputed_transaction_id": "9AA00000BB000000C"
+          },
+          "result": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "disputed_transaction_id": "9AA00000BB000000C",
+              "complete": true,
+              "items": []
+            }
+          }
+        },
+        {
+          "name": "create_refund",
+          "arguments": {
+            "capture_id": "9AA00000BB000000C",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          },
+          "decisionId": "approved-refund",
+          "requestId": "5a54e02852e1b4f6379dcf40e20a7c4e",
+          "result": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "MOCK-REFUND-batch-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "116.71",
+                "currency_code": "USD"
+              }
+            }
+          }
+        }
+      ],
+      "answer": "The mock request has finished.",
+      "regression": {
+        "version": 1,
+        "kind": "gateway-regression",
+        "sourceSessionId": "mcp-shadow-83104f07-8e58-451e-9205-fcdf7a5af7c3",
+        "calls": [
+          {
+            "name": "get_order",
+            "arguments": {
+              "order_id": "8AA00000BB000000C"
+            }
+          },
+          {
+            "name": "list_disputes",
+            "arguments": {
+              "disputed_transaction_id": "9AA00000BB000000C"
+            }
+          },
+          {
+            "name": "create_refund",
+            "arguments": {
+              "capture_id": "9AA00000BB000000C",
+              "amount": {
+                "value": "116.71",
+                "currency_code": "USD"
+              }
+            },
+            "decisionId": "approved-refund"
+          }
+        ],
+        "expectedResults": [
+          {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "8AA00000BB000000C",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "116.71",
+                "currency_code": "USD"
+              },
+              "capture_id": "9AA00000BB000000C"
+            }
+          },
+          {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "disputed_transaction_id": "9AA00000BB000000C",
+              "complete": true,
+              "items": []
+            }
+          },
+          {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "MOCK-REFUND-batch-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "116.71",
+                "currency_code": "USD"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "recordedReplay": "matched 3 calls",
+    "rerunAfterPageReload": "matched 3 calls"
+  },
+  "model": {
+    "session": {
+      "version": 1,
+      "id": "mcp-shadow-cedc9c2d-f206-4d93-acb8-3afeacdcdfe0",
+      "batchId": "70581501-7bc9-4ef1-908b-e6fde130e83f",
+      "provenance": "deterministic-mock",
+      "createdAt": "2026-11-12T17:47:20.355Z",
+      "status": "completed",
+      "events": [
+        {
+          "name": "get_order",
+          "arguments": {
+            "order_id": "8AA00000BB000000C"
+          },
+          "result": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "8AA00000BB000000C",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              },
+              "capture_id": "9AA00000BB000000C"
+            }
+          }
+        },
+        {
+          "name": "list_disputes",
+          "arguments": {
+            "disputed_transaction_id": "9AA00000BB000000C"
+          },
+          "result": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "disputed_transaction_id": "9AA00000BB000000C",
+              "complete": true,
+              "items": []
+            }
+          }
+        },
+        {
+          "name": "create_refund",
+          "arguments": {
+            "capture_id": "9AA00000BB000000C",
+            "amount": {
+              "value": "89.93",
+              "currency_code": "USD"
+            }
+          },
+          "decisionId": "refund-8AA00000BB000000C-return-1",
+          "requestId": "4a39c94b7e239bb0c8869f9549b9907e",
+          "result": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "MOCK-REFUND-batch-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            }
+          }
+        }
+      ],
+      "answer": "Your approved USD 89.93 refund has been completed. The refund ID is `MOCK-REFUND-batch-1`.",
+      "regression": {
+        "version": 1,
+        "kind": "gateway-regression",
+        "sourceSessionId": "mcp-shadow-cedc9c2d-f206-4d93-acb8-3afeacdcdfe0",
+        "calls": [
+          {
+            "name": "get_order",
+            "arguments": {
+              "order_id": "8AA00000BB000000C"
+            }
+          },
+          {
+            "name": "list_disputes",
+            "arguments": {
+              "disputed_transaction_id": "9AA00000BB000000C"
+            }
+          },
+          {
+            "name": "create_refund",
+            "arguments": {
+              "capture_id": "9AA00000BB000000C",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            },
+            "decisionId": "refund-8AA00000BB000000C-return-1"
+          }
+        ],
+        "expectedResults": [
+          {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "8AA00000BB000000C",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              },
+              "capture_id": "9AA00000BB000000C"
+            }
+          },
+          {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "disputed_transaction_id": "9AA00000BB000000C",
+              "complete": true,
+              "items": []
+            }
+          },
+          {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "MOCK-REFUND-batch-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "recordedReplay": "matched 3 calls",
+    "freshAgentRerun": "matched 3 calls"
+  },
+  "limitations": "Model sample is one session; same server process and browser required to reopen; host unauthenticated; MCP sandbox replay and CLI export unverified."
+}

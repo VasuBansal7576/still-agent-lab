@@ -18,6 +18,7 @@ import { runTrials } from './trials.mjs';
 import { createExternalTrialAgent, DEFAULT_TRIAL_POLICY } from './trial-agent.mjs';
 import { createMcpTrialAgent } from './mcp-trial-agent.mjs';
 import { runMcpEarnedSession } from './mcp-earned-session.mjs';
+import { createMcpShadow, readMcpShadow, promoteMcpShadow, rerunMcpShadow } from './mcp-shadow.mjs';
 import { normalizeRefundPolicy, refundPolicyInstruction } from './refund-policy.mjs';
 import { importSandboxAccountPersonas } from './account-personas.mjs';
 import { importVerifiedAccountPersonas } from './verified-account-personas.mjs';
@@ -525,6 +526,35 @@ http.createServer(async (request, response) => {
         const outcome = await runMcpEarnedSession({ host: mcpHost, permission, policy: summary.effectivePolicy || DEFAULT_TRIAL_POLICY });
         return send(response, 200, { provenance: 'deterministic-mock', permission, ...outcome });
       } catch { return send(response, 400, { error: 'The MCP mock gateway session could not run.' }); }
+    }
+    if (url.pathname === '/api/upgrade/mcp-shadow') {
+      const input = await body(request);
+      if (session.mcpShadowPending) return send(response, 409, { error: 'An MCP shadow operation is already running.' });
+      session.mcpShadowPending = true;
+      try {
+        const recording = input.action === 'record';
+        const targetId = input.action === 'get' ? session.mcpShadowId : input.id;
+        if (!recording && (targetId !== session.mcpShadowId || !session.mcpShadowId)) return send(response, 400, { error: 'No MCP session is available in this browser session. Record one first.' });
+        const record = recording ? null : await readMcpShadow(targetId);
+        const batchId = recording ? input.batchId : record.batchId;
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(batchId || '')) return send(response, 400, { error: 'Choose a passing MCP batch.' });
+        const summary = JSON.parse(await readFile(new URL(`../.data/batches/${batchId}.json`, import.meta.url), 'utf8'));
+        const hostMatches = () => mcpHostMatches(summary);
+        if (!await hostMatches()) return send(response, 400, { error: 'The configured MCP host changed or Still restarted. Rerun the mock trials first.' });
+        const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary: currencyEvidence(summary, 'USD') });
+        if (!permission.create_refund.allowed) return send(response, 400, { error: 'This batch has not earned a USD mock permission.' });
+        const policy = summary.effectivePolicy || DEFAULT_TRIAL_POLICY;
+        if (recording) {
+          const result = await createMcpShadow({ batchId, host: mcpHost, permission, policy, hostMatches });
+          session.mcpShadowId = result.id;
+          return send(response, 200, result);
+        }
+        if (input.action === 'get') return send(response, 200, record);
+        if (input.action === 'promote') return send(response, 200, await promoteMcpShadow(record, permission));
+        if (input.action === 'rerun') return send(response, 200, await rerunMcpShadow(record, { host: mcpHost, permission, policy, hostMatches }));
+        return send(response, 400, { error: 'Unknown MCP shadow action.' });
+      } catch { return send(response, 400, { error: 'MCP shadow operation could not complete.' }); }
+      finally { session.mcpShadowPending = false; }
     }
     if (url.pathname === '/api/upgrade/shadow-session') {
       const input = await body(request);

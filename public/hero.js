@@ -324,12 +324,36 @@ sandbox.addEventListener('click',async event=>{
 });
 let shadowRecord = null;
 let shadowBusy = false;
+function renderMcpShadow(data) {
+  shadowRecord={ kind:'mcp', sessionId:data.id };
+  const calls=(data.events || []).map(item=>`<li>${escape(item.name)} · ${item.result?.blocked ? 'blocked' : item.result?.ok ? 'allowed' : 'unverified'}</li>`).join('');
+  const replay=data.regression ? '<p>Promoted mock regression saved in this browser session.</p><button type="button" class="secondary" id="mcp-shadow-rerun">Rerun the MCP agent</button><div id="mcp-shadow-rerun-result"></div>' : '';
+  shadowResult.innerHTML=`<h3>${data.status === 'completed' ? 'MCP session recorded' : 'MCP session unverified'}</h3><p>Session ${escape(data.id)} · deterministic mock. The host is trusted local code and is not authenticated.</p><ul class="timeline">${calls || '<li>No gateway calls were recorded.</li>'}</ul>${data.answer ? `<p>Agent: ${escape(data.answer)}</p>` : ''}${data.status === 'completed' ? `<button type="button" class="secondary" id="mcp-shadow-promote">${data.regression ? 'Replay recorded gateway calls' : 'Promote and replay gateway calls'}</button>` : ''}<div id="mcp-shadow-replay">${replay}</div>`;
+}
+document.querySelector('#mcp-shadow-open').addEventListener('click',async event=>{
+  if (shadowBusy) return;
+  const button=event.currentTarget;
+  shadowBusy=true; button.disabled=true; shadowStatus.textContent='Opening the last MCP session…';
+  try {
+    const data=await request('/api/upgrade/mcp-shadow',{action:'get'});
+    renderMcpShadow(data);
+    shadowStatus.textContent=data.regression ? 'Opened the promoted MCP mock regression.' : 'Opened the MCP mock session.';
+  } catch(error) { shadowStatus.textContent=`Could not open the MCP session: ${error.message}`; }
+  finally { shadowBusy=false; button.disabled=false; }
+});
 shadowStart.addEventListener('click', async () => {
   if (shadowBusy) return;
-  if (agent.value !== 'external') { shadowStatus.textContent='Select Your local HTTP agent above to record its decisions.'; return; }
+  if (!['external', 'mcp'].includes(agent.value)) { shadowStatus.textContent='Select a connected HTTP agent or configured MCP host above.'; return; }
   shadowBusy=true; shadowStart.disabled=true; shadowRecord=null; shadowResult.innerHTML='';
   shadowStatus.textContent='Recording the agent through the mock gateway…';
   try {
+    if (agent.value === 'mcp') {
+      if (!state.run || state.run.data.agent !== 'mcp' || !state.permission?.create_refund?.allowed) throw new Error('Open a passing MCP host run and request its mock permission first.');
+      const data=await request('/api/upgrade/mcp-shadow',{action:'record',batchId:state.run.data.id});
+      renderMcpShadow(data);
+      shadowStatus.textContent=data.status === 'completed' ? 'MCP agent session recorded.' : 'The MCP session did not complete; no regression was issued.';
+      return;
+    }
     const selectedProtocol=Number(document.querySelector('#protocol').value);
     if (!state.run || (state.run.data.protocolVersion || 2) !== selectedProtocol || state.run.data.agent !== 'external' || !state.permission?.create_refund?.allowed) throw new Error('Open a passing connected-agent run for this protocol and request its mock permission first.');
     const data=await request('/api/upgrade/shadow-session',{action:'record-agent',endpoint:endpoint.value.trim(),protocolVersion:selectedProtocol,batchId:state.run.data.id});
@@ -339,6 +363,22 @@ shadowStart.addEventListener('click', async () => {
     shadowStatus.textContent=data.status === 'completed' ? 'Agent session recorded.' : 'The agent session did not complete; no regression was issued.';
   } catch(error) { shadowStatus.textContent=`Could not record the agent session: ${error.message}`; }
   finally { shadowBusy=false; shadowStart.disabled=false; }
+});
+shadowResult.addEventListener('click',async event=>{
+  const button=event.target.closest('#mcp-shadow-promote, #mcp-shadow-rerun');
+  if (!button || shadowBusy || shadowRecord?.kind !== 'mcp') return;
+  shadowBusy=true; button.disabled=true;
+  const promote=button.id === 'mcp-shadow-promote';
+  shadowStatus.textContent=promote ? 'Promoting and replaying recorded mock calls…' : 'Rerunning the MCP agent against a fresh mock…';
+  try {
+    const data=await request('/api/upgrade/mcp-shadow',{action:promote ? 'promote' : 'rerun',id:shadowRecord.sessionId});
+    const result=promote ? data.comparison : data;
+    const text=result.status === 'matched' ? `Matched across ${result.callsCompared} calls.` : result.status === 'changed' ? `${result.differences.length} call positions changed.` : result.reason || 'The outcome is unverified.';
+    if (promote) document.querySelector('#mcp-shadow-replay').innerHTML=`<div class="trace"><strong>Recorded-call replay · ${escape(result.status)}</strong><p>${escape(text)} This repeats the saved calls; it does not rerun the agent or contact PayPal.</p><details><summary>Inspect regression and replay</summary><pre>${json(data)}</pre></details><button type="button" class="secondary" id="mcp-shadow-rerun">Rerun the MCP agent</button><div id="mcp-shadow-rerun-result"></div></div>`;
+    else document.querySelector('#mcp-shadow-rerun-result').innerHTML=`<div class="trace"><strong>MCP agent rerun · ${escape(result.status)}</strong><p>${escape(text)} The agent ran against a fresh mock; this is not PayPal.</p><details><summary>Inspect agent rerun</summary><pre>${json(data)}</pre></details></div>`;
+    shadowStatus.textContent=result.status === 'unverified' ? 'MCP regression is unverified.' : 'MCP regression completed.';
+  } catch(error) { shadowStatus.textContent=`MCP regression unverified: ${error.message}`; }
+  finally { shadowBusy=false; button.disabled=false; }
 });
 shadowResult.addEventListener('click',async event=>{
   const button=event.target.closest('#shadow-promote');
