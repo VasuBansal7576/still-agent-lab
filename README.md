@@ -2,17 +2,21 @@
 
 Still lets developers run retail support agents through customer requests and inspect their decisions, tool calls, payment responses, and policy checks. The app uses PayPal sandbox for captured payments and refunds. Order cancellations, failed payments, and fulfillment actions are simulated and labeled in the timeline.
 
-Still is a local prototype. It supports one local HTTP agent protocol and five scenarios. It is not a production payment integration or a measure of real-world failure rates.
+Still is the driving test for agents that touch PayPal money. Its driving test uses synthetic personas, repeated mock trials, failure clusters, and earned mock permissions. It is a prototype, not a production payment integration or a measure of real-world failure rates.
 
 ## Start the lab
 
 Use Node.js 22 or later. Start the server with `npm start` and open [the local lab](http://127.0.0.1:3000). Set `PORT` before launch to use a different port. The scripted driving-test agents do not require a Codex login or PayPal credentials for mock trials. AI-backed agents require a signed-in Codex CLI; actual sandbox payments require sandbox credentials.
 
+For the judge path, clone this repository, run `npm start`, and open `http://127.0.0.1:3000/upgrade`. Select **Buggy example** and click **Run mock trials**. The default run uses 1,000 personas and five trials. Select **Corrected example** and run again to generate a mock permission. The [hosted replay](https://vasubansal7576.github.io/still-agent-lab/) shows saved PayPal sandbox evidence without a login.
+
+To connect the scripted HTTP agent to the driving test, run `node examples/trial-agent.mjs` in another terminal. Select **Local HTTP agent** and enter `http://127.0.0.1:8787/agent`. Set `AGENT_PORT` if that port is occupied. This agent uses the repeated-trial protocol and needs no Codex login. `examples/agent.mjs` uses the older single-scenario protocol instead.
+
 For captured-payment scenarios, create a PayPal sandbox REST app linked to a compatible sandbox business account. Enter its client ID and secret at `http://127.0.0.1:3000/setup`. On macOS, Still verifies them with PayPal and saves them in the Mac Keychain so the connection survives a restart. Alternatively, copy `.env.example` to `.env` and enter the credentials there. Never use live credentials. US sandbox buyer and seller accounts support the $50 USD example. The app communicates only with PayPal sandbox.
 
 Choose a scenario and agent. For a captured-payment scenario, create a sandbox order, approve it with the sandbox buyer, return to Still, and capture it. Run the agent. Each run needs a fresh captured payment. For a failed-payment scenario, run directly without a sandbox capture.
 
-The built-in buggy and corrected agents use the signed-in Codex CLI. `CODEX_MODEL` defaults to `gpt-6.1-terra`. Codex usage is subject to your account's plan and limits.
+The original single-scenario lab's built-in buggy and corrected agents use the signed-in Codex CLI. `CODEX_MODEL` defaults to `gpt-6.1-terra`. Codex usage is subject to your account's plan and limits.
 
 ## Connect an agent
 
