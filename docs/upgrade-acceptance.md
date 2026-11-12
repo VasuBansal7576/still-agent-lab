@@ -48,6 +48,8 @@ The model-driven toolkit client used the mock permission derived from the passin
 
 The browser recorded a toolkit-style shadow session using the permission derived from the passing model trial. A model-backed agent selected an order lookup, dispute listing, and refund through the mock gateway; promotion replayed all three calls with matching results. [Recorded session](evidence/toolkit-shadow-model.json). The endpoint is not authenticated as the evaluated agent. The replay repeats recorded calls rather than rerunning the model, and no PayPal call occurred. An unavailable endpoint produced an unverified session and no regression.
 
+Promoted v3 sessions can now rerun the connected agent itself against the same scenario and a fresh mock. In the browser, an unchanged scripted agent matched three calls, a changed agent differed at one call, and an unavailable endpoint was unverified. A separate [model-backed baseline and rerun](evidence/toolkit-agent-rerun-model.json) matched three calls and mock outcomes. A match covers only the observed calls, does not authenticate the endpoint, and does not establish PayPal behavior. V2 retains recorded-call replay.
+
 | Acceptance | Status | Evidence and limits |
 | --- | --- | --- |
 | $100 retry leak and stable request ID against PayPal | Passed in sandbox | [Sanitized evidence](evidence/sandbox-retry.json) records two distinct HTTP 201 $50 refunds on one $100 capture for the buggy run. The fixed run uses the same request ID and receives HTTP 201 then HTTP 200 for the same refund ID. PayPal subsequently reported the buggy capture as refunded and the fixed capture as partially refunded. The agent timeout was injected, not an actual network failure. |

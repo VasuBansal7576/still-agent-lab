@@ -104,7 +104,8 @@ export function createShadowSessions({ directory } = {}) {
         if ((await list()).length >= MAX_SESSIONS) throw new Error('Shadow session limit reached.');
         const id = `shadow-${randomUUID()}`;
         const scenario = { kind: 'partial-return', amount: order.body.amount.value, approvedReturn: order.body.amount.value, currency: 'USD', disputeOpen: false, customerId: 'batch-customer', orderId: '8AA00000BB000000C' };
-        const record = { version: 1, id, source, protocolVersion: 3, batchId, provenance: 'deterministic-mock', createdAt: new Date().toISOString(), scenario, captureId: '9AA00000BB000000C', events: [], agentStatus: 'recording', regression: null };
+        const permissionFingerprint = createHash('sha256').update(JSON.stringify(selected.permission)).digest('hex');
+        const record = { version: 1, id, source, protocolVersion: 3, batchId, permissionFingerprint, provenance: 'deterministic-mock', createdAt: new Date().toISOString(), scenario, captureId: '9AA00000BB000000C', events: [], agentStatus: 'recording', regression: null };
         await save(record);
         gateways.set(id, selected.gateway);
         return record;

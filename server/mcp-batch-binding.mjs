@@ -48,7 +48,7 @@ export async function createBatchBinding(batchId, { decisionId } = {}) {
     async get_dispute(disputeId) { return toolkitTrial ? { ok: false, status: 404 } : { ok: true, status: 200, body: { id: disputeId, status: 'CLEAR' } }; },
     async list_disputes(requestedCapture) { return toolkitTrial && requestedCapture === captureId ? { ok: true, status: 200, body: { disputed_transaction_id: captureId, complete: true, items: [] } } : { ok: false, status: 404 }; }
   };
-  return { gateway: createGateway({ agentId: summary.evaluatedAgentId, permission, adapter }), sessionId: 'stdio-batch', decisionId: toolkitTrial ? decisionId : 'batch-refund-decision', protocolVersion: toolkitTrial ? 3 : 2 };
+  return { gateway: createGateway({ agentId: summary.evaluatedAgentId, permission, adapter }), permission, sessionId: 'stdio-batch', decisionId: toolkitTrial ? decisionId : 'batch-refund-decision', protocolVersion: toolkitTrial ? 3 : 2 };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

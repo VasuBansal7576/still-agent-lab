@@ -28,6 +28,7 @@ import { createReplayLedger } from './replay-ledger.mjs';
 import { createShadowSessions } from './shadow-sessions.mjs';
 import { recentBatches } from './batch-history.mjs';
 import { recordShadowAgent } from './shadow-agent-driver.mjs';
+import { rerunShadowAgent } from './shadow-agent-regression.mjs';
 import { createReplayCheckout } from './replay-checkout.mjs';
 import { loadObservedAgreement } from './observed-agreement.mjs';
 import { codexReady, codexChat } from './codex-model.mjs';
@@ -507,6 +508,13 @@ http.createServer(async (request, response) => {
         if (input.action === 'promote-agent') {
           if (session.shadowDriverPending || !session.shadowIds?.has(input.id) || session.shadowAgentRecord?.id !== input.id || session.shadowAgentRecord.status !== 'completed') return send(response, 400, { error: 'Complete a mock agent recording in this browser session first.' });
           return send(response, 200, { regression: await shadowSessions.promote(input.id), replay: await shadowSessions.replay(input.id) });
+        }
+        if (input.action === 'rerun-agent') {
+          if (session.shadowDriverPending || !session.shadowIds?.has(input.id) || session.shadowAgentRecord?.id !== input.id || session.shadowAgentRecord.status !== 'completed') return send(response, 400, { error: 'Promote a completed mock agent recording in this browser session first.' });
+          try { endpointUrl(input.endpoint); } catch { return send(response, 400, { error: 'Provide a valid loopback agent endpoint.' }); }
+          session.shadowDriverPending = true;
+          try { return send(response, 200, await rerunShadowAgent({ endpoint: input.endpoint, sourceId: input.id, store: shadowSessions })); }
+          finally { session.shadowDriverPending = false; }
         }
         if (input.action === 'create') {
           const record = await shadowSessions.create({ source: 'local-agent', amount: input.amount, approvedReturn: input.approvedReturn, currency: input.currency, disputeOpen: input.disputeOpen });

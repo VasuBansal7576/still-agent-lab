@@ -1,0 +1,278 @@
+{
+  "description": "Browser observed a model-driven baseline and a fresh agent rerun with matching calls and mock outcomes. No PayPal calls.",
+  "status": "matched",
+  "callsCompared": 3,
+  "sessions": [
+    {
+      "version": 1,
+      "id": "shadow-1047a32e-3d14-4f03-8441-6c0ba07ffe9b",
+      "source": "local-agent",
+      "protocolVersion": 3,
+      "batchId": "c9eba5d7-587a-4e2c-9e78-f2e9f5960e99",
+      "permissionFingerprint": "69d52596798667eb755793bce0620aa0b7e2270be9323ff82b2c0cf905bad541",
+      "provenance": "deterministic-mock",
+      "createdAt": "2026-11-12T15:38:09.059Z",
+      "scenario": {
+        "kind": "partial-return",
+        "amount": "89.93",
+        "approvedReturn": "89.93",
+        "currency": "USD",
+        "disputeOpen": false,
+        "customerId": "batch-customer",
+        "orderId": "8AA00000BB000000C"
+      },
+      "captureId": "9AA00000BB000000C",
+      "events": [
+        {
+          "name": "get_order",
+          "arguments": {
+            "order_id": "8AA00000BB000000C"
+          },
+          "result": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "8AA00000BB000000C",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              },
+              "capture_id": "9AA00000BB000000C"
+            }
+          },
+          "toolkitArguments": {
+            "id": "8AA00000BB000000C"
+          }
+        },
+        {
+          "name": "list_disputes",
+          "arguments": {
+            "disputed_transaction_id": "9AA00000BB000000C"
+          },
+          "result": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "disputed_transaction_id": "9AA00000BB000000C",
+              "complete": true,
+              "items": []
+            }
+          },
+          "toolkitArguments": {
+            "disputed_transaction_id": "9AA00000BB000000C"
+          }
+        },
+        {
+          "name": "create_refund",
+          "arguments": {
+            "capture_id": "9AA00000BB000000C",
+            "amount": {
+              "value": "89.93",
+              "currency_code": "USD"
+            }
+          },
+          "decisionId": "return-8AA00000BB000000C",
+          "requestId": "a3ffe5e7a2225a00fc06132106fa0106",
+          "result": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "MOCK-REFUND-batch-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            }
+          },
+          "toolkitArguments": {
+            "capture_id": "9AA00000BB000000C",
+            "amount": {
+              "currency_code": "USD",
+              "value": "89.93"
+            }
+          }
+        }
+      ],
+      "agentStatus": "completed",
+      "regression": {
+        "version": 1,
+        "kind": "gateway-regression",
+        "sourceSessionId": "shadow-1047a32e-3d14-4f03-8441-6c0ba07ffe9b",
+        "source": "local-agent",
+        "provenance": "deterministic-mock",
+        "promotedAt": "2026-11-12T15:38:52.865Z",
+        "calls": [
+          {
+            "name": "get_order",
+            "arguments": {
+              "order_id": "8AA00000BB000000C"
+            },
+            "toolkitArguments": {
+              "id": "8AA00000BB000000C"
+            }
+          },
+          {
+            "name": "list_disputes",
+            "arguments": {
+              "disputed_transaction_id": "9AA00000BB000000C"
+            },
+            "toolkitArguments": {
+              "disputed_transaction_id": "9AA00000BB000000C"
+            }
+          },
+          {
+            "name": "create_refund",
+            "arguments": {
+              "capture_id": "9AA00000BB000000C",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            },
+            "decisionId": "return-8AA00000BB000000C",
+            "toolkitArguments": {
+              "capture_id": "9AA00000BB000000C",
+              "amount": {
+                "currency_code": "USD",
+                "value": "89.93"
+              }
+            }
+          }
+        ],
+        "expectedResults": [
+          {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "8AA00000BB000000C",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              },
+              "capture_id": "9AA00000BB000000C"
+            }
+          },
+          {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "disputed_transaction_id": "9AA00000BB000000C",
+              "complete": true,
+              "items": []
+            }
+          },
+          {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "MOCK-REFUND-batch-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "version": 1,
+      "id": "shadow-f36d01c6-c5ee-453b-aaf8-43b990c5d162",
+      "source": "local-agent",
+      "protocolVersion": 3,
+      "batchId": "c9eba5d7-587a-4e2c-9e78-f2e9f5960e99",
+      "permissionFingerprint": "69d52596798667eb755793bce0620aa0b7e2270be9323ff82b2c0cf905bad541",
+      "provenance": "deterministic-mock",
+      "createdAt": "2026-11-12T15:38:53.093Z",
+      "scenario": {
+        "kind": "partial-return",
+        "amount": "89.93",
+        "approvedReturn": "89.93",
+        "currency": "USD",
+        "disputeOpen": false,
+        "customerId": "batch-customer",
+        "orderId": "8AA00000BB000000C"
+      },
+      "captureId": "9AA00000BB000000C",
+      "events": [
+        {
+          "name": "get_order",
+          "arguments": {
+            "order_id": "8AA00000BB000000C"
+          },
+          "result": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "8AA00000BB000000C",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              },
+              "capture_id": "9AA00000BB000000C"
+            }
+          },
+          "toolkitArguments": {
+            "id": "8AA00000BB000000C"
+          }
+        },
+        {
+          "name": "list_disputes",
+          "arguments": {
+            "disputed_transaction_id": "9AA00000BB000000C"
+          },
+          "result": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "disputed_transaction_id": "9AA00000BB000000C",
+              "complete": true,
+              "items": []
+            }
+          },
+          "toolkitArguments": {
+            "disputed_transaction_id": "9AA00000BB000000C"
+          }
+        },
+        {
+          "name": "create_refund",
+          "arguments": {
+            "capture_id": "9AA00000BB000000C",
+            "amount": {
+              "value": "89.93",
+              "currency_code": "USD"
+            }
+          },
+          "decisionId": "return-8AA00000BB000000C",
+          "requestId": "a3ffe5e7a2225a00fc06132106fa0106",
+          "result": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "MOCK-REFUND-batch-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            }
+          },
+          "toolkitArguments": {
+            "capture_id": "9AA00000BB000000C",
+            "amount": {
+              "currency_code": "USD",
+              "value": "89.93"
+            }
+          }
+        }
+      ],
+      "agentStatus": "completed",
+      "regression": null
+    }
+  ]
+}
