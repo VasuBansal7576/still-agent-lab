@@ -1,0 +1,94 @@
+{
+  "runId": "b8202267-c916-4325-b71a-fe4e6e1abaad",
+  "createdAt": "2026-11-12T06:21:13.813Z",
+  "scenario": "sandbox-earned-permission",
+  "status": "unverified",
+  "permission": {
+    "version": 1,
+    "agentId": "scripted-safe",
+    "scope": "paypal-sandbox-only",
+    "batchId": "d0c88817-eae0-471a-93d1-571fdd77f8ca",
+    "evidence": {
+      "mockTrials": 4,
+      "sandboxCompared": 1,
+      "coverage": "Sampled sandbox agreement in this currency does not establish all failures, complete PayPal history, or real-world safety."
+    },
+    "create_refund": {
+      "allowed": true,
+      "currency": "USD",
+      "maxPerOrder": "87.62",
+      "requireDisputeClear": true,
+      "requireDisputeCheck": true,
+      "requireApprovedAmount": true,
+      "requireIdentityMatch": true,
+      "requireStableDecisionId": true
+    }
+  },
+  "capture": {
+    "ok": true,
+    "http": 201,
+    "orderId": "5UC81406M5642753H",
+    "captureId": "4KL27441K7463413P",
+    "orderStatus": "COMPLETED",
+    "captureStatus": "COMPLETED",
+    "amount": {
+      "currency_code": "USD",
+      "value": "100.00"
+    },
+    "issues": []
+  },
+  "blocked": {
+    "ok": false,
+    "blocked": true,
+    "reason": "Request exceeds or does not match the earned permission.",
+    "source": "still-gateway"
+  },
+  "allowed": {
+    "source": "paypal-sandbox",
+    "requestId": "still-95ba5708f1954d9013b5181f289a6cc3c5cf2ba1",
+    "result": {
+      "ok": true,
+      "status": 201,
+      "body": {
+        "id": "0RU30709F8896562L",
+        "status": "PENDING",
+        "amount": {
+          "value": "50.00",
+          "currency_code": "USD"
+        }
+      }
+    },
+    "disputeObservation": "No unresolved dispute returned by the sandbox lookup; absence remains unverified.",
+    "scenarioFacts": "synthetic",
+    "externalRefundHistory": "not-established",
+    "realDisputeState": "not-established"
+  },
+  "checks": [
+    {
+      "id": "over_limit",
+      "status": "pass",
+      "evidence": "Request exceeds or does not match the earned permission."
+    },
+    {
+      "id": "approved_refund",
+      "status": "unverified",
+      "evidence": "PayPal refund status: PENDING."
+    }
+  ],
+  "note": "Sandbox only. Store approval, customer identity and clear-dispute facts are synthetic; external history and dispute state are not established.",
+  "currencyScopedGrants": {
+    "USD": {
+      "allowed": true,
+      "ceiling": "87.62",
+      "evidence": {
+        "mockTrials": 4,
+        "sandboxCompared": 1,
+        "coverage": "Sampled sandbox agreement in this currency does not establish all failures, complete PayPal history, or real-world safety."
+      }
+    },
+    "GBP": {
+      "allowed": false,
+      "reason": "A sandbox replay disagreed with the mock."
+    }
+  }
+}

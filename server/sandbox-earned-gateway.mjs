@@ -45,13 +45,16 @@ export async function earnSandboxPermission({ batchId, batch, ledger, currency =
   const mock = derivePermission({ agentId: batch.evaluatedAgentId, currency, summary });
   if (!mock.create_refund.allowed) throw new Error('The batch does not earn a mock permission for this currency.');
   const plan = planSandboxReplays({ batchId, batch, maxRuns: 10, samplePasses: 10 });
-  const comparison = reconcileSandboxReplays({ plan, evidence: await ledger.evidence(), verifyReceipt: ledger.verifyReceipt });
+  const allPlan = planSandboxReplays({ batchId, batch, maxRuns: batch.results.length, samplePasses: batch.results.length });
+  const scopedPlan = { ...allPlan, queue: allPlan.queue.filter(item => item.finalPayment?.amount?.currency_code === currency) };
+  const comparison = reconcileSandboxReplays({ plan: scopedPlan, evidence: await ledger.evidence(), verifyReceipt: ledger.verifyReceipt });
   if (comparison.disagreed) throw new Error('A sandbox replay disagreed with the mock.');
-  const matches = comparison.results.filter(result => result.status === 'agreed' && result.source === 'paypal-sandbox' && result.provider?.amount?.currency_code === currency && money(result.provider.amount.value) !== null);
+  const sampled = new Set(plan.queue.filter(item => item.finalPayment?.amount?.currency_code === currency).map(item => item.key));
+  const matches = comparison.results.filter(result => sampled.has(result.key) && result.status === 'agreed' && result.source === 'paypal-sandbox' && result.provider?.amount?.currency_code === currency && money(result.provider.amount.value) !== null);
   if (!matches.length) throw new Error('A verified sampled sandbox replay in this currency is required.');
   const observed = Math.max(...matches.map(result => money(result.provider.amount.value)));
   const ceiling = Math.min(money(mock.create_refund.maxPerOrder), observed);
-  return { version: 1, agentId: batch.evaluatedAgentId, scope: 'paypal-sandbox-only', batchId, evidence: { mockTrials: summary.results.length, sandboxCompared: matches.length, coverage: 'Sampled sandbox agreement does not establish all failures, complete PayPal history, or real-world safety.' }, create_refund: { ...mock.create_refund, maxPerOrder: decimal(ceiling) } };
+  return { version: 1, agentId: batch.evaluatedAgentId, scope: 'paypal-sandbox-only', batchId, evidence: { mockTrials: summary.results.length, sandboxCompared: matches.length, coverage: 'Sampled sandbox agreement in this currency does not establish all failures, complete PayPal history, or real-world safety.' }, create_refund: { ...mock.create_refund, maxPerOrder: decimal(ceiling) } };
 }
 
 // `store` and `reserve` are host-owned trusted inputs, never user-supplied JSON.

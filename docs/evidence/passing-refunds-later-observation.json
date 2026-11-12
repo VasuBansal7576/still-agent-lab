@@ -1,0 +1,77 @@
+{
+  "batchId": "d0c88817-eae0-471a-93d1-571fdd77f8ca",
+  "observedAt": "2026-11-12T06:20:54.999Z",
+  "source": "paypal-sandbox",
+  "timing": "later-read-only-observation",
+  "results": [
+    {
+      "personaId": "persona-2801f67899049193e645",
+      "trial": 1,
+      "captureId": "6LM624032M159171B",
+      "refundId": "98L92180XF168814D",
+      "refundHttp": 200,
+      "captureHttp": 200,
+      "refundStatus": "PENDING",
+      "captureStatus": "PARTIALLY_REFUNDED",
+      "amount": {
+        "value": "91.63",
+        "currency_code": "GBP"
+      },
+      "linkedCaptureVerified": true,
+      "mockStatus": "COMPLETED",
+      "comparison": "disagreed"
+    },
+    {
+      "personaId": "persona-d4fbb29e28b18a9126d7",
+      "trial": 1,
+      "captureId": "1XV320894N1765742",
+      "refundId": "6Y790803BX337394H",
+      "refundHttp": 200,
+      "captureHttp": 200,
+      "refundStatus": "PENDING",
+      "captureStatus": "PARTIALLY_REFUNDED",
+      "amount": {
+        "value": "213.48",
+        "currency_code": "GBP"
+      },
+      "linkedCaptureVerified": true,
+      "mockStatus": "COMPLETED",
+      "comparison": "disagreed"
+    },
+    {
+      "personaId": "persona-7adabf13e199b057af12",
+      "trial": 1,
+      "captureId": "4RW49923W03754532",
+      "refundId": "26S36248CD3623022",
+      "refundHttp": 200,
+      "captureHttp": 200,
+      "refundStatus": "PENDING",
+      "captureStatus": "PARTIALLY_REFUNDED",
+      "amount": {
+        "value": "151.91",
+        "currency_code": "GBP"
+      },
+      "linkedCaptureVerified": true,
+      "mockStatus": "COMPLETED",
+      "comparison": "disagreed"
+    },
+    {
+      "personaId": "persona-a0a98cc36c387bcd4033",
+      "trial": 1,
+      "captureId": "64R6513238175953U",
+      "refundId": "5SS311860R6967927",
+      "refundHttp": 200,
+      "captureHttp": 200,
+      "refundStatus": "PENDING",
+      "captureStatus": "PARTIALLY_REFUNDED",
+      "amount": {
+        "value": "33.50",
+        "currency_code": "GBP"
+      },
+      "linkedCaptureVerified": true,
+      "mockStatus": "COMPLETED",
+      "comparison": "disagreed"
+    }
+  ],
+  "note": "Current PayPal refund and capture state only. This does not change the original replay receipt or establish the original response timing, completed refund, complete refund history, or exclusive account access."
+}
