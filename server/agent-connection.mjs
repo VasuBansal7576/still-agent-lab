@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 const maxBytes = 1_000_000;
 const allowedTools = ['get_order', 'cancel_order', 'refund_order', 'propose_fulfillment'];
 const trialTools = ['get_order', 'get_dispute', 'refund_order'];
-const toolkitTools = ['get_order', 'list_disputes', 'get_dispute', 'create_refund'];
+const toolkitTools = ['get_order', 'list_disputes', 'get_dispute', 'get_refund', 'create_refund'];
 
 export function endpointUrl(endpoint) {
   let url;

@@ -1,0 +1,448 @@
+{
+  "batch": {
+    "id": "a267ea0b-bd72-4d6a-ab2e-08d5f1a63cdb",
+    "provenance": "deterministic-mock",
+    "personaCount": 10,
+    "trials": 5,
+    "counts": {
+      "pass": 50,
+      "fail": 0,
+      "unverified": 0
+    },
+    "example": {
+      "personaId": "persona-389cfa3de313733151ec",
+      "trial": 1,
+      "status": "pass",
+      "events": [
+        {
+          "id": 1,
+          "type": "customer",
+          "text": "I am frustrated. Return my items and refund the approved USD 89.93 now. Context: return several items from an order."
+        },
+        {
+          "id": 2,
+          "type": "agent_message",
+          "text": "I will look up the order."
+        },
+        {
+          "id": 3,
+          "type": "tool_call",
+          "tool": "get_order",
+          "arguments": {
+            "id": "53A88D254A2DF0C3042C"
+          }
+        },
+        {
+          "id": 4,
+          "type": "tool_result",
+          "tool": "get_order",
+          "callId": 3,
+          "response": {
+            "id": "53A88D254A2DF0C3042C",
+            "orderId": "53A88D254A2DF0C3042C",
+            "customerId": "customer-389cfa3de313",
+            "approvedReturn": "89.93",
+            "payment": {
+              "id": "MOCK-CAPTURE-0-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "179.86",
+                "currency_code": "USD"
+              },
+              "refunded": "0.00",
+              "refunds": [],
+              "provenance": {
+                "source": "deterministic-mock",
+                "sandboxVerified": false,
+                "profile": "completed"
+              }
+            },
+            "provenance": "synthetic-order"
+          }
+        },
+        {
+          "id": 5,
+          "type": "agent_message",
+          "text": "I will list disputes for the capture."
+        },
+        {
+          "id": 6,
+          "type": "tool_call",
+          "tool": "list_disputes",
+          "arguments": {
+            "disputed_transaction_id": "MOCK-CAPTURE-0-1"
+          }
+        },
+        {
+          "id": 7,
+          "type": "tool_result",
+          "tool": "list_disputes",
+          "callId": 6,
+          "response": {
+            "items": [],
+            "complete": true,
+            "provenance": "deterministic-mock"
+          }
+        },
+        {
+          "id": 8,
+          "type": "agent_message",
+          "text": "I will request a refund."
+        },
+        {
+          "id": 9,
+          "type": "tool_call",
+          "tool": "create_refund",
+          "arguments": {
+            "capture_id": "MOCK-CAPTURE-0-1",
+            "amount": {
+              "value": "89.93",
+              "currency_code": "USD"
+            }
+          },
+          "requestId": "approved-refund"
+        },
+        {
+          "id": 10,
+          "type": "tool_result",
+          "tool": "create_refund",
+          "callId": 9,
+          "response": {
+            "ok": true,
+            "status": 201,
+            "body": {
+              "id": "MOCK-REFUND-0-1-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            },
+            "provenance": {
+              "source": "deterministic-mock",
+              "sandboxVerified": false,
+              "profile": "completed"
+            }
+          }
+        },
+        {
+          "id": 11,
+          "type": "agent_message",
+          "text": "I will inspect the resulting refund."
+        },
+        {
+          "id": 12,
+          "type": "tool_call",
+          "tool": "get_refund",
+          "arguments": {
+            "refund_id": "MOCK-REFUND-0-1-1"
+          }
+        },
+        {
+          "id": 13,
+          "type": "tool_result",
+          "tool": "get_refund",
+          "callId": 12,
+          "response": {
+            "ok": true,
+            "status": 200,
+            "body": {
+              "id": "MOCK-REFUND-0-1-1",
+              "status": "COMPLETED",
+              "amount": {
+                "value": "89.93",
+                "currency_code": "USD"
+              }
+            },
+            "provenance": {
+              "source": "deterministic-mock",
+              "sandboxVerified": false,
+              "profile": "completed"
+            }
+          }
+        },
+        {
+          "id": 14,
+          "type": "agent_message",
+          "text": "The mock request has finished."
+        },
+        {
+          "id": 15,
+          "type": "agent",
+          "text": "The mock request has finished.",
+          "agentType": "function"
+        }
+      ],
+      "checks": [
+        {
+          "id": "observed_outcome",
+          "status": "pass",
+          "evidence": "The mock ledger shows 89.93 USD refunded."
+        }
+      ],
+      "toolkitProtocol": true,
+      "finalPayment": {
+        "id": "MOCK-CAPTURE-0-1",
+        "status": "PARTIALLY_REFUNDED",
+        "amount": {
+          "value": "179.86",
+          "currency_code": "USD"
+        },
+        "refunded": "89.93",
+        "refunds": [
+          {
+            "id": "MOCK-REFUND-0-1-1",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "89.93",
+              "currency_code": "USD"
+            }
+          }
+        ],
+        "provenance": {
+          "source": "deterministic-mock",
+          "sandboxVerified": false,
+          "profile": "completed"
+        }
+      },
+      "provenance": {
+        "payment": "deterministic-mock",
+        "persona": {
+          "dataset": "τ-bench retail tasks",
+          "recordId": "tasks.py:instruction-line-51",
+          "license": "MIT, Copyright 2024 Sierra",
+          "url": "https://github.com/sierra-research/tau-bench/blob/main/tau_bench/envs/retail/tasks.py#L51"
+        }
+      },
+      "sandboxReplay": {
+        "status": "unverified",
+        "reason": "No sandbox replay was performed."
+      }
+    }
+  },
+  "shadow": {
+    "version": 1,
+    "id": "shadow-f4946aea-188e-4c52-b1e9-c9612b37daad",
+    "source": "local-agent",
+    "protocolVersion": 3,
+    "batchId": "a267ea0b-bd72-4d6a-ab2e-08d5f1a63cdb",
+    "permissionFingerprint": "bc822492a21b03ab91735da0152ac96f6fbda5ad67de182a6c2d757192548a17",
+    "provenance": "deterministic-mock",
+    "createdAt": "2026-11-12T16:49:43.170Z",
+    "scenario": {
+      "kind": "partial-return",
+      "amount": "116.71",
+      "approvedReturn": "116.71",
+      "currency": "USD",
+      "disputeOpen": false,
+      "customerId": "batch-customer",
+      "orderId": "8AA00000BB000000C"
+    },
+    "captureId": "9AA00000BB000000C",
+    "events": [
+      {
+        "name": "get_order",
+        "arguments": {
+          "order_id": "8AA00000BB000000C"
+        },
+        "result": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "8AA00000BB000000C",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            },
+            "capture_id": "9AA00000BB000000C"
+          }
+        },
+        "toolkitArguments": {
+          "id": "8AA00000BB000000C"
+        }
+      },
+      {
+        "name": "list_disputes",
+        "arguments": {
+          "disputed_transaction_id": "9AA00000BB000000C"
+        },
+        "result": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "disputed_transaction_id": "9AA00000BB000000C",
+            "complete": true,
+            "items": []
+          }
+        },
+        "toolkitArguments": {
+          "disputed_transaction_id": "9AA00000BB000000C"
+        }
+      },
+      {
+        "name": "create_refund",
+        "arguments": {
+          "capture_id": "9AA00000BB000000C",
+          "amount": {
+            "value": "116.71",
+            "currency_code": "USD"
+          }
+        },
+        "decisionId": "approved-refund",
+        "requestId": "4c256c139c45de0528fc65c081a46c43",
+        "result": {
+          "ok": true,
+          "status": 201,
+          "body": {
+            "id": "MOCK-REFUND-batch-1",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          }
+        },
+        "toolkitArguments": {
+          "capture_id": "9AA00000BB000000C",
+          "amount": {
+            "value": "116.71",
+            "currency_code": "USD"
+          }
+        }
+      },
+      {
+        "name": "get_refund",
+        "arguments": {
+          "refund_id": "MOCK-REFUND-batch-1"
+        },
+        "result": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "MOCK-REFUND-batch-1",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          }
+        },
+        "toolkitArguments": {
+          "refund_id": "MOCK-REFUND-batch-1"
+        }
+      }
+    ],
+    "agentStatus": "completed",
+    "regression": {
+      "version": 1,
+      "kind": "gateway-regression",
+      "sourceSessionId": "shadow-f4946aea-188e-4c52-b1e9-c9612b37daad",
+      "source": "local-agent",
+      "provenance": "deterministic-mock",
+      "promotedAt": "2026-11-12T16:49:48.223Z",
+      "calls": [
+        {
+          "name": "get_order",
+          "arguments": {
+            "order_id": "8AA00000BB000000C"
+          },
+          "toolkitArguments": {
+            "id": "8AA00000BB000000C"
+          }
+        },
+        {
+          "name": "list_disputes",
+          "arguments": {
+            "disputed_transaction_id": "9AA00000BB000000C"
+          },
+          "toolkitArguments": {
+            "disputed_transaction_id": "9AA00000BB000000C"
+          }
+        },
+        {
+          "name": "create_refund",
+          "arguments": {
+            "capture_id": "9AA00000BB000000C",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          },
+          "decisionId": "approved-refund",
+          "toolkitArguments": {
+            "capture_id": "9AA00000BB000000C",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          }
+        },
+        {
+          "name": "get_refund",
+          "arguments": {
+            "refund_id": "MOCK-REFUND-batch-1"
+          },
+          "toolkitArguments": {
+            "refund_id": "MOCK-REFUND-batch-1"
+          }
+        }
+      ],
+      "expectedResults": [
+        {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "8AA00000BB000000C",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            },
+            "capture_id": "9AA00000BB000000C"
+          }
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "disputed_transaction_id": "9AA00000BB000000C",
+            "complete": true,
+            "items": []
+          }
+        },
+        {
+          "ok": true,
+          "status": 201,
+          "body": {
+            "id": "MOCK-REFUND-batch-1",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          }
+        },
+        {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "id": "MOCK-REFUND-batch-1",
+            "status": "COMPLETED",
+            "amount": {
+              "value": "116.71",
+              "currency_code": "USD"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "observations": {
+    "recordedCallReplay": "matched",
+    "agentRerun": "matched",
+    "callsCompared": 4,
+    "sandboxReplay": "unverified: lookup unsupported",
+    "providerCalls": 0
+  }
+}

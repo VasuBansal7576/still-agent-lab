@@ -6,6 +6,7 @@ export function normalizeToolkitReplay(item) {
   if (!Array.isArray(item.events)) return deny('the recorded events are missing.');
   if (item.events.some((e, i) => !Number.isSafeInteger(e.id) || e.id < 1 || (i && e.id <= item.events[i - 1].id))) return deny('the recorded event order is invalid.');
   const calls = item.events.filter(e => e.type === 'tool_call');
+  if (calls.some(e => e.tool === 'get_refund')) return deny('refund lookups cannot yet map mock refund IDs to PayPal IDs. No sandbox order can be created for this trace.');
   if (calls.some(e => !['get_order', 'list_disputes', 'create_refund'].includes(e.tool))) return deny('a tool is not supported for sandbox replay.');
   const orders = calls.filter(e => e.tool === 'get_order');
   const lists = calls.filter(e => e.tool === 'list_disputes');

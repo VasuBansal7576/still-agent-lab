@@ -2,7 +2,7 @@
 
 `createToolkitTrialServer` exposes a local v3 trial endpoint. It passes the agent the PayPal OpenAI toolkit's selected definitions and the full trial conversation. The agent chooses the next action. Still executes that proposal against its isolated mock and returns the result in the next decision request. The adapter never invokes the toolkit's PayPal dispatcher.
 
-Construct the toolkit with only `get_order`, `list_disputes`, `get_dispute`, and `create_refund` enabled, then provide a decision callback. For example, an existing agent may call its model with the supplied conversation and tools and return the resulting assistant message:
+Construct the toolkit with only `get_order`, `list_disputes`, `get_dispute`, `get_refund`, and `create_refund` enabled, then provide a decision callback. For example, an existing agent may call its model with the supplied conversation and tools and return the resulting assistant message:
 
 ```js
 import { createToolkitTrialServer } from './examples/toolkit-trial-adapter.mjs';

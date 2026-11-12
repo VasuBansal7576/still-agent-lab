@@ -1,6 +1,6 @@
 import http from 'node:http';
 
-const supported = new Set(['get_order', 'list_disputes', 'get_dispute', 'create_refund']);
+const supported = new Set(['get_order', 'list_disputes', 'get_dispute', 'get_refund', 'create_refund']);
 
 // `decide` receives Still's full conversation and the selected toolkit definitions.
 // It returns one OpenAI-shaped assistant message and optional application request ID.

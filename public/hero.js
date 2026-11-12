@@ -136,7 +136,7 @@ function sandboxReplayView(selected) {
   let controls = '';
   if (selectedReplay.locked) controls = '<p>The operation outcome is uncertain. Do not retry automatically; check the sandbox state in the advanced lab.</p>';
   else if (['recorded','recorded-unverified'].includes(selectedReplay.execution)) controls = '<p>A sandbox attempt is recorded for this trial. An uncertain result must not be retried automatically.</p>';
-  else if (selectedReplay.execution === 'unsupported') controls = `<p>${escape(selectedReplay.reason)}</p>`;
+  else if (selectedReplay.execution === 'unsupported') controls = '';
   else if (otherCheckout) controls = '<p>Another sandbox checkout is active or unresolved. Finish it in the <a href="/lab">advanced lab</a> before starting this replay.</p>';
   else if (!checkout && !selectedReplay.paypalReady) controls = '<p>Connect PayPal sandbox in <a href="/setup">setup</a> before creating the order.</p><button type="button" class="secondary" data-action="sandbox-select">Check connection again</button>';
   else if (!checkout) controls = '<button type="button" data-action="sandbox-prepare">Create matching sandbox order</button><p class="hint">A sandbox buyer must approve the order before capture.</p>';
@@ -151,7 +151,7 @@ function sandboxReplayView(selected) {
   } else controls = `<p>Checkout outcome: ${escape(checkout.state)}. ${escape(checkout.error || 'Do not automatically retry an uncertain operation.')}</p>`;
   const comparison = selectedReplay.comparison;
   const comparisonText = comparison?.status === 'agreed' || comparison?.status === 'disagreed' ? `Sandbox comparison ${comparison.status}.` : 'Sandbox comparison unverified.';
-  return `<div class="card" id="selected-sandbox"><div class="label">Selected trial · PayPal sandbox</div><h3>${escape(comparisonText)}</h3><p>${escape(selectedReplay.personaId)} · trial ${escape(selectedReplay.trial)}</p>${intro}${selectedReplay.reason ? `<p>${escape(selectedReplay.reason)}</p>` : ''}${controls}${comparisonSummary(comparison, selectedReplay.result)}${comparison ? `<details><summary>Inspect sandbox comparison</summary><pre>${json(comparison)}</pre></details>` : ''}${selectedReplay.result ? `<details><summary>Inspect sandbox response</summary><pre>${json(selectedReplay.result)}</pre></details>` : ''}</div>`;
+  return `<div class="card" id="selected-sandbox"><div class="label">Selected trial · PayPal sandbox</div><h3>${escape(comparisonText)}</h3><p>${escape(selectedReplay.personaId)} · trial ${escape(selectedReplay.trial)}</p>${intro}${selectedReplay.reason ? `<p>${escape(selectedReplay.reason)}</p>` : ''}${controls}${comparisonSummary(comparison?.reason === selectedReplay.reason ? { ...comparison, reason: undefined } : comparison, selectedReplay.result)}${comparison ? `<details><summary>Inspect sandbox comparison</summary><pre>${json(comparison)}</pre></details>` : ''}${selectedReplay.result ? `<details><summary>Inspect sandbox response</summary><pre>${json(selectedReplay.result)}</pre></details>` : ''}</div>`;
 }
 function renderResults() {
   if (!state.run) { results.innerHTML='<p>Run an agent to see its decisions, rule evidence, and persona source here.</p>'; return; }

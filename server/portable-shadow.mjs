@@ -20,8 +20,9 @@ function safeCall(call, result) {
   if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('The recorded toolkit arguments are incomplete.');
   if (call.name === 'get_order' && (Object.keys(args).join() !== 'id' || args.id !== syntheticOrder)) throw new Error('Only the synthetic mock order can be exported.');
   if (call.name === 'list_disputes' && (Object.keys(args).join() !== 'disputed_transaction_id' || args.disputed_transaction_id !== syntheticCapture)) throw new Error('Only the synthetic mock capture can be exported.');
+  if (call.name === 'get_refund' && (Object.keys(args).join() !== 'refund_id' || !/^MOCK-REFUND-batch-[1-9][0-9]{0,2}$/.test(args.refund_id))) throw new Error('Only synthetic mock refund IDs can be exported.');
   if (call.name === 'create_refund' && (Object.keys(args).sort().join(',') !== 'amount,capture_id' || args.capture_id !== syntheticCapture || !args.amount || Object.keys(args.amount).sort().join(',') !== 'currency_code,value' || args.amount.currency_code !== 'USD' || !/^(?:0|[1-9]\d{0,8})\.\d{2}$/.test(args.amount.value))) throw new Error('The refund does not use the supported synthetic mock shape.');
-  if (!['get_order', 'list_disputes', 'create_refund'].includes(call.name)) throw new Error('The recording includes an unsupported call.');
+  if (!['get_order', 'list_disputes', 'get_refund', 'create_refund'].includes(call.name)) throw new Error('The recording includes an unsupported call.');
   if (call.decisionId && !/^[A-Za-z0-9_-]{1,127}$/.test(call.decisionId)) throw new Error('The recorded decision ID is invalid.');
   return { name: call.name, arguments: clone(args), ...(call.decisionId ? { decisionHash: hash(call.decisionId) } : {}), result: clone(result) };
 }

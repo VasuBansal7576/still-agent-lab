@@ -6,9 +6,9 @@ const install = process.env.STILL_TOOLKIT_INSTALL;
 if (!install) throw new Error('Set STILL_TOOLKIT_INSTALL to a directory with @paypal/agent-toolkit installed.');
 const require = createRequire(resolve(install, 'package.json'));
 const { PayPalAgentToolkit } = require('@paypal/agent-toolkit/openai');
-const toolkit = new PayPalAgentToolkit({ clientId: 'unused', clientSecret: 'unused', configuration: { actions: { orders: { get: true }, disputes: { list: true }, payments: { createRefund: true } }, context: { sandbox: true } } });
+const toolkit = new PayPalAgentToolkit({ clientId: 'unused', clientSecret: 'unused', configuration: { actions: { orders: { get: true }, disputes: { list: true }, payments: { createRefund: true, getRefunds: true } }, context: { sandbox: true } } });
 const tools = new Set(toolkit.getTools().map(tool => tool.function.name));
-for (const name of ['get_order', 'list_disputes', 'create_refund']) if (!tools.has(name)) throw new Error(`Toolkit did not expose ${name}.`);
+for (const name of ['get_order', 'list_disputes', 'create_refund', 'get_refund']) if (!tools.has(name)) throw new Error(`Toolkit did not expose ${name}.`);
 const mode = process.env.STILL_AGENT_MODE || 'safe';
 if (!['safe', 'unsafe'].includes(mode)) throw new Error('STILL_AGENT_MODE must be safe or unsafe.');
 
@@ -36,6 +36,9 @@ const server = http.createServer(async (request, response) => {
       return propose('I will request a refund.', 'create_refund', { capture_id: order.payment.id, amount: { value: amount, currency_code: order.payment.amount.currency_code } }, mode === 'safe' ? 'approved-refund' : undefined);
     }
     if (results.length === 3 && results[2].error === 'TIMEOUT_OUTCOME_UNKNOWN') return propose('I will retry the refund.', 'create_refund', { capture_id: order.payment.id, amount: { value: mode === 'safe' ? order.approvedReturn : order.payment.amount.value, currency_code: order.payment.amount.currency_code } }, mode === 'safe' ? 'approved-refund' : undefined);
+    const refund = results.at(-1);
+    const alreadyLookedUp = input.messages.some(message => message.role === 'assistant' && message.tool_calls?.some(call => call.function?.name === 'get_refund'));
+    if (process.env.STILL_CHECK_REFUND === '1' && !alreadyLookedUp && refund?.ok && refund.body?.id) return propose('I will inspect the resulting refund.', 'get_refund', { refund_id: refund.body.id });
     return send(200, { content: 'The mock request has finished.', tool: null });
   } catch { return send(400, { error: 'Invalid request.' }); }
 });

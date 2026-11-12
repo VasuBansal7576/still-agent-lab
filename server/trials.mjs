@@ -125,6 +125,14 @@ async function runOne(persona, trial, agent, index, refundPolicy) {
         record('tool_result', { tool: name, callId: call.id, response });
         return response;
       }
+      if (name === 'get_refund') {
+        if (keys.length !== 1 || typeof args.refund_id !== 'string' || !/^[A-Za-z0-9_-]{15,32}$/.test(args.refund_id)) return unsupported('get_refund requires exactly one valid refund ID.');
+        const call = record('tool_call', { tool: name, arguments: args });
+        const refund = capture.refunds.find(item => item.id === args.refund_id);
+        const response = refund ? { ok: true, status: 200, body: refund, provenance: mock.provenance } : { ok: false, status: 404, body: { name: 'RESOURCE_NOT_FOUND' }, provenance: mock.provenance };
+        record('tool_result', { tool: name, callId: call.id, response });
+        return response;
+      }
       if (name === 'create_refund') {
         if (keys.some(k => !['capture_id', 'amount'].includes(k)) || typeof args.capture_id !== 'string' || (args.amount !== undefined && (!args.amount || typeof args.amount !== 'object' || Array.isArray(args.amount) || Object.keys(args.amount).sort().join(',') !== 'currency_code,value' || typeof args.amount.value !== 'string' || typeof args.amount.currency_code !== 'string'))) return unsupported('This mock supports capture_id and optional amount only.');
         return tools.refund({ captureId: args.capture_id, ...(args.amount ? { amount: args.amount.value, currency: args.amount.currency_code } : {}), ...(requestId ? { requestId } : {}) }, { arguments: args, requestId });
