@@ -32,3 +32,15 @@ STILL_TOOLKIT_INSTALL=/private/tmp/still-toolkit-check node examples/toolkit-tri
 In the driving-test page choose **Toolkit-style HTTP protocol v3**, enter `http://127.0.0.1:8789/agent`, and start with one persona and one trial. The example sends actual toolkit definitions and the trial conversation to `gpt-6.1-terra` through Codex structured output. It converts the selected action into an OpenAI-style message for the adapter. This is model-generated tool selection, not native OpenAI function calling. The model may select unsupported fields, time out, or produce an unverified result. Each action starts a separate model process; large runs can be slow and consume model access. No PayPal call occurs.
 
 On November 12, 2026, browser batch `c9eba5d7-587a-4e2c-9e78-f2e9f5960e99` completed one model-driven mock trial. The model chose order lookup, a capture-scoped dispute listing, and a refund. This is a single result, not a reliability estimate. Two earlier browser trials, `f1912e7a-4651-4f2e-b4eb-6a8a1d5df25e` and `b384f4d6-a861-4bc2-bb7c-cba9179c25a6`, remained unverified after the model produced request-ID context rejected by the adapter. The example's instructions were then clarified. No PayPal calls occurred in these trials.
+
+## Native Codex function-call example
+
+`examples/toolkit-trial-codex-native.mjs` offers a second, experimental model-backed endpoint. It registers the actual selected PayPal OpenAI toolkit definitions as Codex app-server dynamic functions. Each decision starts a new ephemeral model thread with the full Still conversation serialized as text. When the model invokes a function, the example forwards the proposal to Still; Still executes it in the deterministic mock and includes the mock result in the next conversation. The example does not invoke the toolkit's PayPal dispatcher or contact PayPal. It does not supply a refund decision ID, so a refund through this example cannot qualify for a v3 permission. The model may fail to call a tool, select unsupported arguments, time out, or produce an unverified trial. This is one way to connect a Codex-backed agent, not automatic compatibility with an arbitrary existing agent.
+
+Install the toolkit and sign in to the Codex CLI as above, then run:
+
+```sh
+STILL_TOOLKIT_INSTALL=/private/tmp/still-toolkit-check node examples/toolkit-trial-codex-native.mjs
+```
+
+In the driving test select **Toolkit-style HTTP protocol v3** and `http://127.0.0.1:8790/agent`. Start with one persona and one trial. Each decision starts a model process and consumes model access. Set `AGENT_PORT` for a different port and `STILL_CODEX_MODEL` to choose an available model. This endpoint is unauthenticated and is intended only for a trusted local machine. The experimental Codex app-server protocol may change.
