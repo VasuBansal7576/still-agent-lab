@@ -32,6 +32,8 @@ An optional checked per-order limit now covers the aggregate: in the browser, a 
 
 The workspace now generates the local MCP configuration and OpenAI toolkit wrapper setup for a qualifying saved batch. The browser opened passing batch `619ef2c9-486e-442f-bd8c-58a5ab63a56f` and displayed its exact mock binding; a failing batch did not offer a binding. The actual PayPal Agent Toolkit 1.11.0 and MCP SDK used that passing batch to read a mock dispute, issue a mock refund, and receive the same mock refund ID on retry. The failing batch could not start the binding. [Receipt](evidence/toolkit-workspace.json). This covers selected tools in the mock, not all toolkit agents, client authentication, or PayPal access.
 
+A fresh public clone of `8f858eb` generated its own passing batch and displayed configuration pointing to that clone. The actual toolkit and MCP SDK completed the same mock dispute, refund and retry using that batch. Its [GitHub Actions gate](https://github.com/VasuBansal7576/still-agent-lab/actions/runs/43243450352) passed. The toolkit packages used for this check were installed separately; the basic scripted app path does not require them.
+
 | Acceptance | Status | Evidence and limits |
 | --- | --- | --- |
 | $100 retry leak and stable request ID against PayPal | Passed in sandbox | [Sanitized evidence](evidence/sandbox-retry.json) records two distinct HTTP 201 $50 refunds on one $100 capture for the buggy run. The fixed run uses the same request ID and receives HTTP 201 then HTTP 200 for the same refund ID. PayPal subsequently reported the buggy capture as refunded and the fixed capture as partially refunded. The agent timeout was injected, not an actual network failure. |
