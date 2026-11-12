@@ -1,0 +1,117 @@
+{
+  "source": "paypal-sandbox",
+  "observedAt": "2026-11-12T06:33:48.710Z",
+  "batchId": "d0c88817-eae0-471a-93d1-571fdd77f8ca",
+  "funding": "sandbox-test-card",
+  "toolkit": "PayPal Agent Toolkit 1.11.0 via MCP SDK",
+  "scenarioFacts": "synthetic",
+  "records": [
+    {
+      "state": "capture-requested",
+      "batchId": "d0c88817-eae0-471a-93d1-571fdd77f8ca",
+      "runId": "dba4cd35-0d03-43ff-9601-46d4886ccae5",
+      "source": "paypal-sandbox",
+      "amount": "100.00",
+      "currency": "USD"
+    },
+    {
+      "state": "captured",
+      "capture": {
+        "ok": true,
+        "http": 201,
+        "orderId": "06520329VK331080K",
+        "captureId": "1CD90599NV740853T",
+        "orderStatus": "COMPLETED",
+        "captureStatus": "COMPLETED",
+        "amount": {
+          "currency_code": "USD",
+          "value": "100.00"
+        },
+        "issues": []
+      }
+    },
+    {
+      "state": "tool-result",
+      "name": "get_order",
+      "result": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "06520329VK331080K",
+          "status": "COMPLETED",
+          "capture_id": "1CD90599NV740853T",
+          "amount": {
+            "value": "100.00",
+            "currency_code": "USD"
+          },
+          "source": "paypal-sandbox",
+          "store_facts": "synthetic"
+        }
+      },
+      "source": "paypal-sandbox",
+      "storeFacts": "synthetic"
+    },
+    {
+      "state": "tool-result",
+      "name": "get_dispute",
+      "result": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "sandbox-dispute",
+          "status": "UNVERIFIED",
+          "observation": "No unresolved dispute returned by the sandbox lookup; absence remains unverified.",
+          "source": "paypal-sandbox"
+        }
+      },
+      "source": "paypal-sandbox",
+      "storeFacts": "synthetic"
+    },
+    {
+      "state": "tool-result",
+      "name": "create_refund",
+      "result": {
+        "ok": true,
+        "status": 201,
+        "body": {
+          "id": "818261150A571800A",
+          "status": "PENDING",
+          "amount": {
+            "value": "1.00",
+            "currency_code": "USD"
+          }
+        }
+      },
+      "source": "paypal-sandbox",
+      "storeFacts": "synthetic"
+    }
+  ],
+  "rechecks": {
+    "capture": {
+      "ok": true,
+      "status": 200,
+      "body": {
+        "id": "1CD90599NV740853T",
+        "status": "PARTIALLY_REFUNDED",
+        "amount": {
+          "value": "100.00",
+          "currency_code": "USD"
+        },
+        "final_capture": true
+      }
+    },
+    "refund": {
+      "ok": true,
+      "status": 200,
+      "body": {
+        "id": "818261150A571800A",
+        "status": "PENDING",
+        "amount": {
+          "value": "1.00",
+          "currency_code": "USD"
+        }
+      }
+    }
+  },
+  "limitations": "Pending refund is not completed; dispute absence, external history and real store facts remain unverified."
+}
