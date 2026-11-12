@@ -2,6 +2,7 @@ import { replayFailureSpec } from './replay-dispute.mjs';
 import { createHash } from 'node:crypto';
 import { parseMoney } from './paypal-mock.mjs';
 import { passingReplaySpec } from './replay-passing-spec.mjs';
+import { normalizeToolkitReplay } from './replay-toolkit-trace.mjs';
 
 const keyFor = (batchId, result) => JSON.stringify([batchId, String(result.personaId), result.trial]);
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -29,7 +30,9 @@ export function planSandboxReplays({ batchId, batch, maxRuns, offset = 0, sample
 }
 
 function comparable(item) {
-  if (item.toolkitProtocol) return { reason: 'Toolkit-protocol trace replay is not supported; sandbox agreement is unverified.' };
+  const normalized = normalizeToolkitReplay(item);
+  if (normalized.reason) return normalized;
+  item = normalized.item;
   if (item.status === 'fail') return replayFailureSpec(item);
   const special = passingReplaySpec(item);
   if (special.kind) return special;
@@ -46,7 +49,7 @@ function comparable(item) {
   const response = responses[0].response;
   if (response.status !== 201 || response.body?.status !== 'COMPLETED' || parseMoney(response.body?.amount?.value) !== parseMoney(args.amount) || response.body?.amount?.currency_code !== args.currency) return { reason: 'Only confirmed mock refund successes are comparable.' };
   if (parseMoney(payment.refunded) !== parseMoney(args.amount) || payment.status !== (parseMoney(args.amount) === parseMoney(payment.amount.value) ? 'REFUNDED' : 'PARTIALLY_REFUNDED')) return { reason: 'The mock capture state does not match its single refund.' };
-  return { amount: args.amount, currency: args.currency, captureAmount: payment.amount.value, mockResponse: response };
+  return { amount: args.amount, currency: args.currency, captureAmount: payment.amount.value, mockResponse: response, ...(call.toolkitNoRequestId ? { sendWithoutRequestId: true } : {}) };
 }
 
 function unverified(item, reason) {
@@ -115,7 +118,7 @@ export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } =
       for (let i = 0; i < expected.steps.length; i++) {
         const step = expected.steps[i], attempt = receipt.attempts[i], refund = attempt?.refund, request = attempt?.request;
         if (expected.disputeRequired && (attempt?.dispute?.verified !== true || attempt.dispute.source !== 'paypal-sandbox' || attempt.dispute.httpStatus !== 200 || attempt.dispute.captureId !== captureId || !['OPEN','UNDER_REVIEW','WAITING_FOR_SELLER_RESPONSE','WAITING_FOR_BUYER_RESPONSE'].includes(attempt.dispute.status))) return unverified(item, 'A PayPal-confirmed open dispute linked to this capture is required before every refund.');
-        if (request?.captureId !== captureId || request?.amount !== step.amount || request?.currency !== step.currency || !request?.requestId || !refund || typeof refund.ok !== 'boolean' || !Number.isInteger(refund.status)) return unverified(item, 'A provider refund request or response is incomplete.');
+        if (request?.captureId !== captureId || request?.amount !== step.amount || request?.currency !== step.currency || (step.sendWithoutRequestId ? request?.requestId !== null : !request?.requestId) || !refund || typeof refund.ok !== 'boolean' || !Number.isInteger(refund.status)) return unverified(item, 'A provider refund request or response is incomplete.');
         if (refund.status >= 500 || [401, 403, 429].includes(refund.status)) return unverified(item, 'PayPal returned an uncertain or unavailable refund response; the refund outcome is not established.');
         if (refund.ok && (![200, 201].includes(refund.status) || typeof refund.body?.id !== 'string' || !refund.body.id || !['PENDING', 'COMPLETED'].includes(refund.body.status) || !refund.body.amount || parseMoney(refund.body.amount.value) === null || !/^[A-Z]{3}$/.test(refund.body.amount.currency_code || ''))) return unverified(item, 'The PayPal success response does not contain a complete observable refund.');
         if (!refund.ok && (refund.status < 400 || refund.status >= 500 || typeof refund.body?.name !== 'string' || !refund.body.name || !Array.isArray(refund.body.details) || !refund.body.details.some(detail => typeof detail?.issue === 'string' && detail.issue))) return unverified(item, 'A comparable provider rejection needs a 4xx response and an identifiable issue.');
@@ -125,6 +128,7 @@ export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } =
           : statusMatch && refund.ok === true && refund.body?.status === step.mock.outcome && parseMoney(refund.body?.amount?.value) === parseMoney(step.mock.amount.value) && refund.body?.amount?.currency_code === step.mock.amount.currency_code;
         comparisons.push({ mock: step.mock, provider: refund, ...(expected.disputeRequired ? { dispute: attempt.dispute } : {}), match });
       }
+      if (expected.steps.length === 2 && !expected.steps.some(step => step.sendWithoutRequestId) && (expected.steps[0].decision === expected.steps[1].decision) !== (receipt.attempts[0].request.requestId === receipt.attempts[1].request.requestId)) return unverified(item, 'The provider request IDs do not preserve the recorded retry identity.');
       if (expected.steps.length === 2 && expected.steps.every(step => step.mock.id) && receipt.attempts.every(attempt => attempt.refund.body?.id)) {
         const mockSame = expected.steps[0].mock.id === expected.steps[1].mock.id;
         const providerSame = receipt.attempts[0].refund.body?.id === receipt.attempts[1].refund.body?.id;
@@ -136,7 +140,7 @@ export function reconcileSandboxReplays({ plan, evidence = [], verifyReceipt } =
     const capture = receipt.capture, refund = receipt.refund, request = receipt.request;
     const captureId = capture?.body?.id;
     if (!capture?.ok || capture.status !== 200 || capture.body?.status !== 'COMPLETED' || typeof captureId !== 'string' || !captureId || /^MOCK-/i.test(captureId) || captureKeys.get(captureId) !== 1 || parseMoney(capture.body?.amount?.value) !== parseMoney(expected.captureAmount) || capture.body?.amount?.currency_code !== expected.currency || receipt.refundHistory !== 'not-established') return unverified(item, 'The capture evidence is missing, reused, not fresh, or differs from the mock capture.');
-    if (request?.captureId !== captureId || parseMoney(request?.amount) !== parseMoney(expected.amount) || request?.currency !== expected.currency || typeof request?.requestId !== 'string' || !request.requestId) return unverified(item, 'The executed refund request does not match the mock action and approved capture.');
+    if (request?.captureId !== captureId || parseMoney(request?.amount) !== parseMoney(expected.amount) || request?.currency !== expected.currency || (expected.sendWithoutRequestId ? request?.requestId !== null : typeof request?.requestId !== 'string' || !request.requestId)) return unverified(item, 'The executed refund request does not match the mock action and approved capture.');
     if (!refund || !Number.isInteger(refund.status) || typeof refund.ok !== 'boolean' || !refund.body || typeof refund.body !== 'object') return unverified(item, 'A complete PayPal refund response is required.');
     if (refund.ok && (refund.status !== 201 || !['COMPLETED', 'PENDING'].includes(refund.body.status) || typeof refund.body.id !== 'string' || !refund.body.id || /^MOCK-/i.test(refund.body.id) || parseMoney(refund.body.amount?.value) !== parseMoney(expected.amount) || refund.body.amount?.currency_code !== expected.currency)) return unverified(item, 'The provider success response does not confirm the requested refund.');
     if (!refund.ok && (refund.status < 400 || refund.status >= 500 || typeof refund.body.name !== 'string' || !refund.body.name || !Array.isArray(refund.body.details) || !refund.body.details.some(detail => typeof detail?.issue === 'string' && detail.issue))) return unverified(item, 'A comparable provider rejection needs a 4xx response and an identifiable issue.');

@@ -9,7 +9,7 @@ import { createMcpHandler } from './toolkit-mcp.mjs';
 const directory = fileURLToPath(new URL('../.data/batches/', import.meta.url)).replace(/\/$/, '');
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-export async function createBatchBinding(batchId) {
+export async function createBatchBinding(batchId, { decisionId } = {}) {
   if (!uuid.test(batchId || '')) throw new Error('Supply a batch UUID from the host batch store.');
   if (await realpath(directory) !== directory) throw new Error('The batch directory must not be a symlink.');
   const file = await open(`${directory}/${batchId}.json`, constants.O_RDONLY | constants.O_NOFOLLOW);
@@ -20,7 +20,8 @@ export async function createBatchBinding(batchId) {
     summary = JSON.parse(await file.readFile('utf8'));
   } finally { await file.close(); }
   if (summary.id !== batchId) throw new Error('Batch identity does not match its file.');
-  if (summary.protocolVersion === 3 || summary.results?.some(item => item.toolkitProtocol === true)) throw new Error('Toolkit-style trial batches cannot yet bind the MCP gateway.');
+  const toolkitTrial = summary.protocolVersion === 3 || summary.results?.some(item => item.toolkitProtocol === true);
+  if (toolkitTrial && (typeof decisionId !== 'string' || !/^[A-Za-z0-9_-]{1,127}$/.test(decisionId))) throw new Error('Toolkit-style binding requires an explicit decision ID from the host.');
   if (!Array.isArray(summary.results) || !Number.isInteger(summary.personaCount) || !Number.isInteger(summary.trials) || summary.personaCount < 1 || summary.trials < 1 || summary.results.length !== summary.personaCount * summary.trials || summary.results.some(item => item.status !== 'pass')) throw new Error('Batch is incomplete or contains a failure.');
   const identities = new Set(summary.results.map(item => `${item.personaId}\0${item.trial}`));
   if (identities.size !== summary.results.length || new Set(summary.results.map(item => item.personaId)).size !== summary.personaCount || summary.results.some(item => typeof item.personaId !== 'string' || !item.personaId || !Number.isInteger(item.trial) || item.trial < 1 || item.trial > summary.trials)) throw new Error('Batch trial identities are incomplete.');
@@ -30,26 +31,29 @@ export async function createBatchBinding(batchId) {
   if (!permission.create_refund.allowed) throw new Error('Batch did not earn a USD mock refund permission.');
 
   const amount = permission.create_refund.maxPerOrder;
-  const scenario = { kind: 'partial-return', amount, approvedReturn: amount, currency: 'USD', orderId: 'batch-order', customerId: 'batch-customer' };
+  const orderId = toolkitTrial ? '8AA00000BB000000C' : 'batch-order';
+  const captureId = toolkitTrial ? '9AA00000BB000000C' : 'MOCK-CAPTURE-batch';
+  const scenario = { kind: 'partial-return', amount, approvedReturn: amount, currency: 'USD', orderId, customerId: 'batch-customer' };
   const mock = createPayPalMock(scenario, 'batch');
   const adapter = {
-    trusted: true, replaySafe: true, stableRequestIds: true,
-    async inspect(captureId) {
+    trusted: true, replaySafe: true, stableRequestIds: true, ...(toolkitTrial ? { disputeListCoverage: 'capture-complete' } : {}),
+    async inspect(requestedCapture) {
       const payment = mock.snapshot();
       const remaining = (Number(amount) - Number(payment.refunded)).toFixed(2);
-      return { captureId: payment.id, paymentStatus: payment.status, currency: 'USD', disputeState: 'CLEAR', disputeId: 'batch-dispute', identityMatches: captureId === payment.id, cancellationComplete: false, remaining, approvedAmount: remaining, refundedToDate: payment.refunded };
+      return { captureId, paymentStatus: payment.status, currency: 'USD', disputeState: 'CLEAR', disputeId: toolkitTrial ? null : 'batch-dispute', identityMatches: requestedCapture === captureId, cancellationComplete: false, remaining, approvedAmount: remaining, refundedToDate: payment.refunded };
     },
-    async refund(captureId, args) { return mock.refund({ ...args, captureId }); },
-    async get_order(orderId) { return orderId === scenario.orderId ? { ok: true, status: 200, body: { id: orderId, status: 'COMPLETED', amount: mock.snapshot().amount } } : { ok: false, status: 404 }; },
+    async refund(requestedCapture, args) { return mock.refund({ ...args, captureId: requestedCapture === captureId ? mock.snapshot().id : requestedCapture }); },
+    async get_order(requestedOrder) { return requestedOrder === scenario.orderId ? { ok: true, status: 200, body: { id: requestedOrder, status: 'COMPLETED', amount: mock.snapshot().amount, ...(toolkitTrial ? { capture_id: captureId } : {}) } } : { ok: false, status: 404 }; },
     async get_refund(refundId) { const refund = mock.snapshot().refunds.find(item => item.id === refundId); return refund ? { ok: true, status: 200, body: refund } : { ok: false, status: 404 }; },
-    async get_dispute(disputeId) { return { ok: true, status: 200, body: { id: disputeId, status: 'CLEAR' } }; }
+    async get_dispute(disputeId) { return toolkitTrial ? { ok: false, status: 404 } : { ok: true, status: 200, body: { id: disputeId, status: 'CLEAR' } }; },
+    async list_disputes(requestedCapture) { return toolkitTrial && requestedCapture === captureId ? { ok: true, status: 200, body: { disputed_transaction_id: captureId, complete: true, items: [] } } : { ok: false, status: 404 }; }
   };
-  return { gateway: createGateway({ agentId: summary.evaluatedAgentId, permission, adapter }), sessionId: 'stdio-batch', decisionId: 'batch-refund-decision' };
+  return { gateway: createGateway({ agentId: summary.evaluatedAgentId, permission, adapter }), sessionId: 'stdio-batch', decisionId: toolkitTrial ? decisionId : 'batch-refund-decision', protocolVersion: toolkitTrial ? 3 : 2 };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  if (process.argv.length !== 3) throw new Error('Usage: node server/mcp-batch-binding.mjs <batch-uuid>');
-  const handle = createMcpHandler(await createBatchBinding(process.argv[2]));
+  if (process.argv.length < 3 || process.argv.length > 4) throw new Error('Usage: node server/mcp-batch-binding.mjs <batch-uuid> [decision-id]');
+  const handle = createMcpHandler(await createBatchBinding(process.argv[2], { decisionId: process.argv[3] }));
   const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
   let queue = Promise.resolve();
   lines.on('line', line => {

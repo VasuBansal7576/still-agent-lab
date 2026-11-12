@@ -1,0 +1,124 @@
+{
+  "batchId": "2b737dab-5910-42d8-ab26-db294b8e5352",
+  "scope": "actual toolkit definitions and MCP SDK; deterministic mock only",
+  "events": [
+    {
+      "tools": [
+        "get_order",
+        "list_disputes",
+        "create_refund"
+      ],
+      "source": "actual PayPal Agent Toolkit definitions"
+    },
+    {
+      "id": "order",
+      "name": "get_order",
+      "body": {
+        "id": "8AA00000BB000000C",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "116.71",
+          "currency_code": "USD"
+        },
+        "capture_id": "9AA00000BB000000C"
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "id": "unchecked",
+      "name": "create_refund",
+      "body": {
+        "error": {
+          "type": "still_gateway_error",
+          "message": "Still blocked or could not complete the tool call."
+        }
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "id": "wrong-list",
+      "name": "list_disputes",
+      "body": {
+        "error": {
+          "type": "still_gateway_error",
+          "message": "Still blocked or could not complete the tool call."
+        }
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "id": "still-unchecked",
+      "name": "create_refund",
+      "body": {
+        "error": {
+          "type": "still_gateway_error",
+          "message": "Still blocked or could not complete the tool call."
+        }
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "id": "list",
+      "name": "list_disputes",
+      "body": {
+        "disputed_transaction_id": "9AA00000BB000000C",
+        "complete": true,
+        "items": []
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "id": "over",
+      "name": "create_refund",
+      "body": {
+        "error": {
+          "type": "still_gateway_error",
+          "message": "Still blocked or could not complete the tool call."
+        }
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "id": "refund",
+      "name": "create_refund",
+      "body": {
+        "id": "MOCK-REFUND-batch-1",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "1.00",
+          "currency_code": "USD"
+        }
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "id": "retry",
+      "name": "create_refund",
+      "body": {
+        "id": "MOCK-REFUND-batch-1",
+        "status": "COMPLETED",
+        "amount": {
+          "value": "1.00",
+          "currency_code": "USD"
+        }
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "id": "unsupported",
+      "name": "create_refund",
+      "body": {
+        "error": {
+          "type": "still_gateway_error",
+          "message": "Still blocked or could not complete the tool call."
+        }
+      },
+      "provider": "deterministic-mock"
+    },
+    {
+      "outcome": "passed",
+      "provider": "deterministic-mock",
+      "refundId": "MOCK-REFUND-batch-1"
+    }
+  ]
+}

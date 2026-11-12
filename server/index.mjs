@@ -441,10 +441,12 @@ http.createServer(async (request, response) => {
     if (url.pathname === '/api/upgrade/toolkit-config') {
       const input = await body(request);
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid saved batch.' });
+      if (input.decisionId !== undefined && (typeof input.decisionId !== 'string' || !/^[A-Za-z0-9_-]{1,127}$/.test(input.decisionId))) return send(response, 400, { error: 'Enter a decision ID using 1 to 127 letters, digits, underscores, or hyphens.' });
       try {
-        await createBatchBinding(input.batchId);
-        return send(response, 200, { batchId: input.batchId, config: { mcpServers: { still: { command: 'node', args: [fileURLToPath(new URL('./mcp-batch-binding.mjs', import.meta.url)), input.batchId] } } }, toolkitModule: new URL('../examples/still-openai-toolkit.mjs', import.meta.url).href, scope: 'deterministic-mock' });
-      } catch { return send(response, 400, { error: 'This saved batch cannot start the USD mock toolkit binding. A fully passing batch with qualifying USD refund evidence is required.' }); }
+        const binding = await createBatchBinding(input.batchId, { decisionId: input.decisionId });
+        const v3 = binding.protocolVersion === 3;
+        return send(response, 200, { batchId: input.batchId, ...(v3 ? { decisionId: input.decisionId } : {}), protocolVersion: binding.protocolVersion, config: { mcpServers: { still: { command: 'node', args: [fileURLToPath(new URL('./mcp-batch-binding.mjs', import.meta.url)), input.batchId, ...(v3 ? [input.decisionId] : [])] } } }, toolkitModule: new URL('../examples/still-openai-toolkit.mjs', import.meta.url).href, scope: 'deterministic-mock' });
+      } catch (error) { return send(response, 400, { error: error?.message === 'Toolkit-style binding requires an explicit decision ID from the host.' ? 'Enter a stable decision ID for this toolkit-style batch.' : 'This saved batch cannot start the USD mock toolkit binding. A fully passing batch with qualifying USD refund evidence is required.' }); }
     }
     if (url.pathname === '/api/upgrade/permission') {
       const input = await body(request);

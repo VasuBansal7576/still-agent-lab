@@ -72,7 +72,7 @@ function validPermission(permission, agentId, adapter) {
   return permission?.version === 1 && permission.agentId === agentId && permission.scope === 'deterministic-mock' && adapter.trusted === true && adapter.replaySafe === true && adapter.stableRequestIds === true && p?.allowed === true && currency(p.currency) && cents(p.maxPerOrder) !== null && p.requireDisputeClear === true && p.requireDisputeCheck === true && p.requireApprovedAmount === true && p.requireIdentityMatch === true && p.requireStableDecisionId === true;
 }
 
-const publicResult = result => ({ ok: result?.ok === true, status: Number.isInteger(result?.status) ? result.status : null, body: result?.body && typeof result.body === 'object' ? { id: id(result.body.id) ? result.body.id : undefined, status: id(result.body.status) ? result.body.status : undefined, amount: cents(result.body.amount?.value) !== null && currency(result.body.amount?.currency_code) ? { value: result.body.amount.value, currency_code: result.body.amount.currency_code } : undefined, name: id(result.body.name) ? result.body.name : undefined, details: Array.isArray(result.body.details) ? result.body.details.map(d => ({ issue: id(d?.issue) ? d.issue : undefined })) : undefined } : undefined });
+const publicResult = result => ({ ok: result?.ok === true, status: Number.isInteger(result?.status) ? result.status : null, body: result?.body && typeof result.body === 'object' ? { id: id(result.body.id) ? result.body.id : undefined, status: id(result.body.status) ? result.body.status : undefined, amount: cents(result.body.amount?.value) !== null && currency(result.body.amount?.currency_code) ? { value: result.body.amount.value, currency_code: result.body.amount.currency_code } : undefined, name: id(result.body.name) ? result.body.name : undefined, details: Array.isArray(result.body.details) ? result.body.details.map(d => ({ issue: id(d?.issue) ? d.issue : undefined })) : undefined, ...(id(result.body.capture_id) ? { capture_id: result.body.capture_id } : {}) } : undefined });
 
 /** Adapter methods are injected by the host. No account is connected by this module. */
 export function createGateway({ agentId, permission, adapter, mode = 'enforce' } = {}) {
@@ -90,6 +90,16 @@ export function createGateway({ agentId, permission, adapter, mode = 'enforce' }
   async function call({ sessionId, decisionId, name, arguments: args = {} }) {
     const events = session(sessionId);
     if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Tool arguments must be an object.');
+    if (name === 'list_disputes') {
+      const captureId = args.disputed_transaction_id;
+      if (Object.keys(args).length !== 1 || !id(captureId) || adapter.disputeListCoverage !== 'capture-complete' || typeof adapter.list_disputes !== 'function') return { ok: false, error: 'Capture-scoped dispute listing unavailable or invalid.' };
+      const response = await adapter.list_disputes(captureId);
+      const complete = response?.ok === true && response?.status === 200 && response?.body?.complete === true && response.body.disputed_transaction_id === captureId && Array.isArray(response.body.items);
+      const items = complete ? response.body.items.map(item => ({ dispute_id: id(item?.dispute_id) ? item.dispute_id : null, status: id(item?.status) ? item.status : null })) : null;
+      const result = complete && items.every(item => item.dispute_id && item.status) ? { ok: true, status: 200, body: { disputed_transaction_id: captureId, complete: true, items } } : { ok: false, error: 'Complete dispute listing unavailable.' };
+      events.push({ name, arguments: { disputed_transaction_id: captureId }, result });
+      return result;
+    }
     if (name === 'get_order' || name === 'get_refund' || name === 'get_dispute') {
       const key = { get_order: 'order_id', get_refund: 'refund_id', get_dispute: 'dispute_id' }[name];
       if (Object.keys(args).length !== 1 || !id(args[key]) || typeof adapter[name] !== 'function') return { ok: false, error: 'Read unavailable or invalid.' };
@@ -117,7 +127,9 @@ export function createGateway({ agentId, permission, adapter, mode = 'enforce' }
       if (!reason) {
         try { context = await adapter.inspect(args.capture_id); } catch { reason = 'Payment context unavailable.'; }
       }
-      if (!reason && (!id(context?.disputeId) || !events.some(event => event.name === 'get_dispute' && event.arguments.dispute_id === context.disputeId && event.result?.ok === true && event.result.body?.id === context.disputeId && event.result.body?.status === 'CLEAR'))) reason = 'Check the matching dispute before requesting a refund.';
+      const checkedDispute = events.some(event => event.name === 'get_dispute' && id(context?.disputeId) && event.arguments.dispute_id === context.disputeId && event.result?.ok === true && event.result.body?.id === context.disputeId && event.result.body?.status === 'CLEAR');
+      const checkedList = events.some(event => event.name === 'list_disputes' && event.arguments.disputed_transaction_id === args.capture_id && event.result?.ok === true && event.result.body?.complete === true && event.result.body.disputed_transaction_id === args.capture_id && Array.isArray(event.result.body.items) && event.result.body.items.length === 0);
+      if (!reason && !checkedDispute && !checkedList) reason = 'Check the matching dispute before requesting a refund.';
       if (!reason && (!context || context.captureId !== args.capture_id || !['COMPLETED', 'PARTIALLY_REFUNDED'].includes(context.paymentStatus) || context.currency !== code || context.disputeState !== 'CLEAR' || context.identityMatches !== true || context.cancellationComplete !== false || cents(context.remaining) === null || cents(context.approvedAmount) === null || nonnegativeCents(context.refundedToDate) === null || amount + nonnegativeCents(context.refundedToDate) > cents(permission.create_refund.maxPerOrder) || amount > cents(context.remaining) || amount > cents(context.approvedAmount))) reason = 'Payment, dispute, identity, cancellation or approved amount is missing or does not permit this refund.';
       if (reason) {
         const result = { ok: false, blocked: true, error: reason };

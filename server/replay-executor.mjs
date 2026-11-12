@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { parseMoney } from './paypal-mock.mjs';
 import { passingReplaySpec } from './replay-passing-spec.mjs';
 import { verifyReplayDispute } from './replay-dispute.mjs';
+import { normalizeToolkitReplay } from './replay-toolkit-trace.mjs';
 
 const idPattern = /^[A-Za-z0-9_-]{1,127}$/;
 const amount = value => value && typeof value === 'object' ? { value: typeof value.value === 'string' && parseMoney(value.value) !== null ? value.value : undefined, currency_code: /^[A-Z]{3}$/.test(value.currency_code || '') ? value.currency_code : undefined } : undefined;
@@ -20,7 +21,9 @@ const failed = (key, reason, extra = {}) => ({ key, source: 'unverified-executor
 
 /** Execute one comparable replay. All arguments are supplied by a trusted server-side caller. */
 export async function executeSandboxReplay({ item, sessionId, approval, adapter, reserve, simulated = false } = {}) {
-  if (item?.toolkitProtocol) return failed(item.key, 'Toolkit-protocol sandbox replay is unsupported.');
+  const normalized = normalizeToolkitReplay(item);
+  if (normalized.reason) return failed(item?.key, normalized.reason);
+  item = normalized.item;
   if (item?.status === 'fail') return executeFailureReplay({ item, sessionId, approval, adapter, reserve, simulated });
   const passSpec = passingReplaySpec(item);
   if (passSpec.kind === 'stable-retry') return executeFailureReplay({ item: { ...item, status: 'fail' }, sessionId, approval, adapter, reserve, simulated });
@@ -51,8 +54,8 @@ export async function executeSandboxReplay({ item, sessionId, approval, adapter,
   let capture;
   try { capture = safeResponse(await adapter.getCapture(captureId)); } catch (error) { return failed(key, 'Capture lookup failed.', { error: { stage: 'capture', name: safeString(error?.name) || 'Error' } }); }
   if (!capture.ok || capture.status !== 200 || capture.body.id !== captureId || capture.body.status !== 'COMPLETED' || parseMoney(capture.body.amount?.value) !== parseMoney(payment.amount.value) || capture.body.amount?.currency_code !== args.currency || parseMoney(args.amount) > parseMoney(capture.body.amount?.value)) return failed(key, 'The provider capture does not match the completed mock capture.', { capture });
-  const requestId = `still-${createHash('sha256').update(JSON.stringify([sessionId, captureId, key])).digest('hex').slice(0, 40)}`;
-  const request = { captureId, amount: args.amount, currency: args.currency, requestId };
+  const requestId = call.toolkitNoRequestId ? undefined : `still-${createHash('sha256').update(JSON.stringify([sessionId, captureId, key])).digest('hex').slice(0, 40)}`;
+  const request = { captureId, amount: args.amount, currency: args.currency, requestId: requestId ?? null };
   try {
     if (await reserve({ sessionId, captureId, key, requestId }) !== true) return failed(key, 'Capture or replay was already reserved.', { capture, request });
   } catch (error) { return failed(key, 'Reservation failed; no refund was attempted.', { capture, request, error: { stage: 'reservation', name: safeString(error?.name) || 'Error' } }); }

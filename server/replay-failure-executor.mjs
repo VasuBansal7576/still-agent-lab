@@ -1,14 +1,17 @@
 import { createHash } from 'node:crypto';
 import { parseMoney } from './paypal-mock.mjs';
 import { replayFailureSpec, verifyReplayDispute } from './replay-dispute.mjs';
+import { normalizeToolkitReplay } from './replay-toolkit-trace.mjs';
 
 const validId = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,127}$/.test(value) && !/^MOCK-/i.test(value);
 const safeResponse = response => ({ ok: response?.ok, status: response?.status, body: { id: validId(response?.body?.id) ? response.body.id : undefined, status: typeof response?.body?.status === 'string' ? response.body.status : undefined, amount: response?.body?.amount && { value: response.body.amount.value, currency_code: response.body.amount.currency_code }, name: typeof response?.body?.name === 'string' ? response.body.name : undefined, details: Array.isArray(response?.body?.details) ? response.body.details.map(x => ({ issue: x.issue })) : undefined } });
 
 export async function executeFailureReplay({ item, sessionId, approval, adapter, reserve, simulated = false }) {
+  const normalized = normalizeToolkitReplay(item);
+  if (normalized.reason) return { key: item?.key, source: 'unverified-executor', reason: normalized.reason };
+  item = normalized.item;
   const key = item.key, spec = replayFailureSpec(item);
   const failed = (reason, extra = {}) => ({ key, source: 'unverified-executor', reason, ...extra });
-  if (item.toolkitProtocol) return failed('Toolkit-protocol sandbox replay is unsupported.');
   if (spec.reason) return failed(spec.reason);
   const captureId = approval?.captureId;
   if (!sessionId || approval?.sessionId !== sessionId || (approval?.buyerApprovedFreshCapture !== true && approval?.funding !== 'paypal-sandbox-test-card') || !validId(captureId)) return failed('A fresh buyer-approved sandbox capture is required.');
@@ -22,8 +25,8 @@ export async function executeFailureReplay({ item, sessionId, approval, adapter,
   catch { return failed('Reservation failed. No refund was attempted.', { capture }); }
   const attempts = [];
   for (const step of spec.steps) {
-    const requestId = requestIdFor(step.decision);
-    const request = { captureId, amount: step.amount, currency: step.currency, requestId };
+    const requestId = step.sendWithoutRequestId ? undefined : requestIdFor(step.decision);
+    const request = { captureId, amount: step.amount, currency: step.currency, requestId: requestId ?? null };
     let dispute;
     if (spec.disputeRequired) {
       dispute = await verifyReplayDispute({ adapter, disputeId: approval.disputeId, checkout: { state: 'captured', captureId, buyerApprovalConfirmed: true, replayKey: key } });

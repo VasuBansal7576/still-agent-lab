@@ -7,6 +7,7 @@ export const toolkitTools = [
   { name: 'get_order', description: 'Retrieve an order.', inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
   { name: 'get_refund', description: 'Retrieve a refund.', inputSchema: { type: 'object', properties: { refund_id: { type: 'string' } }, required: ['refund_id'] } },
   { name: 'get_dispute', description: 'Retrieve a dispute.', inputSchema: { type: 'object', properties: { dispute_id: { type: 'string' } }, required: ['dispute_id'] } },
+  { name: 'list_disputes', description: 'List disputes for one capture. Only complete, unfiltered mock listings are supported.', inputSchema: { type: 'object', properties: { disputed_transaction_id: { type: 'string' } }, required: ['disputed_transaction_id'], additionalProperties: false } },
   { name: 'create_refund', description: 'Request a refund for a captured payment. Still requires an explicit amount and currency.', inputSchema: { type: 'object', properties: { capture_id: { type: 'string' }, amount: { type: 'object', properties: { value: { type: 'string' }, currency_code: { type: 'string' } }, required: ['value', 'currency_code'] }, invoice_id: { type: 'string' }, note_to_payer: { type: 'string' } }, required: ['capture_id'] } }
 ];
 

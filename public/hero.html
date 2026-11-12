@@ -20,7 +20,7 @@
 <form id="run-form" class="card">
 <div class="fields">
 <label>Agent<select id="agent" name="agent"><option value="external">Your local HTTP agent</option><option value="buggy">Scripted buggy example</option><option value="safe">Scripted corrected example</option></select></label>
-<label id="protocol-label">Local agent protocol<select id="protocol" name="protocolVersion"><option value="2">Still HTTP protocol v2</option><option value="3">Toolkit-style HTTP protocol v3 (experimental mock)</option></select><span class="hint">v3 supports selected toolkit calls through an HTTP adapter. Eligible runs may earn mock-only permissions; sandbox replay is unavailable. See <a href="/toolkit-trials">setup and limits</a>.</span></label>
+<label id="protocol-label">Local agent protocol<select id="protocol" name="protocolVersion"><option value="2">Still HTTP protocol v2</option><option value="3">Toolkit-style HTTP protocol v3 (experimental mock)</option></select><span class="hint">v3 supports selected toolkit calls through an HTTP adapter. Eligible runs may earn mock-only permissions; selected traces can be checked for sandbox replay eligibility. See <a href="/toolkit-trials">setup and limits</a>.</span></label>
 <label id="endpoint-label">Local agent URL<input id="endpoint" name="endpoint" value="http://127.0.0.1:8787/agent" spellcheck="false" autocomplete="off"></label>
 <label>Persona source<select id="persona-source" name="personaSource"><option value="public">Public-data variants</option><option value="sandbox-account">Connected PayPal sandbox account</option></select></label>
 <label>Personas<input id="personas" name="personas" type="number" min="1" max="5000" value="1000" required></label>

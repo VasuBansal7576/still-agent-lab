@@ -2,6 +2,7 @@ import { replayFailureSpec } from './replay-dispute.mjs';
 import { randomUUID } from 'node:crypto';
 import { parseMoney } from './paypal-mock.mjs';
 import { passingReplaySpec } from './replay-passing-spec.mjs';
+import { normalizeToolkitReplay } from './replay-toolkit-trace.mjs';
 
 const decimal = value => typeof value === 'string' && /^(?:0|[1-9]\d{0,8})\.\d{2}$/.test(value) && parseMoney(value) > 0;
 const identifier = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,127}$/.test(value);
@@ -15,7 +16,10 @@ function approvalUrl(value) {
 
 // The item must come from a plan built from a server-owned batch, never from the request body.
 export function replayCheckoutAmount(item) {
-  if (!item || item.toolkitProtocol || item.queueState !== 'ready' || typeof item.key !== 'string' || !item.key || !Array.isArray(item.events)) return null;
+  const normalized = normalizeToolkitReplay(item);
+  if (normalized.reason) return null;
+  item = normalized.item;
+  if (!item || item.queueState !== 'ready' || typeof item.key !== 'string' || !item.key || !Array.isArray(item.events)) return null;
   if (item.status === 'fail') { const spec = replayFailureSpec(item); return spec.reason ? null : { amount: spec.captureAmount, currency: spec.currency }; }
   const special = passingReplaySpec(item);
   if (special.kind) return { amount: special.captureAmount, currency: special.currency };
