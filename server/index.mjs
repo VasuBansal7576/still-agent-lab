@@ -148,6 +148,7 @@ http.createServer(async (request, response) => {
         defaultPaypal = client;
         paypalPersistence = 'macos-keychain';
         session.paypal = client;
+        session.accountSnapshot = null;
         return send(response, 200, { connected: true, persistence: paypalPersistence });
       } catch { return send(response, 503, { error: 'Sandbox authentication or secure credential storage failed. Check the sandbox app and unlock the macOS Keychain.' }); }
     }
@@ -265,6 +266,32 @@ http.createServer(async (request, response) => {
         importVerifiedAccountPersonas({ paypal: session.paypal }),
       ]);
       return send(response, 200, { ...result, personas: [...result.personas, ...saved.personas], savedRunEvidence: { records: saved.records, coverage: saved.coverage } });
+    }
+    if (url.pathname === '/api/upgrade/account-snapshot') {
+      const input = await body(request);
+      const validTime = value => typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(value);
+      const startTime = input.startTime || '00:00:00', endTime = input.endTime || '23:59:59';
+      const withSeconds = value => value.length === 5 ? `${value}:00` : value;
+      const start = typeof input.startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input.startDate) && validTime(startTime) ? Date.parse(`${input.startDate}T${withSeconds(startTime)}.000Z`) : NaN;
+      const endOfDay = typeof input.endDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input.endDate) && validTime(endTime) ? Date.parse(`${input.endDate}T${withSeconds(endTime)}.000Z`) : NaN;
+      const now = Date.now();
+      const end = Math.min(endOfDay, now);
+      const count = Number(input.personas);
+      if (!Number.isFinite(start) || !Number.isFinite(endOfDay) || end <= start || end - start > 31 * 86400000 || new Date(start).toISOString().slice(0, 10) !== input.startDate || new Date(endOfDay).toISOString().slice(0, 10) !== input.endDate || input.endDate > new Date(now).toISOString().slice(0, 10) || !Number.isInteger(count) || count < 1 || count > 5000 || typeof input.includeDisputes !== 'boolean') return send(response, 400, { error: 'Choose a valid UTC date and time range of at most 31 days ending no later than today, and 1–5,000 personas.' });
+      const effectiveStart = new Date(start).toISOString(), effectiveEnd = new Date(end).toISOString();
+      if (!session.paypal) return send(response, 503, { error: 'Connect a PayPal sandbox account first.' });
+      if (session.accountImportPending) return send(response, 409, { error: 'An account import is already running in this session.' });
+      const paypal = session.paypal;
+      session.accountSnapshot = null;
+      session.accountImportPending = true;
+      let imported;
+      try { imported = await importSandboxAccountPersonas({ paypal, startDate: effectiveStart, endDate: effectiveEnd, count, includeDisputes: input.includeDisputes }); }
+      finally { session.accountImportPending = false; }
+      if (session.paypal !== paypal) return send(response, 409, { error: 'The sandbox connection changed during import. Import again.' });
+      if (!imported.personas.length) return send(response, 200, { status: 'unverified', count: 0, evidence: imported.evidence, effectiveStart, effectiveEnd, reason: 'No eligible account transactions were found. Reporting may be delayed or unavailable.' });
+      const snapshot = { id: randomUUID(), paypal, personas: imported.personas, evidence: imported.evidence, effectiveStart, effectiveEnd, includeDisputes: input.includeDisputes };
+      session.accountSnapshot = snapshot;
+      return send(response, 200, { status: 'ready', id: snapshot.id, count: snapshot.personas.length, importedTransactions: imported.importedTransactions, importedDisputes: imported.importedDisputes, evidence: snapshot.evidence, effectiveStart, effectiveEnd, includeDisputes: snapshot.includeDisputes });
     }
     if (url.pathname === '/api/upgrade/replay-plan') {
       const input = await body(request);
@@ -393,6 +420,7 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid batch.' });
       try {
         const summary = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        if (summary.personaSource === 'sandbox-account') return send(response, 400, { error: 'Account history and dispute coverage are incomplete, so an account-derived run cannot earn a permission.' });
         if (summary.additionalPolicy) return send(response, 400, { error: 'Additional policy instructions are not deterministically checked, so this run cannot earn a permission.' });
         const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary: currencyEvidence(summary, 'USD') });
         return send(response, 200, { permission });
@@ -403,6 +431,7 @@ http.createServer(async (request, response) => {
       if (!/^[0-9a-f-]{36}$/.test(input.batchId || '')) return send(response, 400, { error: 'Choose a valid batch.' });
       try {
         const summary = JSON.parse(await readFile(new URL(`../.data/batches/${input.batchId}.json`, import.meta.url), 'utf8'));
+        if (summary.personaSource === 'sandbox-account') return send(response, 400, { error: 'Account history and dispute coverage are incomplete, so an account-derived run cannot earn a permission.' });
         if (summary.additionalPolicy) return send(response, 400, { error: 'Additional policy instructions are not deterministically checked, so this run cannot earn a permission.' });
         const permission = derivePermission({ agentId: summary.evaluatedAgentId, currency: 'USD', summary: currencyEvidence(summary, 'USD') });
         if (!permission.create_refund.allowed) return send(response, 400, { error: 'This batch has not earned a USD mock permission.' });
@@ -465,11 +494,21 @@ http.createServer(async (request, response) => {
       const input = await body(request);
       const count = Number(input.personas ?? 1000), trials = Number(input.trials ?? 5), concurrency = Number(input.concurrency ?? 20);
       const mockProfile = input.mockProfile ?? 'completed';
+      const personaSource = input.personaSource ?? 'public';
       if (!Number.isInteger(count) || count < 1 || count > 5000 || !Number.isInteger(trials) || trials < 1 || trials > 10 || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > 100 || !['safe', 'buggy', 'external'].includes(input.agent) || !['completed', 'sandbox-test-card'].includes(mockProfile)) return send(response, 400, { error: 'Choose valid trial settings, mock profile and an agent.' });
+      if (!['public', 'sandbox-account'].includes(personaSource)) return send(response, 400, { error: 'Choose a valid persona source.' });
       if (input.policy !== undefined && (input.agent !== 'external' || typeof input.policy !== 'string' || !input.policy.trim() || input.policy.length > 4000)) return send(response, 400, { error: 'A custom agent policy must contain 1 to 4000 characters and requires a local HTTP agent.' });
       const additionalPolicy = input.policy?.trim() || null;
       const effectivePolicy = input.agent === 'external' ? `${DEFAULT_TRIAL_POLICY}${additionalPolicy ? `\nAdditional store instruction: ${additionalPolicy}` : ''}` : null;
-      const personas = generatePersonas({ count, seed: 'still-upgrade' });
+      let personas;
+      let accountImport = null;
+      if (personaSource === 'sandbox-account') {
+        const snapshot = session.accountSnapshot;
+        if (!snapshot || snapshot.id !== input.snapshotId || snapshot.paypal !== session.paypal || count > snapshot.personas.length) return send(response, 400, { error: 'Import a sandbox account snapshot for this session and requested persona count first.' });
+        personas = structuredClone(snapshot.personas.slice(0, count));
+        for (const persona of personas) persona.source = { ...persona.source, accountEvidence: persona.accountEvidence, scenarioAssumptions: persona.scenarioAssumptions };
+        accountImport = { effectiveStart: snapshot.effectiveStart, effectiveEnd: snapshot.effectiveEnd, includeDisputes: snapshot.includeDisputes, evidence: snapshot.evidence };
+      } else personas = generatePersonas({ count, seed: 'still-upgrade' });
       for (const persona of personas) persona.scenario.mockProfile = mockProfile;
       let agent = input.agent, agentId;
       if (agent === 'external') {
@@ -480,9 +519,9 @@ http.createServer(async (request, response) => {
       const id = randomUUID();
       const directory = new URL('../.data/batches/', import.meta.url);
       await mkdir(directory, { recursive: true, mode: 0o700 });
-      await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, mockProfile, effectivePolicy, additionalPolicy, createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
+      await writeFile(new URL(`${id}.json`, directory), JSON.stringify({ id, agent: input.agent, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, createdAt: new Date().toISOString(), ...result }), { mode: 0o600, flag: 'wx' });
       const { results, ...summary } = result;
-      return send(response, 200, { id, agent: input.agent, mockProfile, effectivePolicy, additionalPolicy, ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0] });
+      return send(response, 200, { id, agent: input.agent, mockProfile, effectivePolicy, additionalPolicy, personaSource, accountImport, ...summary, examplePersonas: personas.slice(0, 5), exampleTrial: results[0] });
     }
     if (url.pathname === '/api/upgrade/dispute-demo') {
       const input = await body(request);

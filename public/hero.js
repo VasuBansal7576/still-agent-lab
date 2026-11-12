@@ -6,9 +6,12 @@ const runButton = document.querySelector('#run');
 const agent = document.querySelector('#agent');
 const endpoint = document.querySelector('#endpoint');
 const policy = document.querySelector('#policy');
+const personaSource = document.querySelector('#persona-source');
+const accountLoad = document.querySelector('#account-load');
+const accountStatus = document.querySelector('#account-status');
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const json = value => escape(JSON.stringify(value ?? null, null, 2));
-const state = { run: null, selectedCluster: null, selectedTrial: null, page: null, pageError: null, permission: null, permissionUrl: null, replay: null, selectedReplay: null, explanation: null, sandbox: null, busy: false };
+const state = { run: null, selectedCluster: null, selectedTrial: null, page: null, pageError: null, permission: null, permissionUrl: null, replay: null, selectedReplay: null, explanation: null, sandbox: null, accountSnapshot: null, busy: false };
 const agentNames = { external: 'Local HTTP agent', buggy: 'Scripted buggy example', safe: 'Scripted corrected example' };
 
 async function request(path, body) {
@@ -23,7 +26,7 @@ function sourceLink(url, label) {
 }
 function provenance(source) {
   if (!source) return '<p>Persona source is unavailable for this trace.</p>';
-  return `<p><strong>${escape(source.dataset)}</strong><br>Record ${escape(source.recordId)}<br>${escape(source.license)}</p><p>${sourceLink(source.url, 'Open source record')} ${sourceLink(source.evidenceUrl, 'Source evidence')}</p>`;
+  return `<p><strong>${escape(source.dataset)}</strong><br>Record ${escape(source.recordId)}<br>${escape(source.license)}</p>${Array.isArray(source.recordIds) ? `<p>Linked record IDs: ${source.recordIds.map(escape).join(', ')}</p>` : ''}${source.scenarioAssumptions ? `<p>${escape(source.scenarioAssumptions)}</p>` : ''}${source.accountEvidence ? `<details><summary>Account evidence and coverage</summary><pre>${json(source.accountEvidence)}</pre></details>` : ''}<p>${sourceLink(source.url, 'Open source record')} ${sourceLink(source.evidenceUrl, 'Source evidence')}</p>`;
 }
 function eventSummary(event) {
   if (event.type === 'customer') return { label:'Customer', text:event.text };
@@ -99,7 +102,6 @@ function renderResults() {
   const cluster = data.failureClusters.find(item => item.id === state.selectedCluster);
   const selected = state.selectedTrial?.trial || (cluster ? cluster.example : data.exampleTrial);
   const scope = config.agent === 'external' ? `${agentNames[config.agent]} · ${config.endpoint}` : agentNames[config.agent];
-  const permissionEligible = passed && !config.policy;
   const clusters = data.failureClusters.map(item=>`<div class="row"><span><strong>${escape(item.label)}</strong><br><span class="hint">${Number(item.count).toLocaleString()} trial${item.count === 1 ? '' : 's'}</span></span><button type="button" class="secondary" data-action="cluster" data-id="${escape(item.id)}">Inspect example</button></div>`).join('');
   let browser = '<p>Trial list is unavailable.</p><button type="button" class="secondary" data-action="page" data-offset="0">Load trials</button>';
   if (state.page) {
@@ -109,7 +111,8 @@ function renderResults() {
   }
   if (state.pageError) browser += `<p class="status">${escape(state.pageError)}</p>`;
   let access = '';
-  if (config.policy) access = '<p>Additional instructions are not automatically checked. This run cannot earn a permission.</p>';
+  if (config.personaSource === 'sandbox-account') access = '<p>Account history and dispute coverage are incomplete. Account-derived runs cannot earn a permission.</p>';
+  else if (config.policy) access = '<p>Additional instructions are not automatically checked. This run cannot earn a permission.</p>';
   else if (!passed) access = '<p>A permission requires every trial to pass with complete evidence.</p>';
   else if (!state.permission) access = '<p>A fully passing run can request a USD mock-only permission. A grant also requires completed USD refund evidence.</p><button type="button" data-action="permission">Request mock permission</button>';
   else if (!state.permission.create_refund?.allowed) access = `<div class="trace"><strong>No permission issued</strong><p>${escape(state.permission.reason || 'Insufficient evidence for a grant.')}</p></div>`;
@@ -117,7 +120,7 @@ function renderResults() {
   let gateway = '';
   if (state.replay) { const calls = state.replay.events.filter(event => event.name === 'create_refund'); gateway = `<div class="card"><div class="label">Mock gateway replay</div><h3>Permission enforcement</h3>${calls.map((call,index)=>`<p><strong>${index === 0 ? 'Over limit' : 'Eligible'} · ${escape(call.arguments?.amount?.value)} ${escape(call.arguments?.amount?.currency_code)}</strong> · ${call.result?.blocked ? 'Blocked' : call.result?.ok ? 'Allowed' : 'Unverified'}</p>`).join('')}<p class="hint">The gateway uses an isolated mock. No PayPal payment was made.</p><details><summary>Inspect gateway events</summary><pre>${json(state.replay)}</pre></details></div>`; }
   const explanation = cluster ? `<div class="actions"><button type="button" class="secondary" data-action="explain">Explain this failure with AI</button></div>${state.explanation ? `<p>${escape(state.explanation)}</p>` : '<p class="hint">AI explains evidence; deterministic checks decide the verdict. Model access is required.</p>'}` : '';
-  results.innerHTML = `<div class="card"><span class="pill">${escape(verdict)} · mock</span><h3>${escape(scope)}</h3><p>${Number(data.personaCount).toLocaleString()} personas × ${Number(data.trials)} trials · ${escape(config.profile === 'sandbox-test-card' ? 'Observed sandbox test-card profile' : 'Completed-refund profile')}</p><p class="hint">Batch ${escape(data.id)}. Results belong to the settings used for this run, even if you change the form above. ${config.agent === 'external' ? 'The host identifies this agent by its endpoint; the endpoint does not authenticate the agent.' : 'This is a built-in scripted example.'}</p><div class="metrics"><div class="metric"><span>pass@1 · per trial</span><strong>${(Number(data.passAt1)*100).toFixed(1)}%</strong></div><div class="metric"><span>pass^${Number(data.trials)} · passed every trial</span><strong>${(Number(data.passAllTrials)*100).toFixed(1)}%</strong></div></div><p>${Number(data.counts.pass).toLocaleString()} passed · ${Number(data.counts.fail).toLocaleString()} failed · ${Number(data.counts.unverified).toLocaleString()} unverified</p><p class="hint">Unverified trials do not count as passes. These are mock results, not estimates of real-world reliability.</p>${data.effectivePolicy ? `<details><summary>Agent instructions used for this run</summary><pre>${escape(data.effectivePolicy)}</pre></details>` : ''}<h3>Failure map</h3><p class="hint">A trial can appear in multiple groups. Select a group to inspect its example.</p><div class="rows">${clusters || '<p>No observed failure groups.</p>'}</div><div class="actions"><button type="button" class="secondary" data-action="example">Inspect example trial</button><a href="#connect-heading">Change or rerun agent ↑</a></div><details id="trial-browser"><summary>Browse all trials</summary>${browser}</details></div>${traceView(selected, state.selectedTrial ? `Trial ${state.selectedTrial.index+1}` : cluster ? cluster.label : 'Example trial')}${explanation}${sandboxReplayView(selected)}<div class="card"><div class="label">Earned permission</div><h3>Scope access to observed evidence.</h3>${access}</div>${gateway}`;
+  results.innerHTML = `<div class="card"><span class="pill">${escape(verdict)} · mock</span><h3>${escape(scope)}</h3><p>${Number(data.personaCount).toLocaleString()} personas × ${Number(data.trials)} trials · ${escape(config.profile === 'sandbox-test-card' ? 'Observed sandbox test-card profile' : 'Completed-refund profile')} · ${config.personaSource === 'sandbox-account' ? 'Sandbox account-derived personas' : 'Public-data personas'}</p>${data.accountImport ? `<p class="hint">Account report ${escape(data.accountImport.effectiveStart)} to ${escape(data.accountImport.effectiveEnd)}. ${escape(data.accountImport.evidence.transactions.reason)}. ${escape(data.accountImport.evidence.disputes.reason)}. Scenario requests and policy facts are synthetic.</p>` : ''}<p class="hint">Batch ${escape(data.id)}. Results belong to the settings used for this run, even if you change the form above. ${config.agent === 'external' ? 'The host identifies this agent by its endpoint; the endpoint does not authenticate the agent.' : 'This is a built-in scripted example.'}</p><div class="metrics"><div class="metric"><span>pass@1 · per trial</span><strong>${(Number(data.passAt1)*100).toFixed(1)}%</strong></div><div class="metric"><span>pass^${Number(data.trials)} · passed every trial</span><strong>${(Number(data.passAllTrials)*100).toFixed(1)}%</strong></div></div><p>${Number(data.counts.pass).toLocaleString()} passed · ${Number(data.counts.fail).toLocaleString()} failed · ${Number(data.counts.unverified).toLocaleString()} unverified</p><p class="hint">Unverified trials do not count as passes. These are mock results, not estimates of real-world reliability.</p>${data.effectivePolicy ? `<details><summary>Agent instructions used for this run</summary><pre>${escape(data.effectivePolicy)}</pre></details>` : ''}<h3>Failure map</h3><p class="hint">A trial can appear in multiple groups. Select a group to inspect its example.</p><div class="rows">${clusters || '<p>No observed failure groups.</p>'}</div><div class="actions"><button type="button" class="secondary" data-action="example">Inspect example trial</button><a href="#connect-heading">Change or rerun agent ↑</a></div><details id="trial-browser"><summary>Browse all trials</summary>${browser}</details></div>${traceView(selected, state.selectedTrial ? `Trial ${state.selectedTrial.index+1}` : cluster ? cluster.label : 'Example trial')}${explanation}${sandboxReplayView(selected)}<div class="card"><div class="label">Earned permission</div><h3>Scope access to observed evidence.</h3>${access}</div>${gateway}`;
 }
 function renderSandbox() {
   if (!state.sandbox) { sandbox.innerHTML='<button type="button" data-action="sandbox">Show saved retry evidence</button>'; return; }
@@ -135,15 +138,34 @@ function modeChanged() {
   document.querySelector('#policy-label').hidden = !external;
   document.querySelector('#external-help').hidden = !external;
   endpoint.required = external;
+  document.querySelector('#account-import').hidden = personaSource.value !== 'sandbox-account';
 }
 agent.addEventListener('change', modeChanged);
+personaSource.addEventListener('change', modeChanged);
+for (const selector of ['#personas', '#account-start', '#account-start-time', '#account-end', '#account-end-time', '#account-disputes']) document.querySelector(selector).addEventListener('change', () => { state.accountSnapshot=null; accountStatus.textContent='Settings changed. Import the account snapshot again.'; });
+accountLoad.addEventListener('click', async () => {
+  if (state.busy) return;
+  const startDate=document.querySelector('#account-start').value, endDate=document.querySelector('#account-end').value, startTime=document.querySelector('#account-start-time').value, endTime=document.querySelector('#account-end-time').value;
+  const personas=Number(document.querySelector('#personas').value), includeDisputes=document.querySelector('#account-disputes').checked;
+  if (!startDate || !endDate) { accountStatus.textContent='Choose a report start and end date.'; return; }
+  state.accountSnapshot=null; state.busy=true; accountLoad.disabled=true; runButton.disabled=true;
+  accountStatus.textContent='Reading sandbox account records. No payment action is performed.';
+  try {
+    const data=await request('/api/upgrade/account-snapshot',{ startDate, endDate, startTime, endTime, personas, includeDisputes });
+    if (data.status !== 'ready') { accountStatus.textContent=`Account import unverified for ${data.effectiveStart} to ${data.effectiveEnd}. ${data.reason} ${data.evidence?.transactions?.reason || ''}`; return; }
+    state.accountSnapshot=data;
+    accountStatus.textContent=`Imported ${data.count} synthetic personas from ${data.importedTransactions} eligible sandbox transactions (${data.effectiveStart} to ${data.effectiveEnd}); ${data.importedDisputes} dispute details retrieved. ${data.evidence.transactions.reason}. ${data.evidence.disputes.reason}. This snapshot lasts for this browser session.`;
+  } catch (error) { accountStatus.textContent=`Account import unavailable: ${error.message}`; }
+  finally { state.busy=false; accountLoad.disabled=false; runButton.disabled=false; }
+});
 form.addEventListener('submit', async event => {
   event.preventDefault();
   if (state.busy || !form.reportValidity()) return;
   const values = new FormData(form);
-  const config = { agent:values.get('agent'), endpoint:String(values.get('endpoint') || '').trim(), personas:Number(values.get('personas')), trials:Number(values.get('trials')), concurrency:Number(values.get('concurrency')), profile:values.get('profile'), policy:String(values.get('policy') || '').trim() };
+  const config = { agent:values.get('agent'), endpoint:String(values.get('endpoint') || '').trim(), personas:Number(values.get('personas')), trials:Number(values.get('trials')), concurrency:Number(values.get('concurrency')), profile:values.get('profile'), policy:String(values.get('policy') || '').trim(), personaSource:values.get('personaSource') };
   if (config.agent !== 'external') { config.endpoint=''; config.policy=''; }
-  const body = { agent:config.agent, personas:config.personas, trials:config.trials, concurrency:config.concurrency, mockProfile:config.profile };
+  const body = { agent:config.agent, personas:config.personas, trials:config.trials, concurrency:config.concurrency, mockProfile:config.profile, personaSource:config.personaSource };
+  if (config.personaSource === 'sandbox-account') { if (!state.accountSnapshot) { status.textContent='Import sandbox account personas first.'; return; } body.snapshotId=state.accountSnapshot.id; }
   if (config.agent === 'external') { body.endpoint=config.endpoint; if (config.policy) body.policy=config.policy; }
   state.busy=true; runButton.disabled=true;
   status.textContent='Running mock trials. The previous result stays visible until this run finishes.';

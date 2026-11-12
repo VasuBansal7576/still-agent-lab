@@ -1,4 +1,5 @@
 const SANDBOX_API = 'https://api-m.sandbox.paypal.com';
+const accountErrorCodes = new Set(['RESULTSET_TOO_LARGE', 'INVALID_REQUEST', 'VALIDATION_ERROR', 'INVALID_PARAMETER_VALUE', 'INVALID_DATE_RANGE', 'NOT_AUTHORIZED', 'PERMISSION_DENIED', 'INTERNAL_SERVER_ERROR']);
 
 function identifier(value, label) {
   if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{1,127}$/.test(value)) {
@@ -114,7 +115,8 @@ export function createPayPalSandbox({ clientId, clientSecret } = {}) {
       headers: { Authorization: `Bearer ${await accessToken()}`, Accept: 'application/json' },
     });
     const data = await response.json().catch(() => ({}));
-    return { ok: response.ok, status: response.status, body: response.ok ? sanitize(data) : {} };
+    const errorCodes = response.ok ? [] : [...new Set([data?.name, ...(Array.isArray(data?.details) ? data.details.map(detail => detail?.issue) : [])].filter(code => accountErrorCodes.has(code)))];
+    return { ok: response.ok, status: response.status, body: response.ok ? sanitize(data) : {}, ...(errorCodes.length ? { errorCodes } : {}) };
   }
 
   return {
