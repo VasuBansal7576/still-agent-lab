@@ -1,0 +1,25 @@
+{
+  "provenance": "historical-sandbox-responses-as-fixture",
+  "note": "No PayPal calls. Saved responses from an earlier sandbox run were returned by a local adapter to a synthetic, amount-matched mock trace. This demonstrates response-shape compatibility only and is not a new sandbox replay.",
+  "source": "docs/evidence/sandbox-retry.json",
+  "calls": [
+    {
+      "name": "getCapture",
+      "id": "0DR1359694999091J"
+    },
+    {
+      "name": "refundCapture",
+      "id": "0DR1359694999091J",
+      "amount": "50.00",
+      "currency": "USD"
+    },
+    {
+      "name": "getRefund",
+      "id": "8C737899AB807304A"
+    }
+  ],
+  "receiptSource": "simulated-provider-fixture",
+  "receiptStatus": "completed",
+  "comparison": "simulated-agreed",
+  "reason": null
+}
