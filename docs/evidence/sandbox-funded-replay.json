@@ -131,7 +131,90 @@
         }
       ],
       "status": "rejected"
+    },
+    {
+      "key": "[\"e2a45c1a-dcf6-4f5d-82f4-ea3e8a96c3d6\",\"persona-aeb22728711d820bf1af\",1]",
+      "capture": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "38Y5236564850214E",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "34.00",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "38Y5236564850214E",
+            "amount": "17.00",
+            "currency": "GBP",
+            "requestId": "still-fd6bc4991f15016883c4d2abae4ef21d4f7c1cc1"
+          },
+          "refund": {
+            "ok": false,
+            "status": 422,
+            "body": {
+              "name": "UNPROCESSABLE_ENTITY",
+              "details": [
+                {
+                  "issue": "REFUND_FAILED_INSUFFICIENT_FUNDS"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "status": "rejected"
+    },
+    {
+      "key": "[\"449ece22-7765-4294-8bd2-de7d244b2e4c\",\"persona-aeb22728711d820bf1af\",4]",
+      "capture": {
+        "ok": true,
+        "status": 200,
+        "body": {
+          "id": "68258141KS284703M",
+          "status": "COMPLETED",
+          "amount": {
+            "value": "34.00",
+            "currency_code": "GBP"
+          }
+        }
+      },
+      "attempts": [
+        {
+          "request": {
+            "captureId": "68258141KS284703M",
+            "amount": "17.00",
+            "currency": "GBP",
+            "requestId": "still-85e3db9a6092541e1337087b833a553480a413c8"
+          },
+          "refund": {
+            "ok": false,
+            "status": 422,
+            "body": {
+              "name": "UNPROCESSABLE_ENTITY",
+              "details": [
+                {
+                  "issue": "REFUND_FAILED_INSUFFICIENT_FUNDS"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "status": "rejected"
     }
   ],
-  "limitations": "Both transfers converted to USD. Spendable GBP remains unverified; prior receipts remain unchanged and full replay traces unverified."
+  "limitations": "Both transfers converted to USD. Spendable GBP remains unverified; prior receipts remain unchanged and full replay traces unverified.",
+  "afterReceivingPreferenceChange": {
+    "preference": "Accept payments without converting currency",
+    "saved": true,
+    "thirdTransferGBP": "100.00",
+    "senderSuccess": true,
+    "merchantAvailability": "not established"
+  }
 }
