@@ -14,11 +14,11 @@ A passing run can produce a mock-scoped permission file. Still's gateway enforce
 
 ## How we built it
 
-The local Node.js app connects scripted agents and local HTTP agents. It also offers a PayPal Agent Toolkit-compatible MCP interface for selected tools. Thousands of trials use isolated deterministic mock ledgers. Separate sandbox runs capture actual PayPal responses. AI can explain failures, while deterministic checks decide verdicts. The repository includes a Codex-backed agent example and a scripted option that requires no model login.
+The local Node.js app connects scripted agents, local HTTP agents, and configured MCP hosts. Its MCP interface mirrors selected PayPal Agent Toolkit tools. An agent host must accept Still's synthetic scenario and use the supplied connection; an unchanged toolkit agent is not guaranteed to work. Thousands of trials use isolated deterministic mock ledgers. Separate sandbox runs capture actual PayPal responses. AI can explain failures, while deterministic checks decide verdicts. The repository includes a Codex-backed example and a scripted option that requires no model login.
 
 ## Challenges
 
-A successful HTTP response is not always a completed refund. Sandbox payments can remain pending, and chargebacks can behave differently from wallet disputes. We kept pending and uncertain outcomes unverified and separated mock scores from provider evidence. The timeout in the retry experiment was injected.
+A successful HTTP response is not always a completed refund. Sandbox payments can remain pending, and chargebacks can behave differently from wallet disputes. An earlier completed-refund mock often disagreed with test-card sandbox responses; a later selected profile matched ten selected traces. Neither result establishes general accuracy. We kept uncertain outcomes unverified and separated mock scores from provider evidence. The timeout in the retry experiment was injected.
 
 ## Accomplishments that we're proud of
 
@@ -26,7 +26,7 @@ The saved sandbox retry shows two completed refunds for one decision. A separate
 
 ## What's next
 
-Expand agent and toolkit coverage, improve mock agreement with sandbox behavior, and validate permissions against complete external payment and dispute history before considering production use.
+Expand toolkit coverage and agent compatibility, verify selected MCP traces against PayPal sandbox, improve mock agreement, and establish complete payment and dispute history before considering production use. Current earned permissions and gateway examples are scoped to the mock.
 
 ## Built with
 
@@ -37,7 +37,7 @@ Node.js, JavaScript, PayPal sandbox APIs, PayPal Agent Toolkit, MCP, public reta
 - [Public repository and setup](https://github.com/VasuBansal7576/still-agent-lab)
 - [Saved sandbox replay](https://vasubansal7576.github.io/still-agent-lab/)
 - [Evidence and limitations](https://github.com/VasuBansal7576/still-agent-lab/blob/main/docs/upgrade-acceptance.md)
-- [Earlier demo video file](https://vasubansal7576.github.io/still-agent-lab/still-demo.mp4) (2 minutes 16 seconds). It predates the connected-agent workspace; a public YouTube link is still required for submission.
+- [Earlier demo video file](https://vasubansal7576.github.io/still-agent-lab/still-demo.mp4) (2 minutes 16 seconds). It predates the connected-agent workspace. Devpost's video field requires a supported hosted video link; check the hackathon rules. See [Devpost's video guidance](https://help.devpost.com/article/85-uploading-a-demo-video).
 
 ## Judge setup
 
